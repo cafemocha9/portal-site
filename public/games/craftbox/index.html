@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>CraftBox - ボクセルワールド</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { width:100%; height:100%; overflow:hidden; background:#000; font-family:'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif; }
+  #game { position:fixed; inset:0; }
+  canvas { display:block; }
+
+  /* 照準 */
+  #crosshair { position:fixed; left:50%; top:50%; width:20px; height:20px; transform:translate(-50%,-50%); pointer-events:none; z-index:5; opacity:.85; }
+  #crosshair::before, #crosshair::after { content:''; position:absolute; background:#fff; mix-blend-mode:difference; }
+  #crosshair::before { left:9px; top:0; width:2px; height:20px; }
+  #crosshair::after { left:0; top:9px; width:20px; height:2px; }
+
+  /* ホットバー */
+  #hotbar { position:fixed; left:50%; bottom:12px; transform:translateX(-50%); display:flex; gap:4px; z-index:6; }
+  .slot { width:46px; height:46px; background:rgba(20,20,25,.55); border:2px solid rgba(255,255,255,.28); border-radius:4px; display:flex; align-items:center; justify-content:center; position:relative; }
+  .slot.sel { border-color:#fff; background:rgba(40,40,50,.75); transform:scale(1.1); }
+  .slot canvas { width:32px; height:32px; image-rendering:pixelated; }
+  .slot span { position:absolute; left:3px; top:1px; font-size:10px; color:rgba(255,255,255,.7); }
+  #blockname { position:fixed; left:50%; bottom:66px; transform:translateX(-50%); color:#fff; font-size:13px; text-shadow:0 1px 3px rgba(0,0,0,.8); z-index:6; }
+
+  /* HP・HUD */
+  #hearts { position:fixed; left:50%; bottom:66px; transform:translateX(-160px); z-index:6; font-size:16px; letter-spacing:1px; text-shadow:0 1px 2px #000; pointer-events:none; }
+  #hud-info { position:fixed; left:10px; top:8px; color:rgba(255,255,255,.8); font-size:11px; text-shadow:0 1px 2px #000; z-index:6; line-height:1.5; }
+  #damage-flash { position:fixed; inset:0; background:radial-gradient(ellipse at center, transparent 40%, rgba(200,0,0,.55)); opacity:0; pointer-events:none; z-index:9; transition:opacity .1s; }
+  #msg { position:fixed; left:50%; top:34%; transform:translateX(-50%); color:#ff6b5b; font-size:22px; font-weight:bold; text-shadow:0 2px 6px #000; opacity:0; transition:opacity .4s; z-index:10; pointer-events:none; }
+
+  /* スタート画面 */
+  #overlay { position:fixed; inset:0; z-index:20; display:flex; align-items:center; justify-content:center; background:rgba(10,14,20,.72); backdrop-filter:blur(4px); cursor:pointer; }
+  #overlay .panel { text-align:center; color:#eee; max-width:440px; padding:28px; }
+  #overlay h1 { font-size:34px; letter-spacing:.12em; margin-bottom:6px; color:#9ee06a; text-shadow:2px 2px 0 #2a4d15; }
+  #overlay p.sub { font-size:12px; color:#9aa; margin-bottom:18px; letter-spacing:.2em; }
+  #overlay table { margin:0 auto 18px; font-size:13px; border-collapse:collapse; color:#cdd; }
+  #overlay td { padding:2px 10px; text-align:left; }
+  #overlay td.k { color:#9ee06a; font-weight:bold; text-align:right; white-space:nowrap; }
+  #overlay .start { display:inline-block; padding:12px 34px; background:#5aa02e; border:none; border-radius:6px; color:#fff; font-size:16px; font-weight:bold; box-shadow:0 4px 0 #3a6b1c; }
+  #overlay .tip { margin-top:12px; font-size:11px; color:#889; line-height:1.6; }
+
+  /* タッチUI */
+  .touch-ui { display:none; }
+  body.touch .touch-ui { display:block; }
+  #joy { position:fixed; left:26px; bottom:90px; width:120px; height:120px; border-radius:50%; background:rgba(255,255,255,.10); border:2px solid rgba(255,255,255,.25); z-index:7; }
+  #joy-knob { position:absolute; left:50%; top:50%; width:52px; height:52px; margin:-26px 0 0 -26px; border-radius:50%; background:rgba(255,255,255,.35); }
+  .tbtn { position:fixed; z-index:7; width:64px; height:64px; border-radius:50%; border:2px solid rgba(255,255,255,.3); background:rgba(20,20,25,.5); color:#fff; font-size:12px; font-weight:bold; display:flex; align-items:center; justify-content:center; user-select:none; }
+  #btn-jump  { right:24px;  bottom:96px; }
+  #btn-break { right:100px; bottom:150px; background:rgba(160,50,40,.5); }
+  #btn-place { right:100px; bottom:70px;  background:rgba(50,110,170,.5); }
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div id="crosshair"></div>
+<div id="blockname"></div>
+<div id="hotbar"></div>
+<div id="hearts"></div>
+<div id="hud-info"></div>
+<div id="damage-flash"></div>
+<div id="msg"></div>
+
+<div class="touch-ui">
+  <div id="joy"><div id="joy-knob"></div></div>
+  <div class="tbtn" id="btn-jump">ジャンプ</div>
+  <div class="tbtn" id="btn-break">攻撃/壊す</div>
+  <div class="tbtn" id="btn-place">置く</div>
+</div>
+
+<div id="overlay">
+  <div class="panel">
+    <h1>CRAFTBOX</h1>
+    <p class="sub">VOXEL WORLD — DAY &amp; NIGHT / MOBS</p>
+    <table>
+      <tr><td class="k">W A S D</td><td>移動</td></tr>
+      <tr><td class="k">マウス</td><td>視点</td></tr>
+      <tr><td class="k">左クリック</td><td>攻撃 / ブロックを壊す</td></tr>
+      <tr><td class="k">右クリック</td><td>ブロックを置く</td></tr>
+      <tr><td class="k">Space</td><td>ジャンプ / 水中で浮上</td></tr>
+      <tr><td class="k">Shift</td><td>ダッシュ</td></tr>
+      <tr><td class="k">1〜9 / ホイール</td><td>ブロック選択</td></tr>
+    </table>
+    <div class="start">クリックして開始</div>
+    <p class="tip">昼はブタがのんびり歩き回り、夜になるとゾンビが出現します。<br>朝日を浴びたゾンビは燃えて消滅。夜は拠点にこもって生き延びよう。</p>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+'use strict';
+/* ============================================================
+   CraftBox v2 — ボクセルエンジン
+   追加: 昼夜サイクル / 敵モブ(ゾンビ) / 味方モブ(ブタ) /
+         HP・戦闘システム / 水からの脱出修正
+   ============================================================ */
+
+// ---------- 定数 ----------
+const WORLD_X = 96, WORLD_Z = 96, WORLD_Y = 56;
+const CHUNK = 16;
+const WATER_LEVEL = 13;
+const REACH = 6;
+const G = 24, JUMP_V = 8.2, WALK = 4.5, SPRINT = 7.5;
+const P_W = 0.30, P_H = 1.80, EYE = 1.62;
+const DAY_LEN = 150;            // 1日の長さ(秒)
+const MAX_ZOMBIES = 6, MAX_PIGS = 8;
+const ATTACK_DMG = 5, ATTACK_CD = 0.35;
+
+const B = { AIR:0, GRASS:1, DIRT:2, STONE:3, SAND:4, WOOD:5, LEAF:6, PLANK:7, GLASS:8, WATER:9 };
+const BLOCKS = {
+  [B.GRASS]: { name:'草ブロック', tiles:[0,2,1],  solid:true,  trans:false },
+  [B.DIRT ]: { name:'土',        tiles:[2,2,2],  solid:true,  trans:false },
+  [B.STONE]: { name:'石',        tiles:[3,3,3],  solid:true,  trans:false },
+  [B.SAND ]: { name:'砂',        tiles:[4,4,4],  solid:true,  trans:false },
+  [B.WOOD ]: { name:'原木',      tiles:[6,6,5],  solid:true,  trans:false },
+  [B.LEAF ]: { name:'葉',        tiles:[7,7,7],  solid:true,  trans:false },
+  [B.PLANK]: { name:'木材',      tiles:[8,8,8],  solid:true,  trans:false },
+  [B.GLASS]: { name:'ガラス',    tiles:[9,9,9],  solid:true,  trans:true  },
+  [B.WATER]: { name:'水',        tiles:[10,10,10], solid:false, trans:true },
+};
+const HOTBAR = [B.GRASS,B.DIRT,B.STONE,B.SAND,B.WOOD,B.LEAF,B.PLANK,B.GLASS,B.WATER];
+
+// ---------- 乱数・ノイズ ----------
+const SEED = Date.now() % 100000; // 起動ごとに異なるワールド
+function hash2(x, z) {
+  let n = x * 374761393 + z * 668265263 + SEED * 144665;
+  n = (n ^ (n >> 13)) * 1274126177;
+  n = (n ^ (n >> 16)) >>> 0;
+  return n / 4294967295;
+}
+function smoothT(t){ return t*t*(3-2*t); }
+function vnoise(x, z) {
+  const xi = Math.floor(x), zi = Math.floor(z);
+  const xf = smoothT(x - xi), zf = smoothT(z - zi);
+  const a = hash2(xi,zi), b = hash2(xi+1,zi), c = hash2(xi,zi+1), d = hash2(xi+1,zi+1);
+  return a + (b-a)*xf + (c-a)*zf + (a-b-c+d)*xf*zf;
+}
+function terrainH(x, z) {
+  return Math.floor(7 + vnoise(x/26, z/26)*17 + vnoise(x/9+500, z/9+500)*4);
+}
+
+// ---------- ワールドデータ ----------
+const world = new Uint8Array(WORLD_X * WORLD_Y * WORLD_Z);
+const idx = (x,y,z) => (y * WORLD_Z + z) * WORLD_X + x;
+function getB(x,y,z) {
+  if (x<0||x>=WORLD_X||z<0||z>=WORLD_Z||y<0||y>=WORLD_Y) return B.AIR;
+  return world[idx(x,y,z)];
+}
+function setB(x,y,z,v) {
+  if (x<0||x>=WORLD_X||z<0||z>=WORLD_Z||y<0||y>=WORLD_Y) return;
+  world[idx(x,y,z)] = v;
+}
+function isSolid(x,y,z){ const b=getB(x,y,z); return b!==B.AIR && BLOCKS[b].solid; }
+function surfaceY(x,z){ let y=WORLD_Y-1; while (y>0 && getB(x,y,z)===B.AIR) y--; return y; }
+
+function generateWorld() {
+  for (let x=0; x<WORLD_X; x++) for (let z=0; z<WORLD_Z; z++) {
+    const h = terrainH(x,z);
+    for (let y=0; y<=h; y++) {
+      let b;
+      if (y === h)      b = (h <= WATER_LEVEL+1) ? B.SAND : B.GRASS;
+      else if (y > h-4) b = (h <= WATER_LEVEL+1) ? B.SAND : B.DIRT;
+      else              b = B.STONE;
+      setB(x,y,z,b);
+    }
+    for (let y=h+1; y<=WATER_LEVEL; y++) setB(x,y,z,B.WATER);
+  }
+  for (let x=3; x<WORLD_X-3; x++) for (let z=3; z<WORLD_Z-3; z++) {
+    const h = terrainH(x,z);
+    if (getB(x,h,z)===B.GRASS && hash2(x*7+13, z*7+31) < 0.016) {
+      const th = 4 + Math.floor(hash2(x,z)*2);
+      for (let y=1; y<=th; y++) setB(x,h+y,z,B.WOOD);
+      for (let dy=-1; dy<=1; dy++) for (let dx=-2; dx<=2; dx++) for (let dz=-2; dz<=2; dz++) {
+        if (Math.abs(dx)===2 && Math.abs(dz)===2 && hash2(x+dx,z+dz)<.5) continue;
+        if (dx===0 && dz===0 && dy<=0) continue;
+        if (getB(x+dx,h+th+dy,z+dz)===B.AIR) setB(x+dx,h+th+dy,z+dz,B.LEAF);
+      }
+      setB(x,h+th+2,z,B.LEAF);
+      setB(x+1,h+th+2,z,B.LEAF); setB(x-1,h+th+2,z,B.LEAF);
+      setB(x,h+th+2,z+1,B.LEAF); setB(x,h+th+2,z-1,B.LEAF);
+    }
+  }
+}
+
+// ---------- テクスチャアトラス ----------
+const TILE = 16, NTILES = 11;
+const atlasCv = document.createElement('canvas');
+atlasCv.width = TILE*NTILES; atlasCv.height = TILE;
+const actx = atlasCv.getContext('2d');
+let trng = 12345;
+const rnd = () => (trng = (trng*1103515245+12345) & 0x7fffffff) / 0x7fffffff;
+function px(t,x,y,c,a=1){ actx.globalAlpha=a; actx.fillStyle=c; actx.fillRect(t*TILE+x,y,1,1); actx.globalAlpha=1; }
+function fillTile(t, base, vary, alpha=1) {
+  for (let y=0;y<TILE;y++) for (let x=0;x<TILE;x++) {
+    const v = 1 - vary + rnd()*vary*2;
+    px(t,x,y,`rgb(${base[0]*v|0},${base[1]*v|0},${base[2]*v|0})`,alpha);
+  }
+}
+function buildAtlas() {
+  fillTile(0,[106,190,74],.14);
+  fillTile(1,[134,96,58],.15);
+  for (let x=0;x<TILE;x++) for (let y=0;y<3+(x%3===0?1:0);y++){ const v=.86+rnd()*.28; px(1,x,y,`rgb(${100*v|0},${182*v|0},${70*v|0})`); }
+  fillTile(2,[134,96,58],.15);
+  fillTile(3,[136,136,140],.10);
+  for (let i=0;i<26;i++) px(3,rnd()*16|0,rnd()*16|0,'rgb(105,105,110)');
+  fillTile(4,[219,207,152],.08);
+  fillTile(5,[102,74,42],.10);
+  for (let x=0;x<TILE;x+=3) for (let y=0;y<TILE;y++) px(5,x,y,'rgb(80,56,30)');
+  fillTile(6,[168,134,84],.06);
+  actx.strokeStyle='rgb(120,90,50)';
+  [2,5].forEach(r=>{ actx.strokeRect(6*TILE+r+.5, r+.5, TILE-r*2-1, TILE-r*2-1); });
+  fillTile(7,[54,124,44],.20);
+  for (let i=0;i<18;i++) px(7,rnd()*16|0,rnd()*16|0,'rgb(36,88,30)');
+  fillTile(8,[184,148,95],.07);
+  for (let y=3;y<TILE;y+=4) for (let x=0;x<TILE;x++) px(8,x,y,'rgb(140,110,66)');
+  actx.clearRect(9*TILE,0,TILE,TILE);
+  fillTile(9,[205,232,246],.03,.22);
+  actx.globalAlpha=.85; actx.strokeStyle='rgb(230,245,250)';
+  actx.strokeRect(9*TILE+.5,.5,TILE-1,TILE-1); actx.globalAlpha=1;
+  actx.clearRect(10*TILE,0,TILE,TILE);
+  fillTile(10,[52,110,208],.10,.72);
+  return atlasCv;
+}
+
+// ---------- Three.js セットアップ ----------
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x8fc4e8);
+scene.fog = new THREE.Fog(0x8fc4e8, 40, 110);
+const camera = new THREE.PerspectiveCamera(72, innerWidth/innerHeight, 0.1, 400);
+camera.rotation.order = 'YXZ';
+const renderer = new THREE.WebGLRenderer({ antialias:false });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+document.getElementById('game').appendChild(renderer.domElement);
+
+buildAtlas();
+const atlasTex = new THREE.CanvasTexture(atlasCv);
+atlasTex.magFilter = THREE.NearestFilter;
+atlasTex.minFilter = THREE.NearestFilter;
+atlasTex.generateMipmaps = false;
+const matOpaque = new THREE.MeshBasicMaterial({ map:atlasTex, vertexColors:true });
+const matTrans  = new THREE.MeshBasicMaterial({ map:atlasTex, vertexColors:true, transparent:true, depthWrite:false, side:THREE.DoubleSide });
+
+// モブ用ライト(地形はベイク済み頂点カラー、モブはLambertでライト連動)
+const hemiLight = new THREE.HemisphereLight(0xffffff, 0x556655, 1.0);
+scene.add(hemiLight);
+
+// ---------- 昼夜サイクル ----------
+// timeOfDay ∈ [0,1): 0=日の出, 0.25=正午, 0.5=日没, 0.75=真夜中
+let timeOfDay = 0.06;
+let daylight = 1; // 0(夜)〜1(昼)
+const skyDay = new THREE.Color(0x8fc4e8), skyNight = new THREE.Color(0x070b1a);
+const skyNow = new THREE.Color();
+
+const skyGroup = new THREE.Group(); // 太陽・月・星(プレイヤーに追従)
+scene.add(skyGroup);
+const sun = new THREE.Mesh(
+  new THREE.PlaneGeometry(14,14),
+  new THREE.MeshBasicMaterial({ color:0xffdd66, fog:false, side:THREE.DoubleSide })
+);
+const moon = new THREE.Mesh(
+  new THREE.PlaneGeometry(9,9),
+  new THREE.MeshBasicMaterial({ color:0xdde4f0, fog:false, side:THREE.DoubleSide })
+);
+skyGroup.add(sun, moon);
+const starGeo = new THREE.BufferGeometry();
+{
+  const pts = [];
+  for (let i=0;i<260;i++) {
+    const a = Math.random()*Math.PI*2, e = Math.random()*Math.PI*0.5;
+    pts.push(Math.cos(a)*Math.cos(e)*180, Math.sin(e)*180, Math.sin(a)*Math.cos(e)*180);
+  }
+  starGeo.setAttribute('position', new THREE.Float32BufferAttribute(pts,3));
+}
+const starMat = new THREE.PointsMaterial({ color:0xffffff, size:1.6, sizeAttenuation:false, transparent:true, opacity:0, fog:false });
+skyGroup.add(new THREE.Points(starGeo, starMat));
+
+function updateDayNight(dt) {
+  timeOfDay = (timeOfDay + dt/DAY_LEN) % 1;
+  const ang = timeOfDay * Math.PI * 2;            // 太陽の公転角
+  const sunH = Math.sin(ang);                      // 太陽高度(-1〜1)
+  daylight = THREE.MathUtils.clamp(sunH*3 + 0.4, 0, 1); // 薄明を含む明るさ係数
+
+  // 空・霧・地形・ライトを明るさに連動
+  skyNow.copy(skyNight).lerp(skyDay, daylight);
+  scene.background.copy(skyNow);
+  scene.fog.color.copy(skyNow);
+  const bright = 0.22 + 0.78*daylight;
+  matOpaque.color.setScalar(bright);
+  matTrans.color.setScalar(bright);
+  hemiLight.intensity = 0.25 + 0.85*daylight;
+  starMat.opacity = 1 - Math.min(1, daylight*1.8);
+
+  // 太陽と月は反対側の円軌道
+  skyGroup.position.copy(player.pos);
+  sun.position.set(Math.cos(ang)*150, Math.sin(ang)*150, 0);
+  moon.position.set(-Math.cos(ang)*150, -Math.sin(ang)*150, 0);
+  sun.lookAt(player.pos); moon.lookAt(player.pos);
+}
+const isNight = () => daylight < 0.25;
+
+// ---------- チャンクメッシュ化 ----------
+const FACES = [
+  { dir:[-1,0,0], bright:.78, corners:[[0,1,0],[0,0,0],[0,1,1],[0,0,1]], uv:[[0,1],[0,0],[1,1],[1,0]] },
+  { dir:[ 1,0,0], bright:.78, corners:[[1,1,1],[1,0,1],[1,1,0],[1,0,0]], uv:[[0,1],[0,0],[1,1],[1,0]] },
+  { dir:[0,-1,0], bright:.52, corners:[[1,0,1],[0,0,1],[1,0,0],[0,0,0]], uv:[[1,0],[0,0],[1,1],[0,1]] },
+  { dir:[0, 1,0], bright:1.0, corners:[[0,1,1],[1,1,1],[0,1,0],[1,1,0]], uv:[[1,1],[0,1],[1,0],[0,0]] },
+  { dir:[0,0,-1], bright:.64, corners:[[1,0,0],[0,0,0],[1,1,0],[0,1,0]], uv:[[0,0],[1,0],[0,1],[1,1]] },
+  { dir:[0,0, 1], bright:.64, corners:[[0,0,1],[1,0,1],[0,1,1],[1,1,1]], uv:[[0,0],[1,0],[0,1],[1,1]] },
+];
+const NCX = WORLD_X/CHUNK, NCZ = WORLD_Z/CHUNK;
+const chunkMeshes = {};
+
+function buildChunk(cx, cz) {
+  const key = cx+','+cz;
+  const old = chunkMeshes[key];
+  if (old) { for (const m of [old.op,old.tr]) if (m){ scene.remove(m); m.geometry.dispose(); } }
+  const bufs = { op:{p:[],n:[],u:[],c:[],i:[]}, tr:{p:[],n:[],u:[],c:[],i:[]} };
+  const x0 = cx*CHUNK, z0 = cz*CHUNK;
+
+  for (let x=x0; x<x0+CHUNK; x++)
+  for (let z=z0; z<z0+CHUNK; z++)
+  for (let y=0; y<WORLD_Y; y++) {
+    const b = getB(x,y,z);
+    if (b === B.AIR) continue;
+    const def = BLOCKS[b];
+    const buf = def.trans ? bufs.tr : bufs.op;
+    for (let f=0; f<6; f++) {
+      const F = FACES[f];
+      const nb = getB(x+F.dir[0], y+F.dir[1], z+F.dir[2]);
+      if (!(nb===B.AIR || (BLOCKS[nb].trans && nb!==b))) continue;
+      const tile = f===3 ? def.tiles[0] : f===2 ? def.tiles[1] : def.tiles[2];
+      const start = buf.p.length/3;
+      for (let ci=0; ci<4; ci++) {
+        const c = F.corners[ci];
+        buf.p.push(x+c[0], y+c[1], z+c[2]);
+        buf.n.push(...F.dir);
+        buf.u.push((tile + F.uv[ci][0]) / NTILES, F.uv[ci][1]);
+        buf.c.push(F.bright, F.bright, F.bright);
+      }
+      buf.i.push(start, start+1, start+2, start+2, start+1, start+3);
+    }
+  }
+  const out = {};
+  for (const kind of ['op','tr']) {
+    const bf = bufs[kind];
+    if (bf.i.length === 0) { out[kind] = null; continue; }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(bf.p, 3));
+    g.setAttribute('normal',   new THREE.Float32BufferAttribute(bf.n, 3));
+    g.setAttribute('uv',       new THREE.Float32BufferAttribute(bf.u, 2));
+    g.setAttribute('color',    new THREE.Float32BufferAttribute(bf.c, 3));
+    g.setIndex(bf.i);
+    const mesh = new THREE.Mesh(g, kind==='op' ? matOpaque : matTrans);
+    scene.add(mesh);
+    out[kind] = mesh;
+  }
+  chunkMeshes[key] = { op:out.op, tr:out.tr };
+}
+function rebuildAt(x, z) {
+  const cx = Math.floor(x/CHUNK), cz = Math.floor(z/CHUNK);
+  const set = new Set([cx+','+cz]);
+  if (x%CHUNK===0)       set.add((cx-1)+','+cz);
+  if (x%CHUNK===CHUNK-1) set.add((cx+1)+','+cz);
+  if (z%CHUNK===0)       set.add(cx+','+(cz-1));
+  if (z%CHUNK===CHUNK-1) set.add(cx+','+(cz+1));
+  for (const k of set) {
+    const [a,b] = k.split(',').map(Number);
+    if (a>=0 && a<NCX && b>=0 && b<NCZ) buildChunk(a,b);
+  }
+}
+
+// ---------- 汎用エンティティ物理(プレイヤー・モブ共通) ----------
+function boxCollides(px_, py, pz, hw, hh) {
+  const x0=Math.floor(px_-hw), x1=Math.floor(px_+hw);
+  const y0=Math.floor(py),     y1=Math.floor(py+hh);
+  const z0=Math.floor(pz-hw),  z1=Math.floor(pz+hw);
+  for (let x=x0;x<=x1;x++) for (let y=y0;y<=y1;y++) for (let z=z0;z<=z1;z++)
+    if (isSolid(x,y,z)) return true;
+  return false;
+}
+// 軸ごとに移動→衝突→巻き戻し。壁接触フラグ(hitWall)を返すのが水脱出修正の鍵
+function moveEntity(e, dt) {
+  e.hitWall = false;
+  const nx = e.pos.x + e.vel.x*dt;
+  if (!boxCollides(nx, e.pos.y, e.pos.z, e.hw, e.hh)) e.pos.x = nx; else e.hitWall = true;
+  const nz = e.pos.z + e.vel.z*dt;
+  if (!boxCollides(e.pos.x, e.pos.y, nz, e.hw, e.hh)) e.pos.z = nz; else e.hitWall = true;
+  const ny = e.pos.y + e.vel.y*dt;
+  if (!boxCollides(e.pos.x, ny, e.pos.z, e.hw, e.hh)) { e.pos.y = ny; e.onGround = false; }
+  else { if (e.vel.y < 0) e.onGround = true; e.vel.y = 0; }
+}
+function entityInWater(e) {
+  const fx = Math.floor(e.pos.x), fz = Math.floor(e.pos.z);
+  // 足元(+0.2)と胴体(+0.9)の両方を判定 — 水面付近で「水中扱いが外れて跳べない」バグを防ぐ
+  return getB(fx, Math.floor(e.pos.y+0.2), fz) === B.WATER ||
+         getB(fx, Math.floor(e.pos.y+Math.min(0.9, e.hh*0.5)), fz) === B.WATER;
+}
+
+// ---------- プレイヤー ----------
+const player = {
+  pos: new THREE.Vector3(WORLD_X/2+.5, 0, WORLD_Z/2+.5),
+  vel: new THREE.Vector3(),
+  yaw: Math.PI*0.75, pitch: -0.1,
+  hw: P_W, hh: P_H,
+  onGround: false, hitWall: false, inWater: false,
+  hp: 20, maxHp: 20, regenT: 0, attackCd: 0, invulnT: 0,
+};
+function spawn() {
+  const x = Math.floor(player.pos.x), z = Math.floor(player.pos.z);
+  player.pos.y = surfaceY(x,z) + 2;
+  player.vel.set(0,0,0);
+}
+function physicsPlayer(dt) {
+  const p = player;
+  p.inWater = entityInWater(p);
+  p.attackCd = Math.max(0, p.attackCd - dt);
+  p.invulnT  = Math.max(0, p.invulnT - dt);
+
+  const speed = (input.sprint ? SPRINT : WALK) * (p.inWater ? .55 : 1);
+  const f = input.fwd, s = input.strafe;
+  const len = Math.hypot(f,s) || 1;
+  const sin = Math.sin(p.yaw), cos = Math.cos(p.yaw);
+  p.vel.x = (-(f/len)*sin + (s/len)*cos) * speed;
+  p.vel.z = (-(f/len)*cos - (s/len)*sin) * speed;
+
+  if (p.inWater) {
+    p.vel.y -= G*0.28*dt;
+    if (input.jump) p.vel.y = 4.2;                 // 浮上
+    p.vel.y = Math.max(-4.5, Math.min(4.5, p.vel.y));
+  } else {
+    p.vel.y -= G*dt;
+    if (input.jump && p.onGround) { p.vel.y = JUMP_V; p.onGround = false; }
+  }
+
+  moveEntity(p, dt);
+
+  // 【水脱出修正】水中で岸(壁)に接触しながら浮上・前進しているとき、
+  // 通常ジャンプ相当の上昇を与えて1ブロックの段差を乗り越えられるようにする
+  if (p.inWater && input.jump && p.hitWall) p.vel.y = JUMP_V * 0.85;
+
+  if (p.pos.y < -12) { damagePlayer(999); }
+  camera.position.set(p.pos.x, p.pos.y+EYE, p.pos.z);
+  camera.rotation.set(p.pitch, p.yaw, 0);
+
+  // 自然回復: 4秒ごとに1
+  if (p.hp < p.maxHp) {
+    p.regenT += dt;
+    if (p.regenT > 4) { p.hp = Math.min(p.maxHp, p.hp+1); p.regenT = 0; updateHearts(); }
+  }
+}
+function damagePlayer(dmg) {
+  const p = player;
+  if (p.invulnT > 0) return;
+  p.hp -= dmg; p.invulnT = 0.6; p.regenT = 0;
+  const fl = document.getElementById('damage-flash');
+  fl.style.opacity = 1; setTimeout(() => fl.style.opacity = 0, 140);
+  if (p.hp <= 0) {
+    p.hp = p.maxHp;
+    showMsg('倒れてしまった… リスポーンします');
+    player.pos.set(WORLD_X/2+.5, 0, WORLD_Z/2+.5);
+    spawn();
+  }
+  updateHearts();
+}
+function updateHearts() {
+  const full = Math.ceil(player.hp/2);
+  let s = '';
+  for (let i=0;i<10;i++) s += `<span style="color:${i<full?'#ff4b4b':'#3a3a3a'}">♥</span>`;
+  document.getElementById('hearts').innerHTML = s;
+}
+function showMsg(t) {
+  const m = document.getElementById('msg');
+  m.textContent = t; m.style.opacity = 1;
+  clearTimeout(showMsg._t);
+  showMsg._t = setTimeout(() => m.style.opacity = 0, 2200);
+}
+
+// ---------- モブ ----------
+const mobs = [];
+function part(w,h,d,color) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), new THREE.MeshLambertMaterial({ color }));
+  return m;
+}
+function createPig(x,y,z) {
+  const g = new THREE.Group();
+  const body = part(0.7,0.5,0.95,0xf0a0a8); body.position.y = 0.55;
+  const head = part(0.5,0.45,0.4,0xf5b0b8); head.position.set(0,0.62,0.62);
+  const nose = part(0.22,0.14,0.08,0xe0808c); nose.position.set(0,0.55,0.85);
+  const legs = [];
+  for (const [lx,lz] of [[-0.22,0.32],[0.22,0.32],[-0.22,-0.32],[0.22,-0.32]]) {
+    const l = part(0.18,0.35,0.18,0xe89aa2); l.position.set(lx,0.18,lz); legs.push(l); g.add(l);
+  }
+  g.add(body, head, nose);
+  scene.add(g);
+  return {
+    type:'pig', group:g, legs,
+    pos:new THREE.Vector3(x,y,z), vel:new THREE.Vector3(),
+    hw:0.35, hh:0.85, yaw:Math.random()*Math.PI*2,
+    hp:10, onGround:false, hitWall:false,
+    aiT:0, moving:false, walkPhase:0, flashT:0, atkCd:0, burnT:0,
+  };
+}
+function createZombie(x,y,z) {
+  const g = new THREE.Group();
+  const skin = 0x4e9e4e, cloth = 0x2e5f8a;
+  const legL = part(0.24,0.72,0.24,cloth); legL.position.set(-0.14,0.36,0);
+  const legR = part(0.24,0.72,0.24,cloth); legR.position.set( 0.14,0.36,0);
+  const torso = part(0.52,0.66,0.28,0x3a7a3a); torso.position.y = 1.05;
+  const armL = part(0.2,0.2,0.7,skin); armL.position.set(-0.36,1.25,0.28);
+  const armR = part(0.2,0.2,0.7,skin); armR.position.set( 0.36,1.25,0.28);
+  const head = part(0.44,0.44,0.44,skin); head.position.y = 1.62;
+  g.add(legL, legR, torso, armL, armR, head);
+  scene.add(g);
+  return {
+    type:'zombie', group:g, legs:[legL,legR],
+    pos:new THREE.Vector3(x,y,z), vel:new THREE.Vector3(),
+    hw:0.3, hh:1.8, yaw:0,
+    hp:20, onGround:false, hitWall:false,
+    aiT:0, moving:false, walkPhase:0, flashT:0, atkCd:0, burnT:0,
+  };
+}
+function removeMob(m) {
+  scene.remove(m.group);
+  m.group.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+  mobs.splice(mobs.indexOf(m), 1);
+}
+function flashMob(m) {
+  m.flashT = 0.15;
+  m.group.traverse(o => { if (o.material) o.material.emissive?.setHex(0xaa0000); });
+}
+function damageMob(m, dmg, knockDir) {
+  m.hp -= dmg;
+  flashMob(m);
+  if (knockDir) { m.vel.x += knockDir.x*6; m.vel.z += knockDir.z*6; m.vel.y = 4; }
+  if (m.hp <= 0) removeMob(m);
+}
+function updateMob(m, dt) {
+  m.flashT -= dt;
+  if (m.flashT <= 0 && m.flashT > -1) {
+    m.group.traverse(o => { if (o.material) o.material.emissive?.setHex(0x000000); });
+    m.flashT = -2;
+  }
+  m.atkCd = Math.max(0, m.atkCd - dt);
+
+  const inWater = entityInWater(m);
+  let speed = 0;
+
+  if (m.type === 'pig') {
+    // 徘徊AI: 数秒ごとに「歩く/立ち止まる」と向きを抽選
+    m.aiT -= dt;
+    if (m.aiT <= 0) {
+      m.moving = Math.random() < 0.6;
+      if (m.moving) m.yaw = Math.random()*Math.PI*2;
+      m.aiT = 2 + Math.random()*3;
+    }
+    speed = m.moving ? 1.4 : 0;
+  } else { // zombie
+    // 朝日で燃える: 昼にダメージ蓄積 → 消滅
+    if (!isNight()) {
+      m.burnT += dt;
+      if (m.burnT > 0.5) { damageMob(m, 4, null); m.burnT = 0; if (m.hp<=0) return; }
+    }
+    const toP = new THREE.Vector3().subVectors(player.pos, m.pos);
+    const dist = toP.length();
+    if (dist < 26) { // 追跡
+      m.yaw = Math.atan2(toP.x, toP.z);
+      speed = 2.3;
+      if (dist < 1.5 && m.atkCd <= 0) { // 接触攻撃
+        damagePlayer(3);
+        m.atkCd = 1.0;
+      }
+    } else { // 遠いときは徘徊
+      m.aiT -= dt;
+      if (m.aiT <= 0) { m.moving = Math.random()<0.5; if (m.moving) m.yaw = Math.random()*Math.PI*2; m.aiT = 2+Math.random()*3; }
+      speed = m.moving ? 1.0 : 0;
+    }
+  }
+
+  // 移動+物理(プレイヤーと同じ衝突系を共用)
+  m.vel.x = Math.sin(m.yaw)*speed + m.vel.x*0.2; // 攻撃ノックバック残差を減衰合成
+  m.vel.z = Math.cos(m.yaw)*speed + m.vel.z*0.2;
+  if (inWater) { m.vel.y = Math.min(m.vel.y + 12*dt, 2.5); } // 浮く
+  else m.vel.y -= G*dt;
+  moveEntity(m, dt);
+  if (m.hitWall && m.onGround) m.vel.y = 7.2;      // 段差ジャンプ
+  if (inWater && m.hitWall) m.vel.y = 5.5;         // モブも岸に上がれる
+  if (m.pos.y < -12) { removeMob(m); return; }
+
+  // 見た目更新: 位置・向き・歩行アニメ(脚振り)
+  m.group.position.copy(m.pos);
+  m.group.rotation.y = m.yaw;
+  if (speed > 0.1) {
+    m.walkPhase += dt * speed * 5;
+    const sw = Math.sin(m.walkPhase) * 0.5;
+    m.legs.forEach((l,i) => l.rotation.x = i%2===0 ? sw : -sw);
+  } else {
+    m.legs.forEach(l => l.rotation.x *= 0.8);
+  }
+}
+
+// ---------- モブのスポーン管理 ----------
+let spawnT = 0;
+function randSurfacePos(minD, maxD) {
+  for (let tries=0; tries<12; tries++) {
+    const a = Math.random()*Math.PI*2;
+    const d = minD + Math.random()*(maxD-minD);
+    const x = Math.floor(player.pos.x + Math.cos(a)*d);
+    const z = Math.floor(player.pos.z + Math.sin(a)*d);
+    if (x<2||x>=WORLD_X-2||z<2||z>=WORLD_Z-2) continue;
+    const y = surfaceY(x,z);
+    if (getB(x,y,z) === B.WATER) continue;
+    return new THREE.Vector3(x+.5, y+1.5, z+.5);
+  }
+  return null;
+}
+function manageSpawns(dt) {
+  spawnT -= dt;
+  if (spawnT > 0) return;
+  spawnT = 2.5;
+  const zombies = mobs.filter(m=>m.type==='zombie').length;
+  const pigs = mobs.filter(m=>m.type==='pig').length;
+  if (isNight() && zombies < MAX_ZOMBIES) {
+    const p = randSurfacePos(14, 30);
+    if (p) mobs.push(createZombie(p.x, p.y, p.z));
+  }
+  if (!isNight() && pigs < MAX_PIGS && Math.random() < 0.4) {
+    const p = randSurfacePos(10, 25);
+    if (p) mobs.push(createPig(p.x, p.y, p.z));
+  }
+}
+
+// ---------- DDAレイキャスト ----------
+function raycast() {
+  const dir = new THREE.Vector3(0,0,-1).applyEuler(camera.rotation).normalize();
+  const EPS = 1e-8;
+  if (Math.abs(dir.x) < EPS) dir.x = EPS;
+  if (Math.abs(dir.y) < EPS) dir.y = EPS;
+  if (Math.abs(dir.z) < EPS) dir.z = EPS;
+  let x = Math.floor(camera.position.x), y = Math.floor(camera.position.y), z = Math.floor(camera.position.z);
+  const stepX = Math.sign(dir.x), stepY = Math.sign(dir.y), stepZ = Math.sign(dir.z);
+  const tDx = Math.abs(1/dir.x), tDy = Math.abs(1/dir.y), tDz = Math.abs(1/dir.z);
+  let tMaxX = ((stepX>0 ? x+1-camera.position.x : camera.position.x-x)) * tDx;
+  let tMaxY = ((stepY>0 ? y+1-camera.position.y : camera.position.y-y)) * tDy;
+  let tMaxZ = ((stepZ>0 ? z+1-camera.position.z : camera.position.z-z)) * tDz;
+  let face = [0,0,0], t = 0;
+  while (t <= REACH) {
+    const b = getB(x,y,z);
+    if (b !== B.AIR && b !== B.WATER)
+      return { x,y,z, block:b, dist:t, prev:[x+face[0], y+face[1], z+face[2]] };
+    if (tMaxX < tMaxY && tMaxX < tMaxZ) { x+=stepX; t=tMaxX; tMaxX+=tDx; face=[-stepX,0,0]; }
+    else if (tMaxY < tMaxZ)             { y+=stepY; t=tMaxY; tMaxY+=tDy; face=[0,-stepY,0]; }
+    else                                { z+=stepZ; t=tMaxZ; tMaxZ+=tDz; face=[0,0,-stepZ]; }
+  }
+  return null;
+}
+// モブへのレイ判定(AABB): 最も近いモブと距離を返す
+const _ray = new THREE.Ray(), _box = new THREE.Box3(), _hitPt = new THREE.Vector3();
+function raycastMob() {
+  const dir = new THREE.Vector3(0,0,-1).applyEuler(camera.rotation).normalize();
+  _ray.set(camera.position, dir);
+  let best = null, bestD = Infinity;
+  for (const m of mobs) {
+    _box.min.set(m.pos.x-m.hw-0.1, m.pos.y, m.pos.z-m.hw-0.1);
+    _box.max.set(m.pos.x+m.hw+0.1, m.pos.y+m.hh, m.pos.z+m.hw+0.1);
+    if (_ray.intersectBox(_box, _hitPt)) {
+      const d = _hitPt.distanceTo(camera.position);
+      if (d <= REACH && d < bestD) { bestD = d; best = m; }
+    }
+  }
+  return best ? { mob:best, dist:bestD } : null;
+}
+// 左クリック統合処理: モブとブロックのうち「近い方」に作用
+function attackOrBreak() {
+  if (player.attackCd > 0) return;
+  const mobHit = raycastMob();
+  const blockHit = raycast();
+  if (mobHit && (!blockHit || mobHit.dist < blockHit.dist)) {
+    player.attackCd = ATTACK_CD;
+    const kb = new THREE.Vector3().subVectors(mobHit.mob.pos, player.pos).setY(0).normalize();
+    damageMob(mobHit.mob, ATTACK_DMG, kb);
+  } else if (blockHit) {
+    setB(blockHit.x, blockHit.y, blockHit.z, B.AIR);
+    rebuildAt(blockHit.x, blockHit.z);
+  }
+}
+function placeBlock() {
+  const hit = raycast();
+  if (!hit) return;
+  const [x,y,z] = hit.prev;
+  if (getB(x,y,z) !== B.AIR && getB(x,y,z) !== B.WATER) return;
+  const sel = HOTBAR[selSlot];
+  if (BLOCKS[sel].solid) {
+    const p = player.pos;
+    if (x+1 > p.x-P_W && x < p.x+P_W && y+1 > p.y && y < p.y+P_H && z+1 > p.z-P_W && z < p.z+P_W) return;
+    // モブと重なる位置にも置けない
+    for (const m of mobs)
+      if (x+1 > m.pos.x-m.hw && x < m.pos.x+m.hw && y+1 > m.pos.y && y < m.pos.y+m.hh && z+1 > m.pos.z-m.hw && z < m.pos.z+m.hw) return;
+  }
+  setB(x,y,z,sel);
+  rebuildAt(x,z);
+}
+
+const hl = new THREE.LineSegments(
+  new THREE.EdgesGeometry(new THREE.BoxGeometry(1.002,1.002,1.002)),
+  new THREE.LineBasicMaterial({ color:0x111111, transparent:true, opacity:.6 })
+);
+hl.visible = false;
+scene.add(hl);
+
+// ---------- 入力 ----------
+const input = { fwd:0, strafe:0, jump:false, sprint:false };
+const keys = {};
+let selSlot = 0;
+const isTouch = 'ontouchstart' in window && navigator.maxTouchPoints > 0;
+if (isTouch) document.body.classList.add('touch');
+
+addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (e.code.startsWith('Digit')) {
+    const n = +e.code.slice(5);
+    if (n>=1 && n<=9) selectSlot(n-1);
+  }
+});
+addEventListener('keyup', e => keys[e.code] = false);
+addEventListener('wheel', e => selectSlot((selSlot + (e.deltaY>0?1:-1) + 9) % 9));
+
+const overlay = document.getElementById('overlay');
+let locked = false, started = false;
+overlay.addEventListener('click', () => {
+  overlay.style.display = 'none';
+  started = true;
+  if (!isTouch) renderer.domElement.requestPointerLock();
+});
+document.addEventListener('pointerlockchange', () => {
+  locked = document.pointerLockElement === renderer.domElement;
+});
+renderer.domElement.addEventListener('click', () => {
+  if (started && !isTouch && !locked) renderer.domElement.requestPointerLock();
+});
+addEventListener('mousemove', e => {
+  if (!locked) return;
+  player.yaw   -= e.movementX * 0.0022;
+  player.pitch -= e.movementY * 0.0022;
+  player.pitch = Math.max(-1.55, Math.min(1.55, player.pitch));
+});
+addEventListener('mousedown', e => {
+  if (!locked) return;
+  if (e.button === 0) attackOrBreak();
+  if (e.button === 2) placeBlock();
+});
+addEventListener('contextmenu', e => e.preventDefault());
+
+// ---- タッチ操作 ----
+const joy = document.getElementById('joy'), knob = document.getElementById('joy-knob');
+let joyId = null, lookId = null, lookLast = null;
+addEventListener('touchstart', e => {
+  for (const t of e.changedTouches) {
+    const r = joy.getBoundingClientRect();
+    const inJoy = t.clientX > r.left-30 && t.clientX < r.right+30 && t.clientY > r.top-30 && t.clientY < r.bottom+30;
+    if (inJoy && joyId === null) { joyId = t.identifier; updateJoy(t, r); continue; }
+    if (t.target === renderer.domElement && t.clientX > innerWidth*0.35 && lookId === null) {
+      lookId = t.identifier; lookLast = { x:t.clientX, y:t.clientY };
+    }
+  }
+}, { passive:true });
+addEventListener('touchmove', e => {
+  for (const t of e.changedTouches) {
+    if (t.identifier === joyId) updateJoy(t, joy.getBoundingClientRect());
+    if (t.identifier === lookId && lookLast) {
+      player.yaw   -= (t.clientX - lookLast.x) * 0.005;
+      player.pitch -= (t.clientY - lookLast.y) * 0.005;
+      player.pitch = Math.max(-1.55, Math.min(1.55, player.pitch));
+      lookLast = { x:t.clientX, y:t.clientY };
+    }
+  }
+}, { passive:true });
+addEventListener('touchend', e => {
+  for (const t of e.changedTouches) {
+    if (t.identifier === joyId) { joyId=null; input.fwd=0; input.strafe=0; knob.style.transform='translate(0,0)'; }
+    if (t.identifier === lookId) { lookId=null; lookLast=null; }
+  }
+});
+function updateJoy(t, r) {
+  const cx = r.left + r.width/2, cy = r.top + r.height/2;
+  let dx = (t.clientX-cx)/(r.width/2), dy = (t.clientY-cy)/(r.height/2);
+  const m = Math.hypot(dx,dy); if (m>1){ dx/=m; dy/=m; }
+  input.strafe = dx; input.fwd = -dy;
+  knob.style.transform = `translate(${dx*34}px,${dy*34}px)`;
+}
+const bindBtn = (id, down, up) => {
+  const el = document.getElementById(id);
+  el.addEventListener('touchstart', e => { e.preventDefault(); down(); }, { passive:false });
+  if (up) el.addEventListener('touchend', up);
+};
+bindBtn('btn-jump',  () => input.jump = true, () => input.jump = false);
+bindBtn('btn-break', () => attackOrBreak());
+bindBtn('btn-place', () => placeBlock());
+
+// ---------- ホットバーUI ----------
+const hotbarEl = document.getElementById('hotbar');
+const nameEl = document.getElementById('blockname');
+function makeIcon(blockId) {
+  const cv = document.createElement('canvas'); cv.width = cv.height = TILE;
+  const c = cv.getContext('2d');
+  c.imageSmoothingEnabled = false;
+  c.drawImage(atlasCv, BLOCKS[blockId].tiles[2]*TILE, 0, TILE, TILE, 0, 0, TILE, TILE);
+  return cv;
+}
+HOTBAR.forEach((b,i) => {
+  const s = document.createElement('div');
+  s.className = 'slot' + (i===0?' sel':'');
+  s.innerHTML = `<span>${i+1}</span>`;
+  s.appendChild(makeIcon(b));
+  s.addEventListener('click', () => selectSlot(i));
+  s.addEventListener('touchstart', e => { e.stopPropagation(); selectSlot(i); }, { passive:true });
+  hotbarEl.appendChild(s);
+});
+function selectSlot(i) {
+  selSlot = i;
+  [...hotbarEl.children].forEach((el,j) => el.classList.toggle('sel', j===i));
+  nameEl.textContent = BLOCKS[HOTBAR[i]].name;
+  clearTimeout(selectSlot._t);
+  selectSlot._t = setTimeout(() => nameEl.textContent = '', 1600);
+}
+
+// ---------- 初期化・ループ ----------
+generateWorld();
+for (let cx=0; cx<NCX; cx++) for (let cz=0; cz<NCZ; cz++) buildChunk(cx,cz);
+spawn();
+updateHearts();
+for (let i=0;i<5;i++) { // 初期ブタ
+  const p = randSurfacePos(8, 30);
+  if (p) mobs.push(createPig(p.x, p.y, p.z));
+}
+
+const infoEl = document.getElementById('hud-info');
+let last = performance.now(), fpsAcc = 0, fpsN = 0, fpsShow = 0;
+let wasNight = false;
+function loop(now) {
+  requestAnimationFrame(loop);
+  const dt = Math.min((now - last)/1000, 0.05);
+  last = now;
+  if (started) {
+    if (!isTouch) {
+      input.fwd    = (keys.KeyW?1:0) - (keys.KeyS?1:0);
+      input.strafe = (keys.KeyD?1:0) - (keys.KeyA?1:0);
+      input.jump   = !!keys.Space;
+      input.sprint = !!keys.ShiftLeft || !!keys.ShiftRight;
+    }
+    physicsPlayer(dt);
+    updateDayNight(dt);
+    manageSpawns(dt);
+    for (let i=mobs.length-1; i>=0; i--) updateMob(mobs[i], dt);
+
+    if (isNight() !== wasNight) {
+      wasNight = isNight();
+      showMsg(wasNight ? '🌙 夜になった… ゾンビに注意' : '☀ 朝になった');
+    }
+    const hit = raycast();
+    hl.visible = !!hit;
+    if (hit) hl.position.set(hit.x+.5, hit.y+.5, hit.z+.5);
+  }
+  fpsAcc += dt; fpsN++;
+  if (fpsAcc > 0.5) { fpsShow = Math.round(fpsN/fpsAcc); fpsAcc=0; fpsN=0; }
+  const clock = ((timeOfDay*24 + 6) % 24);
+  infoEl.textContent = `${fpsShow} FPS ｜ ${isNight()?'🌙':'☀'} ${String(Math.floor(clock)).padStart(2,'0')}:${String(Math.floor(clock%1*60)).padStart(2,'0')} ｜ モブ: ${mobs.length}`;
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(loop);
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>

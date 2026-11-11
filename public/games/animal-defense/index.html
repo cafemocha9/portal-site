@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>どうぶつディフェンス 〜むれの絆〜</title>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FBF4E2; --ink:#3A2E22; --grass1:#8FBE6E; --grass2:#83B463;
+    --sand:#E3C690; --accent:#D9603B; --panel:#FFF9EC; --line:#D8C8A8;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif;
+    background:var(--paper); color:var(--ink); padding:10px;
+  }
+  header{display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin-bottom:8px;}
+  h1{font-size:1.25rem; font-weight:900; letter-spacing:.05em;}
+  h1 small{font-size:.75rem; font-weight:700; color:#8a7a5e; margin-left:6px;}
+  #stats{display:flex; gap:14px; font-weight:700; font-size:.95rem;}
+  #stats span b{color:var(--accent);}
+  .wrap{display:flex; gap:12px; flex-wrap:wrap; align-items:flex-start;}
+  #cv{
+    background:#7FAF5C; border:3px solid var(--ink); border-radius:12px;
+    max-width:100%; height:auto; touch-action:manipulation; cursor:pointer;
+  }
+  #side{width:300px; max-width:100%; display:flex; flex-direction:column; gap:10px;}
+  .box{background:var(--panel); border:2px solid var(--line); border-radius:10px; padding:10px;}
+  .box h2{font-size:.8rem; font-weight:900; color:#8a7a5e; letter-spacing:.12em; margin-bottom:6px;}
+  #shop{display:grid; grid-template-columns:1fr 1fr; gap:6px;}
+  .tbtn{
+    display:flex; flex-direction:column; align-items:flex-start; gap:1px;
+    border:2px solid var(--line); border-radius:8px; background:#fff; padding:6px 8px;
+    font-family:inherit; font-weight:700; font-size:.78rem; cursor:pointer; text-align:left;
+  }
+  .tbtn .emo{font-size:1.2rem;}
+  .tbtn .cost{color:var(--accent); font-size:.72rem;}
+  .tbtn .desc{color:#7a6c52; font-size:.62rem; font-weight:500; line-height:1.25;}
+  .tbtn.sel{border-color:var(--accent); background:#FDEDE6;}
+  .tbtn:disabled{opacity:.45; cursor:not-allowed;}
+  #info{min-height:84px; font-size:.8rem; line-height:1.5;}
+  #info .syn{color:#1f7a4d; font-weight:700;}
+  #info .none{color:#9b8d72;}
+  .row{display:flex; gap:6px; margin-top:6px;}
+  .act{
+    flex:1; font-family:inherit; font-weight:900; font-size:.85rem; padding:8px 4px;
+    border:2px solid var(--ink); border-radius:8px; cursor:pointer; background:#fff;
+  }
+  .act.primary{background:var(--accent); color:#fff; border-color:var(--accent);}
+  .act:disabled{opacity:.4; cursor:not-allowed;}
+  .legend{font-size:.7rem; line-height:1.7;}
+  .legend li{list-style:none;}
+  #log{font-size:.78rem; font-weight:700; color:#7a4a2a; min-height:1.2em; margin-top:6px;}
+  #overlay{
+    position:fixed; inset:0; background:rgba(58,46,34,.55); display:none;
+    align-items:center; justify-content:center; z-index:10;
+  }
+  #overlay .card{
+    background:var(--paper); border:3px solid var(--ink); border-radius:14px;
+    padding:28px 36px; text-align:center; max-width:90vw;
+  }
+  #overlay h2{font-size:1.4rem; font-weight:900; margin-bottom:8px; letter-spacing:.05em;}
+  #overlay p{margin-bottom:14px; font-weight:700;}
+</style>
+</head>
+<body>
+<header>
+  <h1>🐾 どうぶつディフェンス <small>〜むれの絆〜</small></h1>
+  <div id="stats">
+    <span>💰 <b id="sMoney">0</b></span>
+    <span>❤️ <b id="sLives">0</b></span>
+    <span>🌊 Wave <b id="sWave">1</b>/20</span>
+  </div>
+</header>
+
+<div class="wrap">
+  <canvas id="cv" width="676" height="468"></canvas>
+
+  <div id="side">
+    <div class="box">
+      <h2>どうぶつをえらぶ</h2>
+      <div id="shop"></div>
+    </div>
+
+    <div class="box">
+      <h2>じょうほう</h2>
+      <div id="info"><span class="none">マスをクリックして配置 / タワーをクリックして確認</span></div>
+      <div class="row">
+        <button class="act" id="btnUp" disabled>強化</button>
+        <button class="act" id="btnSell" disabled>売却</button>
+      </div>
+    </div>
+
+    <div class="box">
+      <h2>シナジー(隣接8マス)</h2>
+      <ul class="legend">
+        <li>🐶🐶 同種隣接:攻撃 +10%/匹(最大+30%)</li>
+        <li>🦉 ふくろう隣接:攻撃 +25%(Lvで上昇)</li>
+        <li>🐶×🐱:両者の攻撃速度 +20%</li>
+        <li>🐘×🐰:ゾウの範囲攻撃にスロー付与</li>
+        <li>🦁×🐶:ライオンの射程 +0.8マス</li>
+        <li>🦊×🐘:両者の範囲攻撃 +30%</li>
+        <li>🐍×🐰:両者のスロー効果を強化</li>
+      </ul>
+      <h2 style="margin-top:8px;">✦ 3体コンボ(強力)</h2>
+      <ul class="legend">
+        <li>✦🐶🐱🦉 番犬隊:攻撃+25% 速度+15%</li>
+        <li>✦🐘🦊🐰 包囲網:範囲+40% 範囲スロー</li>
+        <li>✦🦁🐶🐱 百獣の連携:攻撃+30% 射程+1</li>
+      </ul>
+    </div>
+
+    <div class="box">
+      <div class="row" style="margin-top:0;">
+        <button class="act primary" id="btnWave">Wave 開始</button>
+        <button class="act" id="btnSpeed">⏩ ×1</button>
+      </div>
+      <button class="act" id="btnNewCourse" style="width:100%;margin-top:6px;">🗺️ 新しいコース</button>
+      <div id="log"></div>
+    </div>
+  </div>
+</div>
+
+<div id="overlay"><div class="card">
+  <h2 id="ovTitle"></h2><p id="ovText"></p>
+  <button class="act primary" onclick="location.reload()" style="padding:10px 30px;">もういちど</button>
+</div></div>
+
+<script>
+'use strict';
+/* ================= 基本定義 ================= */
+const COLS=13, ROWS=9, CS=52;
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+const BASE={x:11,y:4};
+
+// --- ユーティリティ ---
+const ri=(a,b)=>a+Math.floor(Math.random()*(b-a+1));            // 整数 a..b(両端含む)
+const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+function cellsOf(wp){
+  const out=[]; for(let i=0;i<wp.length-1;i++){
+    let [x,y]=wp[i]; const [tx,ty]=wp[i+1];
+    const dx=Math.sign(tx-x), dy=Math.sign(ty-y);
+    while(x!==tx||y!==ty){ out.push([x,y]); x+=dx; y+=dy; }
+  }
+  out.push(wp[wp.length-1]); return out;
+}
+
+// --- 経路ジェネレータ:開始(sx,sy)から合流列 mx まで階段状に進む ---
+// x は単調右進みなので自己交差しない。各区間は1軸のみ移動(斜めなし)。
+function genRoute(sx,sy,mx){
+  const wp=[[sx,sy]]; let y=sy;
+  // sx と mx の間にターン列を 1〜3 本だけランダムに選ぶ
+  const lo=Math.min(sx,mx)+1, hi=mx-1, pool=[];
+  for(let c=lo;c<=hi;c++)pool.push(c);
+  const cols=[];
+  const k=Math.min(pool.length, ri(1,3));
+  for(let i=0;i<k;i++) cols.push(pool.splice(ri(0,pool.length-1),1)[0]);
+  cols.sort((a,b)=>a-b);
+  for(const cx of cols){
+    wp.push([cx,y]);                                  // 横移動
+    let ny, t=0;
+    do{ ny=clamp(y+(Math.random()<0.5?-1:1)*ri(1,3),1,ROWS-2); }while(ny===y&&++t<6);
+    if(ny===y)ny=clamp(y+1,1,ROWS-2);
+    wp.push([cx,ny]); y=ny;                            // 縦移動
+  }
+  wp.push([mx,y]);          // 合流列まで横移動
+  wp.push([mx,BASE.y]);     // 拠点の行へ縦移動
+  wp.push([BASE.x,BASE.y]); // 拠点へ
+  // 連続重複点を除去(ゼロ長区間の防止)
+  const out=[wp[0]];
+  for(let i=1;i<wp.length;i++){
+    const p=wp[i], q=out[out.length-1];
+    if(p[0]!==q[0]||p[1]!==q[1])out.push(p);
+  }
+  return out;
+}
+
+const ROUTE_META=[
+  {name:'上ルート', openWave:1, color:'#E3C690'},
+  {name:'下ルート', openWave:1, color:'#E3C690'},
+  {name:'裏ルート', openWave:8, color:'#D8B074'},
+];
+let ROUTES, allPath;
+function generateRoutes(){
+  for(let attempt=0;attempt<30;attempt++){
+    const mx=ri(8,9);                       // 合流列(拠点手前)
+    const defs=[
+      genRoute(0, ri(1,3), mx),             // 上:左端上部から
+      genRoute(0, ri(5,7), mx),             // 下:左端下部から
+      genRoute(ri(4,6), ROWS-1, mx),        // 裏:下端から
+    ];
+    const rts=ROUTE_META.map((m,i)=>{
+      const wp=defs[i], cells=cellsOf(wp);
+      return {...m, wp, cells, px:wp.map(([x,y])=>({x:x*CS+CS/2,y:y*CS+CS/2}))};
+    });
+    // 妥当性チェック:全マスがグリッド内、各ルートが十分な長さ
+    const ok=rts.every(r=>r.cells.length>=5 &&
+      r.cells.every(([x,y])=>x>=0&&x<COLS&&y>=0&&y<ROWS));
+    if(!ok)continue;
+    ROUTES=rts;
+    allPath=new Set(); ROUTES.forEach(r=>r.cells.forEach(([x,y])=>allPath.add(x+','+y)));
+    return;
+  }
+}
+generateRoutes();
+
+const TOWERS={
+  dog :{emo:'🐶', name:'いぬ',     cost:100, dmg:14, rate:0.80, range:2.2, desc:'バランス型。🐱や🦁の相棒'},
+  cat :{emo:'🐱', name:'ねこ',     cost:80,  dmg:7,  rate:0.35, range:2.0, desc:'手数で勝負の速射型'},
+  ele :{emo:'🐘', name:'ぞう',     cost:160, dmg:22, rate:1.50, range:2.0, desc:'範囲攻撃。群れに強い', splash:0.95},
+  fox :{emo:'🦊', name:'きつね',   cost:110, dmg:12, rate:0.90, range:2.3, desc:'安価な範囲攻撃。🐘と相性◎', splash:0.70},
+  rab :{emo:'🐰', name:'うさぎ',   cost:90,  dmg:6,  rate:0.70, range:2.2, desc:'敵を35%スロー', slow:{f:0.65,t:1.2}},
+  snk :{emo:'🐍', name:'へび',     cost:100, dmg:9,  rate:0.80, range:2.0, desc:'50%の強スロー。🐰と連携', slow:{f:0.50,t:1.6}},
+  owl :{emo:'🦉', name:'ふくろう', cost:120, dmg:0,  rate:0,    range:0,   desc:'攻撃せず隣接を強化'},
+  lion:{emo:'🦁', name:'ライオン', cost:200, dmg:46, rate:1.40, range:3.2, desc:'長射程の一撃型'},
+};
+// 3体コンボ:set の3種が隣接で揃うと、各タワーに強力なボーナス
+const COMBOS=[
+  {set:['dog','cat','owl'], name:'番犬隊',     dmg:1.25, rate:0.85},               // 攻撃+25% 速度+15%
+  {set:['ele','fox','rab'], name:'包囲網',     splashMul:1.4, slowSplash:true},    // 範囲+40% 範囲スロー
+  {set:['lion','dog','cat'],name:'百獣の連携', dmg:1.30, range:1.0},               // 攻撃+30% 射程+1
+];
+const ENEMIES={
+  mouse:{emo:'🐭', hp:30,  spd:95,  reward:7,  size:22},
+  boar :{emo:'🐗', hp:85,  spd:55,  reward:12, size:26},
+  bat  :{emo:'🦇', hp:45,  spd:125, reward:10, size:22},
+  bear :{emo:'🐻', hp:280, spd:34,  reward:26, size:30},
+  split:{emo:'🦔', hp:130, spd:62,  reward:18, size:26, split:2},     // 倒すと子2体に分裂 → 範囲攻撃が有効
+  skid :{emo:'🦔', hp:0,   spd:96,  reward:6,  size:16},              // 分裂後の子(これ以上分裂しない)
+  shld :{emo:'🐢', hp:150, spd:44,  reward:22, size:28, shield:0.6, shieldCap:16}, // シールドは1発の吸収上限あり → 速射が有効
+  boss :{emo:'🐻', hp:0,   spd:26,  reward:150,size:40, boss:true},
+};
+
+/* ================= 状態 ================= */
+const S={
+  money:280, lives:20, wave:1, phase:'build', speed:1,
+  towers:new Map(), enemies:[], shots:[], queue:[], qTimer:0,
+  shopSel:null, towerSel:null, hover:null, banner:null, over:false,
+};
+const key=(x,y)=>x+','+y;
+
+/* ================= シナジー計算 ================= */
+function neighbors(t){
+  const out=[];
+  for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++){
+    if(!dx&&!dy)continue;
+    const n=S.towers.get(key(t.x+dx,t.y+dy)); if(n)out.push(n);
+  }
+  return out;
+}
+function recalc(){
+  for(const t of S.towers.values()){
+    const b=TOWERS[t.type], ns=neighbors(t), syn=[];
+    let dmg=b.dmg*Math.pow(1.6,t.lv-1), rate=b.rate, range=b.range, slowSplash=false;
+    let slow=b.slow?{...b.slow}:null, splash=b.splash||0;
+    const same=ns.filter(n=>n.type===t.type).length;
+    if(same>0&&t.type!=='owl'){ dmg*=1+0.10*Math.min(same,3); syn.push(`群れ +${Math.min(same,3)*10}%`); }
+    const owls=ns.filter(n=>n.type==='owl');
+    if(owls.length&&t.type!=='owl'){
+      const lv=Math.max(...owls.map(o=>o.lv)), m=[1.25,1.35,1.5][lv-1];
+      dmg*=m; syn.push(`🦉強化 +${Math.round((m-1)*100)}%`);
+    }
+    if((t.type==='dog'&&ns.some(n=>n.type==='cat'))||(t.type==='cat'&&ns.some(n=>n.type==='dog'))){
+      rate*=0.8; syn.push('🐶×🐱 速度+20%');
+    }
+    if(t.type==='ele'&&ns.some(n=>n.type==='rab')){ slowSplash=true; syn.push('🐘×🐰 範囲スロー'); }
+    if(t.type==='lion'&&ns.some(n=>n.type==='dog')){ range+=0.8; syn.push('🦁×🐶 射程+0.8'); }
+    // 🦊×🐘:両者の範囲攻撃が +30%
+    if((t.type==='fox'&&ns.some(n=>n.type==='ele'))||(t.type==='ele'&&ns.some(n=>n.type==='fox'))){
+      splash*=1.3; syn.push('🦊×🐘 範囲+30%');
+    }
+    // 🐍×🐰:両者のスローが強化(効果UP+持続UP)
+    if((t.type==='snk'&&ns.some(n=>n.type==='rab'))||(t.type==='rab'&&ns.some(n=>n.type==='snk'))){
+      if(slow){ slow.f=Math.max(0.3,slow.f-0.15); slow.t+=0.4; } syn.push('🐍×🐰 スロー強化');
+    }
+    // === 3体コンボ:周囲に残り2種が揃うと発動(2体組より強力) ===
+    let combo=false;
+    const ntypes=new Set(ns.map(n=>n.type));
+    for(const c of COMBOS){
+      if(c.set.includes(t.type) && c.set.filter(x=>x!==t.type).every(x=>ntypes.has(x))){
+        if(c.dmg)dmg*=c.dmg;
+        if(c.rate)rate*=c.rate;
+        if(c.splashMul)splash*=c.splashMul;
+        if(c.range)range+=c.range;
+        if(c.slowSplash)slowSplash=true;
+        syn.push('✦'+c.name); combo=true;
+      }
+    }
+    t.eff={dmg,rate,range:range*CS,slowSplash,slow,splash,combo,syn};
+    t.cool=Math.min(t.cool??0, rate);
+  }
+}
+
+/* ================= Wave 生成 ================= */
+function openRoutes(w){ return ROUTES.map((r,i)=>r.openWave<=w?i:-1).filter(i=>i>=0); }
+function buildWave(w){
+  const q=[]; const hpMul=1+0.22*(w-1);
+  const open=openRoutes(w); const bias=open[w%open.length];
+  const pick=()=>Math.random()<0.62?bias:open[Math.floor(Math.random()*open.length)];
+  const n=8+Math.floor(w*1.9);
+  for(let i=0;i<n;i++){
+    const r=Math.random();
+    const pBoar=Math.min(0.15+w*0.03,0.40);
+    const pBat  = w>=6 ?0.18:0;
+    const pBear = w>=9 ?Math.min((w-8)*0.04,0.20):0;
+    const pSplit= w>=7 ?0.16:0;             // 分裂(範囲攻撃で対処)
+    const pShld = w>=10?0.14:0;             // シールド(速射で対処)
+    let type='mouse', acc=0;
+    for(const [tp,p] of [['bear',pBear],['shld',pShld],['split',pSplit],['bat',pBat],['boar',pBoar]]){
+      if(r<acc+p){ type=tp; break; } acc+=p;
+    }
+    q.push({t:i*0.75, type, route:pick(), hpMul});
+  }
+  if(w%5===0){
+    const nb=w===20?3:(w===15?2:1);
+    for(let i=0;i<nb;i++) q.push({t:n*0.75+i*3, type:'boss', route:open[i%open.length],
+      hpMul:1, bossHp:Math.round((900+230*w)*0.9)});
+  }
+  q.sort((a,b)=>a.t-b.t);
+  return q;
+}
+function waveForecast(w){
+  const open=openRoutes(w);
+  const note=ROUTES[open[w%open.length]].name+' に重点';
+  const boss=w%5===0?' ⚠️ボス出現!':'';
+  return `次のWave ${w}: ${note}${boss}`;
+}
+
+/* ================= 進行 ================= */
+function startWave(){
+  if(S.phase!=='build'||S.over)return;
+  S.queue=buildWave(S.wave); S.qTimer=0; S.phase='wave';
+  document.getElementById('btnWave').disabled=true;
+  log(`Wave ${S.wave} 開始!`);
+}
+function endWave(){
+  const bonus=40+S.wave*6; S.money+=bonus;
+  log(`Wave ${S.wave} クリア! ボーナス +${bonus}`);
+  S.wave++;
+  if(S.wave>20){ return gameEnd(true); }
+  if(ROUTES.some(r=>r.openWave===S.wave)){
+    banner('⚠️ 裏ルートが開通した!'); log('⚠️ 右下から新ルート侵攻!配置を見直そう');
+  }
+  if(S.wave===7){ banner('🦔 分裂する敵が出現!'); log('🦔 はりねずみは倒すと2体に分裂!範囲攻撃(🐘🦊)で対処を'); }
+  if(S.wave===10){ banner('🐢 シールド持ちが出現!'); log('🐢 かめのシールドは大ダメージを弾く!速射(🐱)で削ろう'); }
+  S.phase='build';
+  document.getElementById('btnWave').disabled=false;
+}
+function gameEnd(win){
+  S.over=true;
+  document.getElementById('ovTitle').textContent=win?'🎉 防衛成功!':'😿 ゲームオーバー';
+  document.getElementById('ovText').textContent=win
+    ?'20 Wave を守りきった!むれの絆の勝利!'
+    :`Wave ${S.wave} で陥落… シナジー配置を見直してみよう`;
+  document.getElementById('overlay').style.display='flex';
+}
+function banner(t){ S.banner={t, until:perfNow+2.6}; }
+function log(t){ document.getElementById('log').textContent=t; }
+
+/* ================= 更新 ================= */
+let perfNow=0;
+function spawn(e){
+  const r=ROUTES[e.route], base=ENEMIES[e.type];
+  const hp=e.type==='boss'?e.bossHp:Math.round(base.hp*e.hpMul);
+  const en={type:e.type, route:e.route, hp, maxHp:hp,
+    x:r.px[0].x, y:r.px[0].y, wi:1, prog:0, slowUntil:0, slowF:1};
+  if(base.shield){ en.shield=Math.round(hp*base.shield); en.shieldMax=en.shield; en.shieldCap=base.shieldCap; }
+  S.enemies.push(en);
+}
+// 分裂後の子を親の位置から生成
+function makeChild(e){
+  const hp=Math.max(8, Math.round(e.maxHp*0.4));
+  return {type:'skid', route:e.route, hp, maxHp:hp,
+    x:e.x+(Math.random()-0.5)*12, y:e.y+(Math.random()-0.5)*12,
+    wi:e.wi, prog:e.prog, slowUntil:0, slowF:1, noSplit:true};
+}
+function update(dt){
+  if(S.phase==='wave'){
+    S.qTimer+=dt;
+    while(S.queue.length&&S.queue[0].t<=S.qTimer) spawn(S.queue.shift());
+  }
+  // 敵移動
+  for(const e of S.enemies){
+    const r=ROUTES[e.route], tgt=r.px[e.wi]; if(!tgt){e.reach=true;continue;}
+    const sl=perfNow<e.slowUntil?e.slowF:1;
+    const spd=ENEMIES[e.type].spd*sl*dt;
+    const dx=tgt.x-e.x, dy=tgt.y-e.y, d=Math.hypot(dx,dy);
+    if(d<=spd){ e.x=tgt.x; e.y=tgt.y; e.wi++; if(e.wi>=r.px.length)e.reach=true; }
+    else{ e.x+=dx/d*spd; e.y+=dy/d*spd; }
+    e.prog+=spd;
+  }
+  const born=[];
+  S.enemies=S.enemies.filter(e=>{
+    if(e.reach){ S.lives-=ENEMIES[e.type].boss?5:1; if(S.lives<=0&&!S.over){S.lives=0;gameEnd(false);} return false; }
+    if(e.hp<=0){
+      if(ENEMIES[e.type].split&&!e.noSplit){
+        for(let i=0;i<ENEMIES[e.type].split;i++) born.push(makeChild(e));
+      }
+      return false;
+    }
+    return true;
+  });
+  if(born.length) S.enemies.push(...born);
+  // タワー射撃
+  for(const t of S.towers.values()){
+    if(t.type==='owl')continue;
+    t.cool-=dt; if(t.cool>0)continue;
+    let best=null;
+    for(const e of S.enemies){
+      const d=Math.hypot(e.x-(t.x*CS+CS/2), e.y-(t.y*CS+CS/2));
+      if(d<=t.eff.range&&(!best||e.prog>best.prog))best=e;
+    }
+    if(best){
+      t.cool=t.eff.rate;
+      S.shots.push({x:t.x*CS+CS/2, y:t.y*CS+CS/2, tgt:best, from:t});
+    }
+  }
+  // 弾
+  for(const s of S.shots){
+    if(s.tgt.hp<=0||s.tgt.reach){s.dead=true;continue;}
+    const dx=s.tgt.x-s.x, dy=s.tgt.y-s.y, d=Math.hypot(dx,dy), mv=340*dt;
+    if(d<=mv){ hit(s); s.dead=true; }
+    else{ s.x+=dx/d*mv; s.y+=dy/d*mv; }
+  }
+  S.shots=S.shots.filter(s=>!s.dead);
+  // Wave 終了判定
+  if(S.phase==='wave'&&!S.queue.length&&!S.enemies.length) endWave();
+}
+function hit(s){
+  const t=s.from;
+  const apply=(e,dmg)=>{
+    if(e.shield>0){ e.shield-=Math.min(dmg,e.shieldCap); if(e.shield<0)e.shield=0; return; }
+    e.hp-=dmg;
+    if(e.hp<=0&&!e.dead){e.dead=true; S.money+=ENEMIES[e.type].reward;}
+  };
+  apply(s.tgt, t.eff.dmg);
+  if(t.eff.slow){ s.tgt.slowUntil=perfNow+t.eff.slow.t; s.tgt.slowF=t.eff.slow.f; }
+  if(t.eff.splash){
+    const r=t.eff.splash*CS;
+    for(const e of S.enemies){
+      if(e===s.tgt)continue;
+      if(Math.hypot(e.x-s.tgt.x,e.y-s.tgt.y)<=r){
+        apply(e, t.eff.dmg*0.7);
+        if(t.eff.slowSplash){ e.slowUntil=perfNow+1.5; e.slowF=0.6; }
+      }
+    }
+    if(t.eff.slowSplash){ s.tgt.slowUntil=perfNow+1.5; s.tgt.slowF=0.6; }
+  }
+}
+
+/* ================= 描画 ================= */
+function draw(){
+  ctx.clearRect(0,0,cv.width,cv.height);
+  for(let x=0;x<COLS;x++)for(let y=0;y<ROWS;y++){
+    ctx.fillStyle=(x+y)%2?'#83B463':'#8FBE6E';
+    ctx.fillRect(x*CS,y*CS,CS,CS);
+  }
+  // ルート
+  for(const r of ROUTES){
+    const open=r.openWave<=S.wave;
+    for(const [x,y] of r.cells){
+      ctx.fillStyle=open?'#E3C690':'rgba(120,105,80,.30)';
+      ctx.fillRect(x*CS+3,y*CS+3,CS-6,CS-6);
+      if(!open){
+        ctx.strokeStyle='rgba(80,65,45,.5)'; ctx.setLineDash([5,4]);
+        ctx.strokeRect(x*CS+5,y*CS+5,CS-10,CS-10); ctx.setLineDash([]);
+      }
+    }
+  }
+  // 開通予告
+  const closed=ROUTES.find(r=>r.openWave>S.wave);
+  if(closed){
+    ctx.fillStyle='rgba(60,45,25,.85)'; ctx.font='700 11px sans-serif'; ctx.textAlign='center';
+    const [cx,cy]=closed.cells[0];
+    ctx.fillText(`Wave ${closed.openWave} で開通`, cx*CS+CS/2, cy*CS-4);
+  }
+  // 拠点
+  drawEmoji('🏠', BASE.x*CS+CS/2, BASE.y*CS+CS/2, 34);
+  // ホバー
+  if(S.hover&&S.shopSel&&canBuild(S.hover.x,S.hover.y)){
+    const def=TOWERS[S.shopSel];
+    ctx.fillStyle='rgba(255,255,255,.35)';
+    ctx.fillRect(S.hover.x*CS,S.hover.y*CS,CS,CS);
+    if(def.range){
+      ctx.beginPath();
+      ctx.arc(S.hover.x*CS+CS/2,S.hover.y*CS+CS/2,def.range*CS,0,7);
+      ctx.strokeStyle='rgba(255,255,255,.7)'; ctx.stroke();
+    }
+  }
+  // タワー
+  for(const t of S.towers.values()){
+    const cx=t.x*CS+CS/2, cy=t.y*CS+CS/2;
+    if(t.eff.syn.length){
+      ctx.beginPath(); ctx.arc(cx,cy,CS/2-4,0,7);
+      ctx.fillStyle='rgba(255,235,140,.45)'; ctx.fill();
+    }
+    if(t.eff.combo){  // 3体コンボ:金色の二重リング
+      ctx.beginPath(); ctx.arc(cx,cy,CS/2-3,0,7);
+      ctx.strokeStyle='#F5B400'; ctx.lineWidth=2.5; ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx,cy,CS/2-7,0,7);
+      ctx.strokeStyle='rgba(255,220,120,.8)'; ctx.lineWidth=1.5; ctx.stroke(); ctx.lineWidth=1;
+    }
+    drawEmoji(TOWERS[t.type].emo,cx,cy,30);
+    ctx.fillStyle='#3A2E22';
+    for(let i=0;i<t.lv;i++){ctx.fillRect(cx-12+i*9,cy+16,6,4);}
+  }
+  // 選択中タワーの射程
+  if(S.towerSel){
+    const t=S.towerSel, cx=t.x*CS+CS/2, cy=t.y*CS+CS/2;
+    ctx.strokeStyle='rgba(217,96,59,.9)'; ctx.lineWidth=2;
+    ctx.strokeRect(t.x*CS+2,t.y*CS+2,CS-4,CS-4); ctx.lineWidth=1;
+    if(t.eff.range){
+      ctx.beginPath(); ctx.arc(cx,cy,t.eff.range,0,7);
+      ctx.strokeStyle='rgba(217,96,59,.6)'; ctx.stroke();
+    }
+  }
+  // 敵
+  for(const e of S.enemies){
+    const def=ENEMIES[e.type];
+    if(perfNow<e.slowUntil){
+      ctx.beginPath(); ctx.arc(e.x,e.y,def.size*0.7,0,7);
+      ctx.fillStyle='rgba(120,190,255,.45)'; ctx.fill();
+    }
+    drawEmoji(def.emo,e.x,e.y,def.size);
+    if(def.boss)drawEmoji('👑',e.x,e.y-def.size*0.75,18);
+    // シールド表示
+    if(e.shield>0){
+      ctx.beginPath(); ctx.arc(e.x,e.y,def.size*0.62,0,7);
+      ctx.strokeStyle='rgba(90,180,255,.9)'; ctx.lineWidth=3; ctx.stroke(); ctx.lineWidth=1;
+    }
+    const w=def.size*1.2, h=4, ratio=e.hp/e.maxHp;
+    ctx.fillStyle='#3A2E22'; ctx.fillRect(e.x-w/2,e.y-def.size*0.75-h,w,h);
+    ctx.fillStyle=ratio>0.4?'#5BBE6E':'#D9603B';
+    ctx.fillRect(e.x-w/2,e.y-def.size*0.75-h,w*Math.max(ratio,0),h);
+    if(e.shieldMax){  // シールド残量バー(HPバーの上)
+      const sr=e.shield/e.shieldMax;
+      ctx.fillStyle='#234'; ctx.fillRect(e.x-w/2,e.y-def.size*0.75-h*2-1,w,h);
+      ctx.fillStyle='#5AB4FF'; ctx.fillRect(e.x-w/2,e.y-def.size*0.75-h*2-1,w*Math.max(sr,0),h);
+    }
+  }
+  // 弾
+  for(const s of S.shots){
+    ctx.beginPath(); ctx.arc(s.x,s.y,4,0,7);
+    ctx.fillStyle={dog:'#A0682F',cat:'#888',ele:'#6B7DB3',fox:'#E08A3C',rab:'#E089B8',snk:'#6FA85A',lion:'#D9A53B'}[s.from.type]||'#444';
+    ctx.fill();
+  }
+  // バナー
+  if(S.banner&&perfNow<S.banner.until){
+    ctx.fillStyle='rgba(58,46,34,.85)';
+    ctx.fillRect(0,cv.height/2-26,cv.width,52);
+    ctx.fillStyle='#FFE9A8'; ctx.font='900 20px "M PLUS Rounded 1c",sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(S.banner.t,cv.width/2,cv.height/2);
+  }
+}
+function drawEmoji(e,x,y,size){
+  ctx.font=size+'px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(e,x,y);
+}
+
+/* ================= 操作 ================= */
+function canBuild(x,y){
+  return x>=0&&y>=0&&x<COLS&&y<ROWS&&!allPath.has(key(x,y))&&!S.towers.has(key(x,y));
+}
+function cellFromEvent(ev){
+  const r=cv.getBoundingClientRect();
+  const x=Math.floor((ev.clientX-r.left)*(cv.width/r.width)/CS);
+  const y=Math.floor((ev.clientY-r.top)*(cv.height/r.height)/CS);
+  return {x,y};
+}
+cv.addEventListener('mousemove',ev=>{S.hover=cellFromEvent(ev);});
+cv.addEventListener('click',ev=>{
+  if(S.over)return;
+  const {x,y}=cellFromEvent(ev);
+  const ex=S.towers.get(key(x,y));
+  if(ex){ S.towerSel=ex; S.shopSel=null; refreshUI(); return; }
+  if(S.shopSel&&canBuild(x,y)){
+    const def=TOWERS[S.shopSel];
+    if(S.money>=def.cost){
+      S.money-=def.cost;
+      const t={type:S.shopSel,x,y,lv:1,cool:0,invested:def.cost};
+      S.towers.set(key(x,y),t); recalc(); S.towerSel=t;
+      refreshUI();
+    } else log('お金が足りない!');
+    return;
+  }
+  S.towerSel=null; refreshUI();
+});
+
+/* ================= UI ================= */
+const shopEl=document.getElementById('shop');
+for(const [id,d] of Object.entries(TOWERS)){
+  const b=document.createElement('button');
+  b.className='tbtn'; b.dataset.id=id;
+  b.innerHTML=`<span><span class="emo">${d.emo}</span> ${d.name} <span class="cost">💰${d.cost}</span></span><span class="desc">${d.desc}</span>`;
+  b.onclick=()=>{ S.shopSel=S.shopSel===id?null:id; S.towerSel=null; refreshUI(); };
+  shopEl.appendChild(b);
+}
+const btnUp=document.getElementById('btnUp'), btnSell=document.getElementById('btnSell');
+btnUp.onclick=()=>{
+  const t=S.towerSel; if(!t||t.lv>=3)return;
+  const cost=upCost(t);
+  if(S.money<cost)return log('お金が足りない!');
+  S.money-=cost; t.invested+=cost; t.lv++; recalc(); refreshUI();
+};
+btnSell.onclick=()=>{
+  const t=S.towerSel; if(!t)return;
+  S.money+=Math.round(t.invested*0.6);
+  S.towers.delete(key(t.x,t.y)); S.towerSel=null; recalc(); refreshUI();
+};
+document.getElementById('btnWave').onclick=startWave;
+document.getElementById('btnNewCourse').onclick=function(){
+  if(S.over)return;
+  if(S.wave!==1||S.phase!=='build'){ log('コース変更はWave1開始前のみ'); return; }
+  // 配置済みタワーを全額返金してリセット
+  for(const t of S.towers.values()) S.money+=t.invested;
+  S.towers.clear(); S.towerSel=null; S.shopSel=null;
+  generateRoutes(); recalc(); refreshUI();
+  log('新しいコースを生成しました');
+};
+document.getElementById('btnSpeed').onclick=function(){
+  S.speed=S.speed===1?2:1; this.textContent='⏩ ×'+S.speed;
+};
+function upCost(t){ return Math.round(TOWERS[t.type].cost*(t.lv===1?0.8:1.2)); }
+function refreshUI(){
+  document.querySelectorAll('.tbtn').forEach(b=>{
+    b.classList.toggle('sel',b.dataset.id===S.shopSel);
+    b.disabled=S.money<TOWERS[b.dataset.id].cost&&b.dataset.id!==S.shopSel;
+  });
+  const info=document.getElementById('info');
+  if(S.towerSel){
+    const t=S.towerSel,d=TOWERS[t.type];
+    const syn=t.eff.syn.length?`<span class="syn">✦ ${t.eff.syn.join(' / ')}</span>`:`<span class="none">シナジーなし(隣に仲間を置こう)</span>`;
+    const atk=t.type==='owl'?'隣接タワーを強化':`攻撃 ${t.eff.dmg.toFixed(0)} / ${t.eff.rate.toFixed(2)}s`;
+    info.innerHTML=`<b>${d.emo} ${d.name} Lv${t.lv}</b><br>${atk}<br>${syn}`;
+    btnUp.disabled=t.lv>=3; btnUp.textContent=t.lv>=3?'最大Lv':`強化 💰${upCost(t)}`;
+    btnSell.disabled=false; btnSell.textContent=`売却 💰${Math.round(t.invested*0.6)}`;
+  }else{
+    info.innerHTML='<span class="none">マスをクリックして配置 / タワーをクリックして確認</span>';
+    btnUp.disabled=true; btnUp.textContent='強化';
+    btnSell.disabled=true; btnSell.textContent='売却';
+  }
+  document.getElementById('sMoney').textContent=S.money;
+  document.getElementById('sLives').textContent=S.lives;
+  document.getElementById('sWave').textContent=Math.min(S.wave,20);
+  if(S.phase==='build'&&!S.over) log(waveForecast(S.wave));
+}
+
+/* ================= メインループ ================= */
+let last=performance.now();
+function loop(now){
+  const dt=Math.min((now-last)/1000,0.05)*S.speed;
+  last=now; perfNow+=dt;
+  if(!S.over)update(dt);
+  draw();
+  document.getElementById('sMoney').textContent=S.money;
+  document.getElementById('sLives').textContent=S.lives;
+  requestAnimationFrame(loop);
+}
+recalc(); refreshUI(); log(waveForecast(1));
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

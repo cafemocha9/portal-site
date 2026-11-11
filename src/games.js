@@ -2,6 +2,7 @@ import { lazy } from 'react'
 import {
   Atom,
   Balloon,
+  Bird,
   BrickWall,
   CarFront,
   Castle,
@@ -16,8 +17,12 @@ import {
   Music,
   Orbit,
   Palette,
+  PawPrint,
+  Pencil,
+  Pickaxe,
   Rocket,
   Rotate3d,
+  SwatchBook,
   Swords,
   TreePalm,
 } from 'lucide-react'
@@ -34,6 +39,7 @@ export const games = [
   // --- 3D・アクション ---
   { id: 'mame-kart', title: 'まめカートGP', icon: CarFront, color: 'bg-orange-300', iconColor: 'text-orange-800', type: 'html' },
   { id: 'rush-kart', title: 'ラッシュカート', icon: Flag, color: 'bg-red-300', iconColor: 'text-red-800', type: 'html' },
+  { id: 'craftbox', title: 'CraftBox', icon: Pickaxe, color: 'bg-green-300', iconColor: 'text-green-900', type: 'html' },
   { id: 'pokapoka-island', title: 'ぽかぽか島ぐらし', icon: TreePalm, color: 'bg-emerald-300', iconColor: 'text-emerald-900', type: 'html' },
   { id: 'neon-hop', title: 'NEON HOP', icon: Music, color: 'bg-pink-300', iconColor: 'text-pink-900', type: 'html' },
   { id: 'danmaku', title: '幻想弾幕', icon: Crosshair, color: 'bg-purple-300', iconColor: 'text-purple-900', type: 'html' },
@@ -43,6 +49,7 @@ export const games = [
   { id: 'singularity', title: '特異点', icon: Atom, color: 'bg-blue-300', iconColor: 'text-blue-900', type: 'html' },
 
   // --- 作戦・パズル ---
+  { id: 'animal-defense', title: 'どうぶつディフェンス', icon: PawPrint, color: 'bg-orange-200', iconColor: 'text-orange-900', type: 'html' },
   { id: 'rojo-3d', title: '籠城戦 3D', icon: Castle, color: 'bg-amber-300', iconColor: 'text-amber-900', type: 'html' },
   { id: 'orbit-defense', title: '軌道防衛線', icon: Orbit, color: 'bg-violet-300', iconColor: 'text-violet-900', type: 'html' },
   { id: 'breach', title: 'BREACH', icon: Swords, color: 'bg-rose-300', iconColor: 'text-rose-900', type: 'react', component: lazy(() => import('./games/breach/Game.jsx')) },
@@ -52,8 +59,13 @@ export const games = [
   { id: 'chess', title: 'チェス', icon: Crown, color: 'bg-yellow-200', iconColor: 'text-yellow-900', type: 'react', component: lazy(() => import('./games/chess/Game.jsx')) },
   { id: 'line-protocol', title: '五目並べ', icon: Grid3x3, color: 'bg-teal-300', iconColor: 'text-teal-900', type: 'react', component: lazy(() => import('./games/line-protocol/Game.jsx')) },
 
-  // --- 音・おためし ---
+  // --- のんびり・ことば ---
+  { id: 'illust-shiritori', title: 'イラストしりとり', icon: Pencil, color: 'bg-yellow-300', iconColor: 'text-yellow-900', type: 'html' },
+  { id: 'kotori-niwa', title: 'ことりの庭', icon: Bird, color: 'bg-sky-200', iconColor: 'text-sky-900', type: 'html' },
+
+  // --- 音・デザイン・おためし ---
   { id: 'tech-house-loop', title: 'Tech House Loop', icon: Disc3, color: 'bg-zinc-300', iconColor: 'text-zinc-800', type: 'html' },
+  { id: 'design-catalogue', title: 'デザイン様式カタログ', icon: SwatchBook, color: 'bg-neutral-300', iconColor: 'text-neutral-800', type: 'html' },
   { id: 'balloon', title: 'ふうせん わり', icon: Balloon, color: 'bg-rose-200', iconColor: 'text-rose-700', type: 'react', component: lazy(() => import('./games/balloon/Balloon.jsx')) },
   { id: 'color-match', title: 'いろ あて', icon: Palette, color: 'bg-sky-300', iconColor: 'text-sky-800', type: 'html' },
 ]

@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>イラストしりとり</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Yusei+Magic&family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EDF1F7;
+    --card:#FFFFFF;
+    --ink:#22324E;
+    --ink-soft:#6B7A95;
+    --accent:#E0312D;
+    --ok:#2E9E4F;
+    --line:#D5DCE8;
+    --radius:18px;
+    --shadow:0 4px 14px rgba(34,50,78,.10);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    font-family:'Zen Maru Gothic',sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    line-height:1.6;
+    overscroll-behavior:none;
+  }
+  .wrap{max-width:560px;margin:0 auto;padding:16px 14px 48px}
+  h1,h2,.display{font-family:'Yusei Magic','Zen Maru Gothic',sans-serif;font-weight:400}
+
+  /* ---------- ヘッダー ---------- */
+  header{text-align:center;padding:14px 0 18px}
+  header h1{font-size:30px;letter-spacing:.04em}
+  header p{font-size:13px;color:var(--ink-soft);margin-top:2px}
+
+  /* ---------- カード ---------- */
+  .card{
+    background:var(--card);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:20px 18px;margin-bottom:16px;
+  }
+  .card h2{font-size:19px;margin-bottom:12px}
+  label.field{display:block;font-size:13px;font-weight:700;color:var(--ink-soft);margin:14px 0 6px}
+  input[type=text]{
+    width:100%;padding:12px 14px;font-size:16px;font-family:inherit;
+    border:2px solid var(--line);border-radius:12px;background:#FBFCFE;color:var(--ink);
+  }
+  input[type=text]:focus{outline:none;border-color:var(--ink)}
+
+  /* セグメント選択 */
+  .seg{display:flex;gap:8px;flex-wrap:wrap}
+  .seg button{
+    flex:1;min-width:54px;padding:10px 0;font-size:16px;font-family:inherit;font-weight:700;
+    border:2px solid var(--line);border-radius:12px;background:#FBFCFE;color:var(--ink-soft);cursor:pointer;
+  }
+  .seg button.on{border-color:var(--ink);background:var(--ink);color:#fff}
+
+  .btn{
+    display:block;width:100%;padding:15px;font-size:17px;font-weight:700;font-family:inherit;
+    border:none;border-radius:14px;cursor:pointer;text-align:center;text-decoration:none;line-height:1.2;
+    background:var(--ink);color:#fff;
+  }
+  a.btn{display:flex;align-items:center;justify-content:center}
+  .btn:active{transform:scale(.985)}
+  .btn.accent{background:var(--accent)}
+  .btn.ghost{background:transparent;color:var(--ink-soft);box-shadow:none;font-size:14px;padding:10px}
+  .btn:disabled{opacity:.35;cursor:default}
+
+  /* ---------- 手渡し画面 ---------- */
+  .handoff{text-align:center;padding:60px 0 30px}
+  .handoff .turnno{font-size:13px;color:var(--ink-soft);letter-spacing:.1em}
+  .handoff .name{font-size:34px;margin:10px 0 4px}
+  .handoff .sub{font-size:14px;color:var(--ink-soft);margin-bottom:34px}
+  .handoff .phone{font-size:52px;margin-bottom:20px;display:block}
+
+  /* ---------- お絵かき ---------- */
+  .canvas-box{position:relative;width:100%;border:2px solid var(--line);border-radius:14px;overflow:hidden;background:#fff;touch-action:none}
+  canvas{display:block;width:100%;height:auto}
+  .tools{display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap}
+  .colors{display:flex;gap:6px;flex-wrap:wrap;flex:1}
+  .swatch{
+    width:30px;height:30px;border-radius:50%;border:3px solid transparent;cursor:pointer;padding:0;
+    box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.12);
+  }
+  .swatch.on{border-color:var(--ink);transform:scale(1.12)}
+  .tbtn{
+    padding:7px 11px;font-size:13px;font-weight:700;font-family:inherit;
+    border:2px solid var(--line);border-radius:10px;background:#FBFCFE;color:var(--ink);cursor:pointer;
+  }
+  .tbtn.on{border-color:var(--ink);background:var(--ink);color:#fff}
+  .sizes{display:flex;gap:6px}
+  .sizebtn{width:34px;height:34px;border-radius:10px;border:2px solid var(--line);background:#FBFCFE;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+  .sizebtn.on{border-color:var(--ink)}
+  .sizebtn i{display:block;border-radius:50%;background:var(--ink)}
+
+  .prev-art{width:100%;border:2px solid var(--line);border-radius:14px;background:#fff;display:block}
+  .hint{
+    margin-top:8px;font-size:14px;background:#FFF4E8;border:1.5px dashed #F39A1E;
+    border-radius:10px;padding:9px 12px;color:#8a5a00;
+  }
+  .hint b{font-size:18px;font-family:'Yusei Magic'}
+  .warn{margin-top:6px;font-size:13px;color:var(--accent);font-weight:700}
+  .step-label{
+    display:inline-block;font-size:12px;font-weight:700;color:#fff;background:var(--ink);
+    border-radius:999px;padding:2px 12px;margin-bottom:8px;
+  }
+
+  /* ---------- 結果 ---------- */
+  .chain-item{position:relative}
+  .chain-item img{width:100%;border:2px solid var(--line);border-radius:14px;background:#fff;display:block}
+  .answer-row{display:flex;align-items:baseline;gap:8px;margin-top:10px;flex-wrap:wrap}
+  .answer-row .who{font-size:14px;color:var(--ink-soft);font-weight:700}
+  .answer-row .word{font-size:27px;font-family:'Yusei Magic'}
+  .judge{margin-top:12px;border-top:2px dashed var(--line);padding-top:12px}
+  .jrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:9px}
+  .jlabel{font-size:16px;font-weight:700;color:var(--ink)}
+  .jval{font-size:23px;font-family:'Yusei Magic';color:var(--ink)}
+  .jmark{font-size:18px;font-weight:700}
+  .jmark.ok{color:var(--ok)}
+  .jmark.ng{color:var(--accent)}
+  .jnote{font-size:14px;color:var(--ink-soft);margin-top:5px}
+  .reveal-lead{font-size:15px;color:var(--ink-soft);margin:2px 0 4px}
+  .mark{font-weight:700}
+  .mark.ok{color:var(--ok)}
+  .mark.ng{color:var(--accent)}
+  .connector{
+    display:flex;flex-direction:column;align-items:center;margin:-4px 0 -4px;position:relative;z-index:1;
+  }
+  .connector .kana{
+    width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-family:'Yusei Magic';font-size:21px;color:#fff;background:var(--ok);
+    box-shadow:var(--shadow);border:3px solid #fff;
+  }
+  .connector.broken .kana{background:var(--accent)}
+  .connector .arrow{font-size:15px;color:var(--ink-soft);line-height:1}
+  .score-banner{text-align:center;padding:6px 0 2px}
+  .score-banner .big{font-size:26px;font-family:'Yusei Magic'}
+  .badge-n{
+    display:inline-block;font-size:12px;font-weight:700;color:#fff;background:var(--accent);
+    border-radius:999px;padding:2px 10px;margin-left:6px;vertical-align:middle;
+  }
+  .hidden{display:none}
+
+  /* ---------- トースト & モーダル（sandbox対応） ---------- */
+  .toast{
+    position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);
+    background:var(--ink);color:#fff;padding:12px 18px;border-radius:12px;
+    font-weight:700;font-size:14px;box-shadow:var(--shadow);
+    opacity:0;pointer-events:none;transition:.25s;z-index:80;max-width:88%;text-align:center;
+  }
+  .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+  .modal{position:fixed;inset:0;background:rgba(34,50,78,.55);display:flex;align-items:center;justify-content:center;padding:18px;z-index:70}
+  .modal .box{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);max-width:520px;width:100%;max-height:90vh;overflow:auto;padding:20px}
+  .modal .box h2{font-size:19px;margin-bottom:8px}
+  .modal .box p{font-size:14px;color:var(--ink-soft)}
+  .modal .box img{width:100%;border:2px solid var(--line);border-radius:12px;display:block;margin:12px 0}
+  .modal .row{display:flex;gap:10px;margin-top:14px}
+  .modal .row .btn{margin:0}
+  @media (prefers-reduced-motion:no-preference){
+    .card{animation:pop .25s ease}
+    @keyframes pop{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>イラストしりとり</h1>
+    <p>絵だけでつなぐ、伝言しりとり</p>
+  </header>
+
+  <!-- ========== 設定画面 ========== -->
+  <section id="screen-setup">
+    <div class="card">
+      <h2>あそびかた</h2>
+      <p style="font-size:14px;color:var(--ink-soft)">
+        最初の人が絵と答えをかきます。次の人は<b style="color:var(--ink)">絵だけ</b>を見て答えを推測し、その最後の文字につながる絵をかきます。答えは最後にまとめて発表！
+      </p>
+    </div>
+    <div class="card">
+      <h2>ゲーム設定</h2>
+      <label class="field">参加人数</label>
+      <div class="seg" id="seg-players"></div>
+      <label class="field">くりかえす回数（全員が描く周回数）</label>
+      <div class="seg" id="seg-laps"></div>
+      <div id="nick-area"></div>
+      <div style="margin-top:20px">
+        <button class="btn" id="btn-start">ゲームをはじめる</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 手渡し画面 ========== -->
+  <section id="screen-handoff" class="hidden">
+    <div class="card handoff">
+      <span class="phone">📱</span>
+      <div class="turnno" id="handoff-turn"></div>
+      <div class="name display" id="handoff-name"></div>
+      <div class="sub">さんに端末をわたしてください<br>（ほかの人は見ないでね）</div>
+      <button class="btn accent" id="btn-ready">じゅんびOK！</button>
+    </div>
+  </section>
+
+  <!-- ========== ターン画面 ========== -->
+  <section id="screen-turn" class="hidden">
+    <div class="card" id="guess-card">
+      <span class="step-label">STEP 1</span>
+      <h2>前の絵はなんでしょう？</h2>
+      <img class="prev-art" id="prev-art" alt="前の人のイラスト">
+      <label class="field">この絵の答え（推測して入力）</label>
+      <input type="text" id="input-guess" placeholder="例：りんご" autocomplete="off">
+      <div class="hint hidden" id="guess-hint"></div>
+    </div>
+
+    <div class="card">
+      <span class="step-label" id="draw-step">STEP 2</span>
+      <h2 id="draw-title">イラストをかこう</h2>
+      <div class="canvas-box"><canvas id="canvas" width="800" height="800"></canvas></div>
+      <div class="tools">
+        <div class="colors" id="colors"></div>
+      </div>
+      <div class="tools">
+        <div class="sizes" id="sizes"></div>
+        <button class="tbtn" id="btn-lock">🔓 画面を固定</button>
+        <button class="tbtn" id="btn-eraser">けしゴム</button>
+        <button class="tbtn" id="btn-undo">もどす</button>
+        <button class="tbtn" id="btn-clear">全部けす</button>
+      </div>
+      <label class="field">かいた絵の答え</label>
+      <input type="text" id="input-answer" placeholder="ひらがな・カタカナで入力" autocomplete="off">
+      <div class="warn hidden" id="answer-warn"></div>
+      <div style="margin-top:16px">
+        <button class="btn" id="btn-submit">これでかんせい！</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 最後の答え合わせ画面 ========== -->
+  <section id="screen-closing" class="hidden">
+    <div class="card">
+      <span class="step-label">さいごの答え合わせ</span>
+      <h2>この絵はなんでしょう？</h2>
+      <p style="font-size:14px;color:var(--ink-soft);margin-bottom:4px">
+        最初に出題した <b id="closing-who" style="color:var(--ink)"></b> さん、いちばん最後の絵が何かを当てて、ゲームをしめくくってください。
+      </p>
+      <img class="prev-art" id="closing-art" alt="最後のイラスト">
+      <label class="field">この絵の答え（絵の説明）</label>
+      <input type="text" id="closing-guess" placeholder="例：りんご" autocomplete="off">
+      <div style="margin-top:16px">
+        <button class="btn accent" id="btn-closing">完了！けっかを見る</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 結果画面 ========== -->
+  <section id="screen-result" class="hidden">
+    <div class="card score-banner">
+      <h2>けっか発表！</h2>
+      <div class="big" id="score-text"></div>
+      <div style="font-size:13px;color:var(--ink-soft)" id="score-sub"></div>
+    </div>
+    <div id="result-chain"></div>
+    <button class="btn accent" id="btn-save" style="margin-bottom:10px">🖼 みんなの絵を保存する</button>
+    <button class="btn" id="btn-again">もういちど遊ぶ</button>
+  </section>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+/* ===================== 状態 ===================== */
+const COLORS = ["#1A1A1A","#E0312D","#2456C9","#2E9E4F","#F39A1E","#8B49C6","#8A5A2B","#F06CA8","#45B8E0","#F2D027"];
+const SIZES = [4,9,18];
+let playerCount = 3, laps = 1, players = [];
+let turns = [];           // {player, drawing, answer, guess}
+let current = 0;          // 現在のターン番号（0始まり）
+let totalTurns = 0;
+let closing = false;      // 最後の答え合わせフェーズ中か
+let finalReveal = null;   // {player, guess} 最後の絵に対する最初の人の推測
+let scrollLocked = false, lockedScrollY = 0;
+
+const $ = id => document.getElementById(id);
+function show(id){
+  if(scrollLocked && id!=="screen-turn") setLock(false);  // 画面切替時は固定を自動解除
+  ["screen-setup","screen-handoff","screen-turn","screen-closing","screen-result"].forEach(s=>$(s).classList.toggle("hidden", s!==id));
+  window.scrollTo(0,0);
+}
+
+/* ---- スクロール固定（描画中に画面が動かないように） ---- */
+function setLock(on){
+  if(on===scrollLocked) return;
+  scrollLocked=on;
+  const b=$("btn-lock");
+  if(on){
+    lockedScrollY=window.scrollY;
+    document.body.style.position="fixed";
+    document.body.style.top=`-${lockedScrollY}px`;
+    document.body.style.left="0";
+    document.body.style.right="0";
+    document.body.style.width="100%";
+    if(b){ b.classList.add("on"); b.textContent="🔒 固定中（解除）"; }
+    toast("画面を固定しました");
+  }else{
+    document.body.style.position="";
+    document.body.style.top="";
+    document.body.style.left="";
+    document.body.style.right="";
+    document.body.style.width="";
+    window.scrollTo(0,lockedScrollY);
+    if(b){ b.classList.remove("on"); b.textContent="🔓 画面を固定"; }
+  }
+}
+
+/* ---- sandbox でも動く 通知 / 確認 ---- */
+function toast(msg){
+  const t=$("toast"); t.textContent=msg; t.classList.add("on");
+  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("on"),2200);
+}
+function askConfirm(msg){
+  return new Promise(res=>{
+    const m=document.createElement("div"); m.className="modal";
+    m.innerHTML=`<div class="box">
+      <h2>確認</h2><p>${msg}</p>
+      <div class="row">
+        <button class="btn ghost" data-no style="border:2px solid var(--line)">やめる</button>
+        <button class="btn accent" data-yes>はい</button>
+      </div></div>`;
+    document.body.appendChild(m);
+    const done=v=>{ m.remove(); res(v); };
+    m.querySelector("[data-yes]").onclick=()=>done(true);
+    m.querySelector("[data-no]").onclick=()=>done(false);
+    m.onclick=e=>{ if(e.target===m) done(false); };
+  });
+}
+
+/* ===================== 日本語正規化（しりとり判定） ===================== */
+function toHira(s){ return s.replace(/[\u30A1-\u30F6]/g, c=>String.fromCharCode(c.charCodeAt(0)-0x60)); }
+const SMALL = {"ぁ":"あ","ぃ":"い","ぅ":"う","ぇ":"え","ぉ":"お","ゃ":"や","ゅ":"ゆ","ょ":"よ","っ":"つ","ゎ":"わ"};
+const isKana = c => /[ぁ-ゖ]/.test(c);
+function lastKana(word){
+  const s = toHira((word||"").trim());
+  for(let i=s.length-1;i>=0;i--){
+    const c=s[i];
+    if(c==="ー"||c==="〜") continue;      // 長音は1つ前の文字を使う
+    if(isKana(c)) return SMALL[c]||c;
+  }
+  return "";
+}
+function firstKana(word){
+  const s = toHira((word||"").trim());
+  for(const c of s){ if(isKana(c)) return SMALL[c]||c; }
+  return "";
+}
+const norm = w => toHira((w||"").trim()).replace(/\s+/g,"");
+const endsWithN = w => lastKana(w)==="ん";
+
+/* ===================== 設定画面 ===================== */
+function buildSeg(el, values, selected, onPick){
+  el.innerHTML="";
+  values.forEach(v=>{
+    const b=document.createElement("button");
+    b.textContent=v;
+    if(v===selected) b.classList.add("on");
+    b.onclick=()=>{ [...el.children].forEach(c=>c.classList.remove("on")); b.classList.add("on"); onPick(v); };
+    el.appendChild(b);
+  });
+}
+function buildNicks(){
+  const area=$("nick-area");
+  area.innerHTML="";
+  for(let i=0;i<playerCount;i++){
+    const lab=document.createElement("label");
+    lab.className="field"; lab.textContent=`${i+1}人目のニックネーム`;
+    const inp=document.createElement("input");
+    inp.type="text"; inp.maxLength=10; inp.placeholder=`プレイヤー${i+1}`;
+    inp.dataset.idx=i; inp.autocomplete="off";
+    area.appendChild(lab); area.appendChild(inp);
+  }
+}
+buildSeg($("seg-players"), [2,3,4,5,6], playerCount, v=>{playerCount=v; buildNicks();});
+buildSeg($("seg-laps"), [1,2,3,4,5], laps, v=>laps=v);
+buildNicks();
+
+$("btn-start").onclick = ()=>{
+  players=[];
+  document.querySelectorAll("#nick-area input").forEach((inp,i)=>{
+    players.push(inp.value.trim() || `プレイヤー${i+1}`);
+  });
+  turns=[]; current=0; closing=false; finalReveal=null; totalTurns=playerCount*laps;
+  gotoHandoff();
+};
+
+/* ===================== 手渡し画面 ===================== */
+function gotoHandoff(){
+  closing=false;
+  const p = players[current % players.length];
+  $("handoff-turn").textContent = `ターン ${current+1} / ${totalTurns}`;
+  $("handoff-name").textContent = p;
+  show("screen-handoff");
+}
+function gotoClosingHandoff(){
+  closing=true;
+  $("handoff-turn").textContent = "さいごの答え合わせ";
+  $("handoff-name").textContent = players[0];
+  show("screen-handoff");
+}
+$("btn-ready").onclick = ()=> closing ? startClosing() : startTurn();
+
+/* ===================== お絵かきキャンバス ===================== */
+const canvas=$("canvas"), ctx=canvas.getContext("2d");
+let strokes=[], drawing=false, curStroke=null;
+let penColor=COLORS[0], penSize=SIZES[1], eraser=false;
+
+function repaint(){
+  ctx.fillStyle="#fff"; ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.lineCap="round"; ctx.lineJoin="round";
+  for(const s of strokes){
+    ctx.strokeStyle = s.erase ? "#ffffff" : s.color;
+    ctx.lineWidth = s.size;
+    ctx.beginPath();
+    s.pts.forEach((p,i)=> i? ctx.lineTo(p[0],p[1]) : ctx.moveTo(p[0],p[1]));
+    if(s.pts.length===1){ // 点
+      ctx.lineTo(s.pts[0][0]+0.1, s.pts[0][1]+0.1);
+    }
+    ctx.stroke();
+  }
+}
+function pos(e){
+  const r=canvas.getBoundingClientRect();
+  return [(e.clientX-r.left)*canvas.width/r.width, (e.clientY-r.top)*canvas.height/r.height];
+}
+canvas.addEventListener("pointerdown", e=>{
+  e.preventDefault();
+  canvas.setPointerCapture(e.pointerId);
+  drawing=true;
+  curStroke={color:penColor, size:eraser?penSize*2.5:penSize, erase:eraser, pts:[pos(e)]};
+  strokes.push(curStroke); repaint();
+});
+canvas.addEventListener("pointermove", e=>{
+  if(!drawing) return;
+  e.preventDefault();
+  curStroke.pts.push(pos(e)); repaint();
+});
+["pointerup","pointercancel"].forEach(ev=>canvas.addEventListener(ev, ()=>{drawing=false; curStroke=null;}));
+
+function buildColors(){
+  const box=$("colors"); box.innerHTML="";
+  COLORS.forEach(c=>{
+    const b=document.createElement("button");
+    b.className="swatch"; b.style.background=c;
+    b.setAttribute("aria-label","ペンの色 "+c);
+    if(c===penColor && !eraser) b.classList.add("on");
+    b.onclick=()=>{ penColor=c; eraser=false; refreshTools(); };
+    box.appendChild(b);
+  });
+}
+function buildSizes(){
+  const box=$("sizes"); box.innerHTML="";
+  SIZES.forEach(s=>{
+    const b=document.createElement("button");
+    b.className="sizebtn"; if(s===penSize) b.classList.add("on");
+    const dot=document.createElement("i");
+    const d=Math.max(5, s*0.9); dot.style.width=d+"px"; dot.style.height=d+"px";
+    b.appendChild(dot);
+    b.setAttribute("aria-label","太さ "+s);
+    b.onclick=()=>{ penSize=s; refreshTools(); };
+    box.appendChild(b);
+  });
+}
+function refreshTools(){
+  buildColors(); buildSizes();
+  $("btn-eraser").classList.toggle("on", eraser);
+}
+$("btn-lock").onclick=()=> setLock(!scrollLocked);
+$("btn-eraser").onclick=()=>{ eraser=!eraser; refreshTools(); };
+$("btn-undo").onclick=()=>{ strokes.pop(); repaint(); };
+$("btn-clear").onclick=async ()=>{ if(strokes.length===0) return; if(await askConfirm("かいた絵を全部けしますか？")){ strokes=[]; repaint(); toast("全部けしました"); } };
+refreshTools(); repaint();
+
+/* ===================== ターン画面 ===================== */
+function startTurn(){
+  setLock(false);
+  strokes=[]; eraser=false; penColor=COLORS[0]; penSize=SIZES[1];
+  refreshTools(); repaint();
+  $("input-guess").value=""; $("input-answer").value="";
+  $("guess-hint").classList.add("hidden");
+  $("answer-warn").classList.add("hidden");
+
+  const isFirst = current===0;
+  $("guess-card").classList.toggle("hidden", isFirst);
+  $("draw-step").textContent = isFirst ? "STEP 1" : "STEP 2";
+  $("draw-title").textContent = isFirst ? "さいしょのお題をかこう" : "つながる絵をかこう";
+  if(!isFirst) $("prev-art").src = turns[current-1].drawing;
+  show("screen-turn");
+}
+
+/* ---- 入力をひらがな・カタカナのみに制限（IME変換確定後にフィルタ） ---- */
+const KANA_OK = /[\u3040-\u30FF]/;                 // ひらがな・カタカナ両ブロック（ー・小書きを含む）
+const KANA_NG = /[^\u3040-\u30FF]/g;               // それ以外（漢字・英数字・記号）
+function filterKana(el){
+  const cleaned = el.value.replace(KANA_NG, "");
+  if(cleaned !== el.value){
+    const had = el.value.trim().length>0;
+    el.value = cleaned;
+    if(had && cleaned.length===0) toast("ひらがな・カタカナで入力してね");
+    else if(had) toast("漢字・英数字は使えません");
+  }
+}
+function restrictKana(el, after){
+  let composing=false;
+  el.addEventListener("compositionstart", ()=> composing=true);
+  el.addEventListener("compositionend", ()=>{ composing=false; filterKana(el); if(after) after(); });
+  el.addEventListener("input", e=>{
+    if(composing || e.isComposing) return;          // 変換中は触らない
+    filterKana(el);
+    if(after) after();
+  });
+}
+
+function onGuessInput(){
+  const k = lastKana($("input-guess").value);
+  const hint=$("guess-hint");
+  if(k && k!=="ん"){
+    hint.innerHTML = `つぎは <b>「${k}」</b> からはじまる絵をかこう！`;
+    hint.classList.remove("hidden");
+  }else if(k==="ん"){
+    hint.innerHTML = `「ん」でおわる推測…！？ ほんとうにそれでいい？`;
+    hint.classList.remove("hidden");
+  }else{
+    hint.classList.add("hidden");
+  }
+  validateAnswer();
+}
+restrictKana($("input-guess"), onGuessInput);
+restrictKana($("input-answer"), validateAnswer);
+
+function validateAnswer(){
+  const warn=$("answer-warn");
+  const ans=$("input-answer").value;
+  warn.classList.add("hidden");
+  if(!ans.trim()) return;
+  if(current>0){
+    const need=lastKana($("input-guess").value);
+    const got=firstKana(ans);
+    if(need && got && need!==got){
+      warn.textContent=`⚠ 「${need}」からはじまっていないかも（いまは「${got}」）`;
+      warn.classList.remove("hidden");
+      return;
+    }
+  }
+  if(endsWithN(ans)){
+    warn.textContent="⚠ 「ん」でおわると、つぎの人がこまっちゃう！";
+    warn.classList.remove("hidden");
+  }
+}
+
+$("btn-submit").onclick=()=>{
+  const isFirst = current===0;
+  const guess=$("input-guess").value.trim();
+  const answer=$("input-answer").value.trim();
+  if(!isFirst && !guess){ toast("前の絵の答えを推測して入力してね"); $("input-guess").focus(); return; }
+  if(!answer){ toast("かいた絵の答えを入力してね"); $("input-answer").focus(); return; }
+  if(strokes.length===0){ toast("イラストをかいてね"); return; }
+
+  // 白背景つきで保存
+  repaint();
+  turns.push({
+    player: players[current % players.length],
+    drawing: canvas.toDataURL("image/png"),
+    answer, guess: isFirst ? null : guess
+  });
+  current++;
+  if(current >= totalTurns) gotoClosingHandoff();
+  else gotoHandoff();
+};
+
+/* ===================== 最後の答え合わせ ===================== */
+function startClosing(){
+  const last = turns[turns.length-1];
+  $("closing-who").textContent = players[0];
+  $("closing-art").src = last.drawing;
+  $("closing-guess").value = "";
+  show("screen-closing");
+}
+$("btn-closing").onclick = ()=>{
+  const g = $("closing-guess").value.trim();
+  if(!g){ toast("最後の絵の答えを入力してね"); $("closing-guess").focus(); return; }
+  finalReveal = { player: players[0], guess: g };
+  closing = false;
+  showResult();
+};
+restrictKana($("closing-guess"));
+
+/* ===================== 結果画面 ===================== */
+function esc(s){ return s.replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+function showResult(){
+  const box=$("result-chain"); box.innerHTML="";
+  let guessOK=0, linkOK=0;
+  const links = turns.length-1;
+  turns.forEach((t,i)=>{
+    // つなぎ（i>=1）：前ターンの推測結果 ＋ しりとり接続
+    if(i>0){
+      const prev=turns[i-1];
+      const correct = norm(t.guess)===norm(prev.answer);
+      const need=lastKana(t.guess), got=firstKana(t.answer);
+      const connected = need!=="" && need===got;
+      if(correct) guessOK++;
+      if(connected) linkOK++;
+
+      const conn=document.createElement("div");
+      conn.className="connector"+(connected?"":" broken");
+      conn.innerHTML=`<div class="arrow">▼</div><div class="kana">${esc(need||"？")}</div><div class="arrow">▼</div>`;
+      box.appendChild(conn);
+
+      const card=document.createElement("div");
+      card.className="card chain-item";
+      card.innerHTML=`
+        <div class="answer-row"><span class="who">${esc(t.player)} がかいた絵</span></div>
+        <img src="${t.drawing}" alt="${esc(t.player)}のイラスト">
+        <div class="answer-row">
+          <span class="who">こたえ</span><span class="word">${esc(t.answer)}</span>
+          ${endsWithN(t.answer)?'<span class="badge-n">「ん」でおわった！</span>':""}
+        </div>
+        <div class="judge">
+          <div class="jrow">
+            <span class="jlabel">なんの絵だと思った？</span><span class="jval">「${esc(t.guess)}」</span>
+          </div>
+          <div class="jrow">
+            <span class="jmark ${correct?"ok":"ng"}">${correct?"⭕ あたり！":`❌ ざんねん…ほんとうは「${esc(prev.answer)}」`}</span>
+          </div>
+          <div class="jrow">
+            <span class="jlabel">しりとり、つながった？</span>
+            <span class="jmark ${connected?"ok":"ng"}">${connected?`⭕ 「${esc(need)}」でつながった！`:"❌ つながらなかった…"}</span>
+          </div>
+          ${connected?"":`<div class="jnote">「${esc(need)}」からはじめたかったけど、「${esc(got||"？")}」になっちゃった</div>`}
+        </div>`;
+      box.appendChild(card);
+    }else{
+      const card=document.createElement("div");
+      card.className="card chain-item";
+      card.innerHTML=`
+        <div class="answer-row"><span class="who">${esc(t.player)} がかいた さいしょの絵</span></div>
+        <img src="${t.drawing}" alt="${esc(t.player)}のイラスト">
+        <div class="answer-row">
+          <span class="who">こたえ</span><span class="word">${esc(t.answer)}</span>
+          ${endsWithN(t.answer)?'<span class="badge-n">「ん」でおわった！</span>':""}
+        </div>`;
+      box.appendChild(card);
+    }
+  });
+
+  // ---- 最後の絵に対する「最初の人」の答え合わせ ----
+  let finalOK=false;
+  if(finalReveal){
+    const last=turns[turns.length-1];
+    finalOK = norm(finalReveal.guess)===norm(last.answer);
+    const card=document.createElement("div");
+    card.className="card chain-item";
+    card.style.borderTop="4px solid var(--accent)";
+    card.innerHTML=`
+      <div class="answer-row"><span class="who">さいごの絵あてっこ</span></div>
+      <p class="reveal-lead">${esc(finalReveal.player)} さんが、いちばん最後の絵をあてるよ</p>
+      <div class="judge" style="border-top:none;padding-top:2px">
+        <div class="jrow">
+          <span class="jlabel">なんの絵だと思った？</span><span class="jval">「${esc(finalReveal.guess)}」</span>
+        </div>
+        <div class="jrow">
+          <span class="jmark ${finalOK?"ok":"ng"}">${finalOK?"⭕ あたり！":`❌ ざんねん…ほんとうは「${esc(turns[turns.length-1].answer)}」`}</span>
+        </div>
+      </div>`;
+    box.appendChild(card);
+  }
+
+  // ---- スコア（推測は finalReveal を含めて全 drawing が対象） ----
+  const totalGuess = links + (finalReveal?1:0);
+  const guessTotalOK = guessOK + (finalOK?1:0);
+
+  $("score-text").textContent = totalGuess>0
+    ? `あてっこ ${guessTotalOK}/${totalGuess}こ ・ しりとり ${linkOK}/${links}こ`
+    : "おつかれさま！";
+  $("score-sub").textContent = (totalGuess>0 && guessTotalOK===totalGuess && linkOK===links)
+    ? "パーフェクト！みんなの心がひとつになった！"
+    : "ズレたところがこのゲームのいちばんおもしろいところ！";
+  show("screen-result");
+}
+
+$("btn-again").onclick=()=>{ turns=[]; current=0; closing=false; finalReveal=null; show("screen-setup"); };
+
+/* ===================== 保存画像の生成 ===================== */
+function rrect(c,x,y,w,h,r){
+  c.beginPath();
+  c.moveTo(x+r,y);
+  c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r);
+  c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r);
+  c.closePath();
+}
+function loadImg(src){ return new Promise(res=>{ const im=new Image(); im.onload=()=>res(im); im.src=src; }); }
+
+async function buildSaveImage(){
+  // フォント読み込みを保証（アプリと同じ書体で描画するため）
+  try{ await document.fonts.load('40px "Yusei Magic"');
+       await document.fonts.load('700 20px "Zen Maru Gothic"');
+       await document.fonts.ready; }catch(e){}
+
+  const imgs = await Promise.all(turns.map(t=>loadImg(t.drawing)));
+
+  // ---- レイアウト定数（アプリのトークンと対応） ----
+  const PAPER="#EDF1F7", CARD="#FFFFFF", INK="#22324E", SOFT="#6B7A95",
+        ACCENT="#E0312D", OK="#2E9E4F", LINE="#D5DCE8";
+  const W=840, PAD=30, GAP=20, COLS=2;
+  const cardW=(W-PAD*2-GAP)/2;          // 380
+  const cardPad=12, imgW=cardW-cardPad*2; // 356
+  const capH=78, cardH=cardPad+imgW+capH;
+  const rows=Math.ceil(turns.length/COLS);
+  const headH=170;
+  const footH=56;
+  const H=headH + rows*cardH + (rows-1)*GAP + PAD + footH;
+
+  const cv=document.createElement("canvas");
+  cv.width=W; cv.height=H;
+  const c=cv.getContext("2d");
+
+  // 背景
+  c.fillStyle=PAPER; c.fillRect(0,0,W,H);
+
+  // ---- ヘッダー：タイトル＋保存年月日 ----
+  c.fillStyle=INK; c.textBaseline="middle";
+  c.font='44px "Yusei Magic","Zen Maru Gothic",sans-serif';
+  c.textAlign="center";
+  c.fillText("イラストしりとり", W/2, 64);
+
+  // 保存年月日
+  const d=new Date();
+  const dateStr=`${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`;
+  c.fillStyle=SOFT; c.textAlign="center";
+  c.font='700 19px "Zen Maru Gothic",sans-serif';
+  c.fillText(`${dateStr} のきろく ・ ${players.join("・")}`, W/2, 116);
+  // 区切り点線
+  c.strokeStyle=LINE; c.lineWidth=2; c.setLineDash([6,6]);
+  c.beginPath(); c.moveTo(PAD,142); c.lineTo(W-PAD,142); c.stroke();
+  c.setLineDash([]);
+
+  // ---- 各イラストカード ----
+  turns.forEach((t,i)=>{
+    const col=i%COLS, row=Math.floor(i/COLS);
+    const x=PAD+col*(cardW+GAP);
+    const y=headH+row*(cardH+GAP);
+
+    // カード（影つき白角丸）
+    c.save();
+    c.shadowColor="rgba(34,50,78,.12)"; c.shadowBlur=12; c.shadowOffsetY=4;
+    c.fillStyle=CARD; rrect(c,x,y,cardW,cardH,18); c.fill();
+    c.restore();
+
+    // イラスト本体（白地・枠つき角丸でクリップ）
+    const ix=x+cardPad, iy=y+cardPad;
+    c.save(); rrect(c,ix,iy,imgW,imgW,12); c.clip();
+    c.fillStyle="#fff"; c.fillRect(ix,iy,imgW,imgW);
+    c.drawImage(imgs[i], ix, iy, imgW, imgW);
+    c.restore();
+    c.strokeStyle=LINE; c.lineWidth=2; rrect(c,ix,iy,imgW,imgW,12); c.stroke();
+
+    // 順番バッジ（しりとり接続の成否で色分け：先頭はインク色）
+    let badge=INK;
+    if(i>0){
+      const need=lastKana(t.guess), got=firstKana(t.answer);
+      badge=(need && need===got) ? OK : ACCENT;
+    }
+    c.fillStyle=badge;
+    c.beginPath(); c.arc(ix+22, iy+22, 18, 0, Math.PI*2); c.fill();
+    c.fillStyle="#fff"; c.textAlign="center";
+    c.font='700 18px "Zen Maru Gothic",sans-serif';
+    c.fillText(String(i+1), ix+22, iy+24);
+
+    // キャプション：名前＋答え
+    c.textAlign="left";
+    c.fillStyle=SOFT; c.font='700 16px "Zen Maru Gothic",sans-serif';
+    c.fillText(t.player, ix, iy+imgW+26, imgW);
+    c.fillStyle=INK; c.font='27px "Yusei Magic","Zen Maru Gothic",sans-serif';
+    c.fillText(t.answer, ix, iy+imgW+56, imgW);
+  });
+
+  // ---- フッター ----
+  c.fillStyle=SOFT; c.textAlign="center";
+  c.font='700 15px "Zen Maru Gothic",sans-serif';
+  c.fillText("イラストしりとり ─ 絵だけでつなぐ、伝言しりとり", W/2, H-26);
+
+  return cv.toDataURL("image/png");
+}
+
+$("btn-save").onclick=async ()=>{
+  const btn=$("btn-save");
+  btn.disabled=true; btn.textContent="作成中…";
+  let url;
+  try{ url=await buildSaveImage(); }
+  catch(e){ toast("画像の作成に失敗しました"); btn.disabled=false; btn.textContent="🖼 みんなの絵を保存する"; return; }
+  btn.disabled=false; btn.textContent="🖼 みんなの絵を保存する";
+
+  const d=new Date(), pad=n=>String(n).padStart(2,"0");
+  const fname=`illust-shiritori_${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}.png`;
+
+  // ダウンロードを試みる（標準環境ではこれで保存される）
+  let dlTried=false;
+  try{
+    const a=document.createElement("a");
+    a.href=url; a.download=fname;
+    document.body.appendChild(a); a.click(); a.remove();
+    dlTried=true;
+  }catch(e){}
+
+  // どの環境でも確実に保存できるよう、画像をモーダル表示（長押し/右クリックで保存）
+  const m=document.createElement("div"); m.className="modal";
+  m.innerHTML=`<div class="box">
+    <h2>みんなの絵がかんせい！</h2>
+    <p>下の画像を<b>長押し</b>（パソコンは<b>右クリック</b>）して「画像を保存」を選んでください。${dlTried?"<br>自動ダウンロードも試みました。":""}</p>
+    <img src="${url}" alt="みんなの絵">
+    <div class="row">
+      <button class="btn ghost" data-close style="border:2px solid var(--line)">とじる</button>
+      <a class="btn accent" href="${url}" download="${fname}" data-dl>もういちど保存</a>
+    </div></div>`;
+  document.body.appendChild(m);
+  m.querySelector("[data-close]").onclick=()=>m.remove();
+  m.onclick=e=>{ if(e.target===m) m.remove(); };
+};
+</script>
+</body>
+</html>
