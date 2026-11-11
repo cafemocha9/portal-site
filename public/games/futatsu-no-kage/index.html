@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>ふたつの影</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kaisei+Tokumin:wght@800&family=BIZ+UDPGothic:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* layout: one screen. title strip / lit screen with sculpture and its shadow / two target cards. Single night theme by choice. */
+:root{
+  color-scheme: dark;
+  --yoru:#10162a;     /* night: the room */
+  --men:#1b2440;      /* raised surface */
+  --kabe:#dfe8ee;     /* the lit screen, and text */
+  --kage:#1a2140;     /* shadow ink */
+  --shinchu:#e0a84a;  /* brass: the sculpture, and every "found" state */
+  --dim:rgba(223,232,238,.62);
+  --line:rgba(223,232,238,.16);
+  --display:"Kaisei Tokumin","Hiragino Mincho ProN","Yu Mincho",serif;
+  --body:"BIZ UDPGothic","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{background:var(--yoru);color:var(--kabe);font-family:var(--body);display:flex;flex-direction:column;overflow:hidden;
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-action:manipulation}
+button:focus-visible{outline:2px solid var(--shinchu);outline-offset:2px}
+
+header{display:flex;align-items:center;gap:12px;padding:10px 16px}
+h1{font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:.06em;white-space:nowrap}
+nav{margin-left:auto;display:flex;align-items:center;gap:4px;font-size:13px;color:var(--dim)}
+nav b{color:var(--kabe);font-family:var(--display);font-size:15px;margin-left:6px}
+nav button{width:36px;height:36px;border-radius:50%;font-size:20px;line-height:1;color:var(--kabe)}
+nav button:disabled{opacity:.25;cursor:default}
+#sname{min-width:7.5em;text-align:center;white-space:nowrap}
+
+#stage{position:relative;flex:1;min-height:0}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;outline:none}
+#toast{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);padding:7px 16px;border-radius:999px;background:var(--shinchu);color:var(--yoru);
+  font-weight:700;font-size:14px;white-space:nowrap;opacity:0;transition:opacity .3s;pointer-events:none}
+#toast.on{opacity:1}
+
+footer{display:grid;gap:10px;padding:10px 16px 14px}
+#cards{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.card{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;background:var(--men);border:1px solid transparent;min-width:0}
+.card svg{width:52px;height:52px;flex:none}
+.card rect{fill:rgba(223,232,238,.07)}
+.card rect.on{fill:var(--kabe)}
+.card .meta{display:grid;gap:6px;flex:1;min-width:0}
+.card .top{display:flex;justify-content:space-between;align-items:baseline;gap:6px;font-size:13px}
+.card .top b{font-family:var(--display);font-size:15px;white-space:nowrap}
+.card .top span{color:var(--dim);font-size:12px;white-space:nowrap}
+.bar{height:4px;border-radius:2px;background:rgba(223,232,238,.12);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--kabe);border-radius:2px}
+.card.found{border-color:var(--shinchu)}
+.card.found rect.on,.card.found .bar i{fill:var(--shinchu);background:var(--shinchu)}
+.card.found .top span{color:var(--shinchu);font-weight:700}
+#low{display:flex;align-items:center;gap:12px;min-height:44px}
+#hint{flex:1;font-size:13px;line-height:1.55;color:var(--dim)}
+#adv{display:none;flex:none;padding:11px 18px;border-radius:6px;background:var(--shinchu);color:var(--yoru);font-weight:700;font-size:15px}
+#adv.on{display:block}
+@media (min-width:720px){footer{grid-template-columns:minmax(0,420px) 1fr;align-items:center;gap:20px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>ふたつの影</h1>
+  <nav aria-label="作品の切り替え">
+    <button id="prev" type="button" aria-label="前の作品">‹</button>
+    <span id="sname"></span>
+    <button id="next" type="button" aria-label="次の作品">›</button>
+  </nav>
+</header>
+
+<main id="stage">
+  <canvas id="cv" tabindex="0" aria-label="彫刻。ドラッグまたは矢印キーで回す"></canvas>
+  <div id="toast" role="status"></div>
+</main>
+
+<footer>
+  <div id="cards">
+    <div class="card" id="c0"><svg viewBox="0 0 7 7" aria-hidden="true"></svg><div class="meta"><div class="top"><b>影 一</b><span></span></div><div class="bar"><i></i></div></div></div>
+    <div class="card" id="c1"><svg viewBox="0 0 7 7" aria-hidden="true"></svg><div class="meta"><div class="top"><b>影 二</b><span></span></div><div class="bar"><i></i></div></div></div>
+  </div>
+  <div id="low"><p id="hint"></p><button id="adv" type="button">次の作品へ</button></div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+if(!window.THREE){$('hint').textContent='3D描画ライブラリを読み込めませんでした。通信状態を確認して開き直してください。';return;}
+
+/* ---------- the works: each sculpture is carved from two 7x7 silhouettes ---------- */
+const N=7,CELL=.5,SNAP=.17;
+const STAGES=[
+ {name:'零と一',full:true,
+  a:['.#####.','##...##','##...##','##...##','##...##','##...##','.#####.'],
+  b:['...##..','..###..','...##..','...##..','...##..','...##..','.######']},
+ {name:'問いと答え',
+  a:['.#####.','##...##','....##.','...##..','...##..','.......','...##..'],
+  b:['...##..','...##..','...##..','...##..','...##..','.......','...##..']},
+ {name:'山と川',
+  a:['...#...','...#...','#..#..#','#..#..#','#..#..#','#..#..#','#######'],
+  b:['.#.#..#','.#.#..#','.#.#..#','.#.#..#','.#.#..#','#..#..#','#.....#']},
+ {name:'日と月',
+  a:['#######','#.....#','#.....#','#######','#.....#','#.....#','#######'],
+  b:['..#####','..#...#','..#####','..#...#','..#####','.#....#','#...###']},
+ {name:'人とAI',
+  a:['...#...','...#...','...#...','..#.#..','..#.#..','.#...#.','#.....#'],
+  b:['.#..###','#.#..#.','#.#..#.','###..#.','#.#..#.','#.#..#.','#.#.###']}
+];
+function rng(seed){let a=seed>>>0;return()=>{a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function shuffle(arr,r){for(let i=arr.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}return arr;}
+/* A voxel sits at (x,row,z) only where silhouette A has x and silhouette B has z in that row.
+   The thinned version keeps the fewest cubes that still cast both shadows, so it reads as noise from anywhere else. */
+function carve(st,seed){
+  const r=rng(seed),out=[];
+  for(let row=0;row<N;row++){
+    const xs=[],zs=[];
+    for(let c=0;c<N;c++){if(st.a[row][c]==='#')xs.push(c);if(st.b[row][c]==='#')zs.push(c);}
+    if(!xs.length||!zs.length)continue;
+    if(st.full){for(const x of xs)for(const z of zs)out.push([x,row,z]);}
+    else{shuffle(xs,r);shuffle(zs,r);const n=Math.max(xs.length,zs.length);for(let i=0;i<n;i++)out.push([xs[i%xs.length],row,zs[i%zs.length]]);}
+  }
+  return out;
+}
+
+/* ---------- three ---------- */
+const cv=$('cv'),stage=$('stage');
+let renderer;
+try{renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});}
+catch(e){$('hint').textContent='この端末では3D描画（WebGL）を使えませんでした。';return;}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+renderer.outputEncoding=THREE.sRGBEncoding;
+const lin=c=>new THREE.Color(c).convertSRGBToLinear();
+const scene=new THREE.Scene();scene.background=lin(0x10162a);
+const camera=new THREE.PerspectiveCamera(54,1,.1,200);
+camera.position.set(0,7,12);camera.lookAt(0,.46,-7);
+scene.add(new THREE.HemisphereLight(0xfff3dc,0x2a3560,.6));
+const lamp=new THREE.DirectionalLight(0xffffff,.8);lamp.position.set(-4,6,10);scene.add(lamp);
+
+/* the lit screen */
+(function(){
+  const c=document.createElement('canvas');c.width=c.height=512;const g=c.getContext('2d');
+  const gr=g.createRadialGradient(256,256,10,256,256,256);
+  gr.addColorStop(0,'#f1f6f8');gr.addColorStop(.2,'#d6e1e9');gr.addColorStop(.34,'#8496b4');gr.addColorStop(.6,'#2c3a60');gr.addColorStop(1,'#10162a');
+  g.fillStyle=gr;g.fillRect(0,0,512,512);
+  const tex=new THREE.CanvasTexture(c);tex.encoding=THREE.sRGBEncoding;
+  const wall=new THREE.Mesh(new THREE.PlaneGeometry(64,64),new THREE.MeshBasicMaterial({map:tex}));
+  wall.position.set(0,4.5,-7.05);scene.add(wall);
+})();
+
+const sculpt=new THREE.Group();scene.add(sculpt);
+/* the shadow is the same cubes, flattened onto the screen: an exact parallel projection */
+const shRoot=new THREE.Group();shRoot.position.set(0,4.5,-7);shRoot.scale.set(1.4,1.4,.001);scene.add(shRoot);
+const shPivot=new THREE.Group();shRoot.add(shPivot);
+const cubeGeo=new THREE.BoxGeometry(CELL*.9,CELL*.9,CELL*.9),shGeo=new THREE.BoxGeometry(CELL,CELL,CELL);
+const cubeMat=new THREE.MeshStandardMaterial({color:lin(0xe0a84a),flatShading:true,roughness:.5,metalness:.15});
+const shMat=new THREE.MeshBasicMaterial({color:lin(0x1a2140)});
+const INK=lin(0x1a2140),BRASS=lin(0xd8962e);
+let cubes=null,shade=null;
+function buildMeshes(cells){
+  if(cubes){sculpt.remove(cubes);shPivot.remove(shade);cubes.dispose&&cubes.dispose();shade.dispose&&shade.dispose();}
+  cubes=new THREE.InstancedMesh(cubeGeo,cubeMat,cells.length);shade=new THREE.InstancedMesh(shGeo,shMat,cells.length);
+  cubes.frustumCulled=shade.frustumCulled=false;
+  const m=new THREE.Matrix4(),h=(N-1)/2;
+  cells.forEach((c,i)=>{m.makeTranslation((c[0]-h)*CELL,(h-c[1])*CELL,(c[2]-h)*CELL);cubes.setMatrixAt(i,m);shade.setMatrixAt(i,m);});
+  cubes.instanceMatrix.needsUpdate=shade.instanceMatrix.needsUpdate=true;
+  sculpt.add(cubes);shPivot.add(shade);
+}
+
+/* ---------- state ---------- */
+const X=new THREE.Vector3(1,0,0),Y=new THREE.Vector3(0,1,0),Z=new THREE.Vector3(0,0,1);
+const QT=[new THREE.Quaternion(),new THREE.Quaternion().setFromAxisAngle(Y,Math.PI/2)];
+const q=new THREE.Quaternion(),dq=new THREE.Quaternion();
+let si=0,prog=STAGES.map(()=>[false,false]),anim=null,hold=0,swing=false,swingT=0,flashT=0,intro=1;
+const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+const coarse=window.matchMedia&&matchMedia('(pointer: coarse)').matches;
+const angTo=t=>2*Math.acos(Math.min(1,Math.abs(q.dot(t))));
+const both=()=>prog[si][0]&&prog[si][1];
+const allDone=()=>prog.every(p=>p[0]&&p[1]);
+
+function scramble(i){
+  if(i===0){q.setFromAxisAngle(Y,.75);dq.setFromAxisAngle(X,.32);q.premultiply(dq);return;}
+  const r=rng(977*i+5);
+  for(let n=0;n<40;n++){
+    const u=r(),v=r()*6.2832,w=r()*6.2832;
+    q.set(Math.sqrt(1-u)*Math.sin(v),Math.sqrt(1-u)*Math.cos(v),Math.sqrt(u)*Math.sin(w),Math.sqrt(u)*Math.cos(w));
+    if(angTo(QT[0])>.95&&angTo(QT[1])>.95)break;
+  }
+}
+function load(i,keep){
+  si=i;buildMeshes(carve(STAGES[i],31*i+7));
+  if(!keep)scramble(i);
+  anim=null;hold=0;flashT=0;intro=reduce?1:0;swing=both();swingT=0;
+  [0,1].forEach(k=>{
+    const src=k?STAGES[i].b:STAGES[i].a;let s='';
+    for(let r=0;r<N;r++)for(let c=0;c<N;c++)s+='<rect x="'+(c+.05)+'" y="'+(r+.05)+'" width=".9" height=".9" rx=".12"'+(src[r][c]==='#'?' class="on"':'')+'/>';
+    $('c'+k).querySelector('svg').innerHTML=s;
+  });
+  ui();
+}
+
+/* ---------- UI ---------- */
+let toastT=0;
+function toast(s){const el=$('toast');el.textContent=s;el.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('on'),1700);}
+function ui(){
+  $('sname').innerHTML='作品 '+(si+1)+'/'+STAGES.length+'<b>'+STAGES[si].name+'</b>';
+  $('prev').disabled=si===0;$('next').disabled=si===STAGES.length-1;
+  [0,1].forEach(k=>{const c=$('c'+k),f=prog[si][k];c.classList.toggle('found',f);c.querySelector('.top span').textContent=f?'発見':'探索中';if(f)c.querySelector('.bar i').style.width='100%';});
+  const n=prog[si][0]+prog[si][1],last=si===STAGES.length-1;
+  $('adv').classList.toggle('on',n===2&&!last);
+  $('hint').textContent=
+    n===2?(allDone()?'全五作を読み解いた。同じ彫刻が、向きだけで別の意味になる。':'二つとも見つけた。同じ彫刻が、向きだけで別の意味になる。'):
+    n===1?'もう一つの影は、まったく別の向きに隠れている。':
+    (coarse?'一本指で回す。二本指でひねる。':'ドラッグで回す。ホイールでひねる。')+'壁の影が手本と重なる向きを二つ探す。';
+}
+$('prev').onclick=()=>{if(si>0)load(si-1);};
+$('next').onclick=()=>{if(si<STAGES.length-1)load(si+1);};
+$('adv').onclick=()=>{if(si<STAGES.length-1)load(si+1);};
+
+/* ---------- rotation + judging ---------- */
+function turn(axis,a){
+  if(anim||hold>0)return;
+  swing=false;dq.setFromAxisAngle(axis,a);q.premultiply(dq).normalize();judge();
+}
+function judge(){
+  const f=prog[si];
+  for(let k=0;k<2;k++){
+    if(f[k]||angTo(QT[k])>=SNAP)continue;
+    f[k]=true;anim={from:q.clone(),to:QT[k],t:0,dur:reduce?.01:.35};hold=1;flashT=1;
+    toast('影 '+(k?'二':'一')+'を見つけた');ui();return;
+  }
+}
+const ptrs=new Map();let tw0=0;
+const twist=()=>{const a=[...ptrs.values()];return Math.atan2(a[1].y-a[0].y,a[1].x-a[0].x);};
+cv.addEventListener('pointerdown',e=>{
+  try{cv.setPointerCapture(e.pointerId);}catch(_){}
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});if(ptrs.size===2)tw0=twist();
+});
+cv.addEventListener('pointermove',e=>{
+  const p=ptrs.get(e.pointerId);if(!p)return;
+  const dx=e.clientX-p.x,dy=e.clientY-p.y;p.x=e.clientX;p.y=e.clientY;
+  if(ptrs.size===1){if(dx)turn(Y,dx*.009);if(dy)turn(X,dy*.009);}
+  else if(ptrs.size===2){const t=twist();let d=t-tw0;if(d>Math.PI)d-=2*Math.PI;if(d<-Math.PI)d+=2*Math.PI;tw0=t;if(d)turn(Z,-d);}
+});
+const drop=e=>{ptrs.delete(e.pointerId);};
+cv.addEventListener('pointerup',drop);cv.addEventListener('pointercancel',drop);
+cv.addEventListener('wheel',e=>{e.preventDefault();turn(Z,e.deltaY*.0025);},{passive:false});
+cv.addEventListener('keydown',e=>{
+  const k={ArrowLeft:[Y,-.06],ArrowRight:[Y,.06],ArrowUp:[X,-.06],ArrowDown:[X,.06],q:[Z,.06],e:[Z,-.06]}[e.key];
+  if(k){e.preventDefault();turn(k[0],k[1]);}
+});
+
+/* ---------- loop ---------- */
+function resize(){
+  const w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;
+  renderer.setSize(w,h,false);camera.aspect=w/h;
+  camera.fov=Math.max(54,2*Math.atan(.27/camera.aspect)*180/Math.PI);camera.updateProjectionMatrix();
+}
+if(window.ResizeObserver)new ResizeObserver(resize).observe(stage);else window.addEventListener('resize',resize);
+const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+const bars=[$('c0').querySelector('.bar i'),$('c1').querySelector('.bar i')];
+let last=performance.now();
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt=Math.min(.05,(now-last)/1000);last=now;
+  if(anim){anim.t+=dt/anim.dur;q.copy(anim.from).slerp(anim.to,ease(Math.min(1,anim.t)));if(anim.t>=1)anim=null;}
+  else if(hold>0){hold-=dt;if(hold<=0&&both()&&!reduce){swing=true;swingT=prog[si]&&angTo(QT[0])<.01?0:2.6;}}
+  else if(swing){swingT+=dt;q.copy(QT[0]).slerp(QT[1],ease(.5-.5*Math.cos(swingT*Math.PI/2.6)));}
+  if(flashT>0){flashT=Math.max(0,flashT-dt/1.1);shMat.color.copy(INK).lerp(BRASS,ease(flashT));}
+  if(intro<1){intro=Math.min(1,intro+dt/.45);}
+  const s=.7+.3*ease(intro);sculpt.scale.setScalar(s);shPivot.scale.setScalar(s);
+  sculpt.quaternion.copy(q);shPivot.quaternion.copy(q);
+  for(let k=0;k<2;k++)if(!prog[si][k]){const p=Math.max(0,1-angTo(QT[k])/1.3);bars[k].style.width=(p*p*100).toFixed(1)+'%';}
+  renderer.render(scene,camera);
+}
+
+/* ---------- boot (keeps a viewer's place across a republish) ---------- */
+function start(d){
+  resize();
+  if(d&&Array.isArray(d.prog)&&d.prog.length===STAGES.length){prog=d.prog.map(p=>[!!p[0],!!p[1]]);}
+  const i=d&&d.si>=0&&d.si<STAGES.length?d.si:0;
+  if(d&&d.q&&d.q.length===4){q.set(d.q[0],d.q[1],d.q[2],d.q[3]).normalize();load(i,true);}else load(i);
+  requestAnimationFrame(frame);
+}
+const hot=window.claude&&window.claude.hot;
+if(hot&&hot.snapshot)hot.snapshot(()=>({si,prog,q:[q.x,q.y,q.z,q.w]}));
+if(hot&&hot.ready)hot.ready(start);else start((hot&&hot.data)||{});
+})();
+</script>
+</body>
+</html>

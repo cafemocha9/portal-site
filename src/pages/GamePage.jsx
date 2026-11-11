@@ -11,33 +11,41 @@ export default function GamePage() {
   const Game = game.component
 
   return (
-    <div className="relative h-full w-full overflow-hidden">
-      {/* もどるボタン：どのゲームでも左上に固定 */}
-      <Link
-        to="/"
-        aria-label="もどる"
-        className="absolute left-3 top-3 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-white/90 text-amber-600 shadow-lg active:scale-95"
-      >
-        <House size={30} strokeWidth={2.5} />
-      </Link>
-
-      {game.type === 'html' ? (
-        <iframe
-          src={`/games/${game.id}/index.html`}
-          title={game.title}
-          className="h-full w-full border-0"
-        />
-      ) : (
-        <Suspense
-          fallback={
-            <div className="flex h-full items-center justify-center">
-              <game.icon className={`h-20 w-20 animate-pulse ${game.iconColor ?? 'text-slate-500'}`} />
-            </div>
-          }
+    <div className="flex h-full w-full flex-col">
+      {/* 上部の細いバー：ゲーム画面に重ならないよう、ゲームの外に置く */}
+      <header className="flex h-12 shrink-0 items-center gap-3 bg-white px-2 shadow-sm">
+        <Link
+          to="/"
+          aria-label="もどる"
+          className="flex h-10 items-center gap-1 rounded-full bg-amber-100 px-4 font-bold text-amber-700 active:scale-95"
         >
-          <Game />
-        </Suspense>
-      )}
+          <House size={22} strokeWidth={2.5} />
+          もどる
+        </Link>
+        <game.icon size={22} className={game.iconColor ?? 'text-slate-600'} />
+        <span className="truncate font-bold text-slate-700">{game.title}</span>
+      </header>
+
+      <div className="relative min-h-0 flex-1 overflow-hidden">
+        {game.type === 'html' ? (
+          <iframe
+            src={`/games/${game.id}/index.html`}
+            title={game.title}
+            allow="autoplay; fullscreen; gamepad"
+            className="h-full w-full border-0"
+          />
+        ) : (
+          <Suspense
+            fallback={
+              <div className="flex h-full items-center justify-center">
+                <game.icon className={`h-20 w-20 animate-pulse ${game.iconColor ?? 'text-slate-500'}`} />
+              </div>
+            }
+          >
+            <Game />
+          </Suspense>
+        )}
+      </div>
     </div>
   )
 }

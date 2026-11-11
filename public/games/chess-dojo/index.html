@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>チェス作戦道場</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Maru+Gothic:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* 1列のノート型。主役はいつも盤面。見出しだけ太いゴシックで元気に、ほかは静かに */
+  --paper:#f1f3fb; --card:#ffffff; --ink:#1b2140; --muted:#565d80; --line:#d3d9ee;
+  --sq-l:#e8ecf9; --sq-d:#96a2de; --accent:#ff9f1c; --accent-ink:#3a2300;
+  --good:#12875a; --good-bg:#dff5ea; --bad:#c92f55; --bad-bg:#fde6ec;
+  --pw:#ffffff; --pb:#1b2140;
+  --display:"Dela Gothic One","Zen Maru Gothic","Hiragino Maru Gothic ProN",sans-serif;
+  --body:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --paper:#11152a; --card:#1b2142; --ink:#eef0fb; --muted:#a6add2; --line:#343d6e;
+    --sq-l:#cbd2f3; --sq-d:#6b77c2; --accent:#ffab36; --accent-ink:#2e1c00;
+    --good:#5fd6a3; --good-bg:#143a2c; --bad:#ff8fa8; --bad-bg:#44182a;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --paper:#11152a; --card:#1b2142; --ink:#eef0fb; --muted:#a6add2; --line:#343d6e;
+  --sq-l:#cbd2f3; --sq-d:#6b77c2; --accent:#ffab36; --accent-ink:#2e1c00;
+  --good:#5fd6a3; --good-bg:#143a2c; --bad:#ff8fa8; --bad-bg:#44182a;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-weight:500;font-size:17px;line-height:1.75;line-break:strict;-webkit-text-size-adjust:100%}
+#app{max-width:560px;margin:0 auto;padding:20px 16px 56px;display:flex;flex-direction:column;gap:24px}
+h1,h2,h3{font-family:var(--display);font-weight:400;line-height:1.3;margin:0;text-wrap:balance}
+h1{font-size:34px;letter-spacing:.02em}
+h2{font-size:20px}
+p{margin:0}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+.hero{display:flex;flex-direction:column;gap:12px;padding-top:8px}
+.hero h1{font-size:42px}
+.hero h1 span{color:var(--accent)}
+.checks{display:grid;grid-template-columns:repeat(8,14px);grid-auto-rows:14px}
+.checks i{background:var(--sq-d)}
+.checks i:nth-child(odd){background:var(--accent)}
+.prog{display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px;background:var(--card);border:2px solid var(--ink);border-radius:14px;padding:14px 16px}
+.prog .n{font-family:var(--display);font-size:26px;font-variant-numeric:tabular-nums;line-height:1}
+.prog .n small{font-size:15px;color:var(--muted);font-family:var(--body);font-weight:700}
+.prog .rank{font-weight:700;color:var(--muted);flex:1;min-width:8em}
+.btn{font:inherit;font-weight:700;border:2px solid var(--ink);background:var(--card);color:var(--ink);border-radius:999px;padding:9px 18px;min-height:48px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent-ink)}
+.btn[hidden]{display:none}
+
+.group{display:flex;flex-direction:column;gap:10px}
+.group>p{color:var(--muted);font-size:15px}
+.cards{display:flex;flex-direction:column;gap:8px;list-style:none;margin:0;padding:0}
+.card{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;text-decoration:none}
+.card:hover{border-color:var(--ink)}
+.card .pic{width:40px;height:40px;background:var(--sq-d);border-radius:8px;padding:3px}
+.card b{display:block;font-size:18px;line-height:1.4}
+.card small{display:block;color:var(--muted);font-size:14px;line-height:1.5}
+.card .st{font-size:18px;letter-spacing:2px;color:var(--accent);white-space:nowrap}
+.card .st i{font-style:normal;color:var(--line)}
+
+.back{font-weight:700;text-decoration:none;color:var(--muted);align-self:flex-start;padding:6px 0;min-height:44px;display:inline-flex;align-items:center}
+.lead{font-size:18px}
+.sec{display:flex;flex-direction:column;gap:12px}
+.sec h2{display:flex;align-items:center;gap:10px}
+.sec h2::before{content:"";width:14px;height:14px;background:var(--accent);flex:none}
+.cap{font-size:15px;color:var(--muted);text-align:center}
+.pts{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+.pts li{background:var(--card);border-left:6px solid var(--sq-d);padding:8px 12px}
+.vals{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;text-align:center}
+.vals div{background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:6px 2px;font-size:12px;line-height:1.4;font-weight:700}
+.vals svg{width:100%;max-width:44px;background:var(--sq-d);border-radius:6px;display:block;margin:0 auto 2px}
+.vals strong{display:block;font-family:var(--display);font-weight:400;font-size:19px}
+
+.board{position:relative;display:grid;grid-template-columns:repeat(8,1fr);width:100%;max-width:460px;margin:0 auto;aspect-ratio:1;border:3px solid var(--ink);border-radius:6px;overflow:hidden;touch-action:manipulation}
+.sq{position:relative;border:0;padding:0;margin:0;background:var(--sq-l);font:inherit;min-width:0;aspect-ratio:1;-webkit-tap-highlight-color:transparent}
+.sq.dk{background:var(--sq-d)}
+.board.live .sq{cursor:pointer}
+.sq.last{box-shadow:inset 0 0 0 100px rgba(255,159,28,.42)}
+.sq.sel{box-shadow:inset 0 0 0 4px var(--accent),inset 0 0 0 100px rgba(255,159,28,.3)}
+.sq.mark{box-shadow:inset 0 0 0 4px var(--accent)}
+.sq.tg::after{content:"";position:absolute;inset:36%;border-radius:50%;background:rgba(27,33,64,.42)}
+.sq.cap::after{content:"";position:absolute;inset:5%;border-radius:50%;border:4px solid rgba(201,47,85,.85)}
+.sq:focus-visible{outline-offset:-3px;z-index:2}
+.sq span{position:absolute;font-size:10px;line-height:1;font-weight:700;color:#1b2140;opacity:.6;pointer-events:none}
+.sq .rk{top:2px;left:3px}
+.sq .fl{bottom:2px;right:3px}
+.pc{position:absolute;inset:-3%;width:106%;height:106%;stroke-width:1.7;stroke-linejoin:round;stroke-linecap:round;pointer-events:none}
+.pc.w{fill:var(--pw);stroke:var(--pb);color:var(--pb)}
+.pc.b{fill:var(--pb);stroke:var(--pw);color:var(--pw)}
+.arrows{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.arrows line{stroke:#ff7a00;stroke-width:1.9;stroke-linecap:round;opacity:.92}
+.arrows path{fill:#ff7a00}
+.steps{display:flex;gap:8px;align-items:center;font-weight:700;color:var(--muted);font-size:15px}
+.steps i{width:14px;height:14px;border:2px solid var(--ink);background:var(--card)}
+.steps i.on{background:var(--ink)}
+.steps i.ok{background:var(--accent);border-color:var(--accent-ink)}
+.prompt{font-size:19px;font-weight:700;line-height:1.6}
+.fb{min-height:3.5em;padding:10px 14px;border-radius:10px;background:var(--card);border:1.5px solid var(--line)}
+.fb.good{background:var(--good-bg);border-color:var(--good);color:var(--good);font-weight:700}
+.fb.bad{background:var(--bad-bg);border-color:var(--bad);color:var(--bad);font-weight:700}
+.row{display:flex;flex-wrap:wrap;gap:10px}
+.row .primary{margin-left:auto}
+@media (prefers-reduced-motion:no-preference){
+  .pc.pop{animation:pop .35s ease-out}
+  .board.shake{animation:shake .3s}
+  @keyframes pop{0%{transform:scale(.6)}70%{transform:scale(1.12)}100%{transform:scale(1)}}
+  @keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+}
+@media (max-width:380px){.hero h1{font-size:36px}h1{font-size:30px}.vals{grid-template-columns:repeat(3,1fr)}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="pc-p" viewBox="0 0 40 40"><path d="M14 31Q20 12 26 31Z"/><circle cx="20" cy="13" r="6"/><rect x="10" y="30" width="20" height="5" rx="2"/></symbol>
+  <symbol id="pc-r" viewBox="0 0 40 40"><path d="M11 8h4v4h3V8h4v4h3V8h4v8l-3 3v11H14V19l-3-3z"/><rect x="9" y="30" width="22" height="5" rx="2"/></symbol>
+  <symbol id="pc-b" viewBox="0 0 40 40"><path d="M14 31Q20 18 26 31Z"/><ellipse cx="20" cy="16" rx="6.5" ry="9"/><circle cx="20" cy="5.5" r="2.2"/><path d="M20 11l4 5" fill="none" stroke="currentColor"/><rect x="9" y="30" width="22" height="5" rx="2"/></symbol>
+  <symbol id="pc-n" viewBox="0 0 40 40"><path d="M13 31c0-9 5-11 4-15l-6 3-2-4 7-8 1-3 3 3c6 1 9 8 9 24z"/><circle cx="17.5" cy="11" r="1.3" fill="currentColor" stroke="none"/><rect x="9" y="30" width="22" height="5" rx="2"/></symbol>
+  <symbol id="pc-q" viewBox="0 0 40 40"><path d="M9 12l5 10 2-13 4 12 4-12 2 13 5-10-3 19H12z"/><circle cx="9" cy="11" r="2"/><circle cx="16" cy="8" r="2"/><circle cx="24" cy="8" r="2"/><circle cx="31" cy="11" r="2"/><rect x="9" y="30" width="22" height="5" rx="2"/></symbol>
+  <symbol id="pc-k" viewBox="0 0 40 40"><rect x="18.5" y="3" width="3" height="10"/><rect x="15" y="5.5" width="10" height="3"/><path d="M12 31l-2-14q10-8 20 0l-2 14z"/><rect x="9" y="30" width="22" height="5" rx="2"/></symbol>
+</svg>
+<main id="app"></main>
+<script>
+const GROUPS=[
+ {t:'立ち回りのきほん',d:'ゲームをどう進めるか。まずはここから。',ids:['points','opening','scholar']},
+ {t:'わざ（せんじゅつ）',d:'こまを取るための、ゆうめいな4つのわざ。',ids:['fork','pin','skewer','discover']},
+ {t:'チェックメイトの形',d:'勝ちを決める、とどめのパターン。',ids:['backrank','ladder']}
+];
+const LESSONS=[
+{id:'points',pic:'q',title:'こまの点数',sub:'とくなこうかん、そんなこうかん',
+ intro:'こまには「ねうち」があって、点数であらわすよ。点数の高いこまを取って、ひくいこまを取られるなら とく。ぎゃくは そん。',
+ vals:true,
+ pts:['取る前に「取り返されないかな？」とたしかめる','だれにも守られていない「ういたこま」は、ただで取れる'],
+ pz:[
+  {fen:'1k6/8/3r1b2/2p5/4N3/8/6PP/6K1 w - - 0 1',sol:['e4d6'],prompt:'白のナイトは、3つのこまを取れるよ。いちばんとくなのは どれ？',hint:'ルークは5点、ビショップは3点、ポーンは1点。',win:'ルークは5点！ いちばん点数の高いこまを取れたね。',missBy:{e4f6:'ビショップは3点。もっと点数の高いこまが取れるよ。',e4c5:'ポーンは1点。もっと点数の高いこまをさがそう。'},miss:'まずは取れるこまを見てみよう。'},
+  {fen:'6k1/5ppp/4p3/3n4/b7/8/5PPP/3Q2K1 w - - 0 1',sol:['d1a4'],prompt:'クイーンでこまを取りたい。ただで取れるのは どっち？',hint:'d5のナイトは、e6のポーンに守られているよ。',win:'a4のビショップは、だれにも守られていない「ういたこま」。ただで3点ゲット！',missBy:{d1d5:'ざんねん！ e6のポーンにクイーンを取り返される。3点をもらって9点をなくすから、そんだよ。'},miss:'ただで取れるこまが1つあるよ。'}
+ ]},
+{id:'opening',pic:'p',title:'はじめの3つのやくそく',sub:'まん中・こまを出す・王さまを守る',
+ intro:'ゲームのはじめ（オープニング）には、強い人がみんな守っている3つのやくそくがあるよ。',
+ ex:{fen:'r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4',marks:['d4','e4','d5','e5'],cap:'わくのついた4マスが「まん中」。白も黒も、やくそくどおりに進めた形だよ。'},
+ pts:['① ポーンでまん中を取る','② ナイトとビショップを早く出す','③ キャスリングで王さまを安全にする'],
+ pz:[
+  {fen:'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',sol:['e2e4','d2d4'],prompt:'やくそく①：ポーンを2マス進めて、まん中を取ろう。',hint:'eの列か、dの列のポーンだよ。',win:'まん中のポーンは、ビショップやクイーンの通り道も開けてくれる。いいスタート！',miss:'まん中の4マス（d4・e4・d5・e5）にとどくポーンをえらぼう。'},
+  {fen:'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2',sol:['g1f3'],prompt:'やくそく②：ナイトを出して、黒のe5のポーンをねらおう。',hint:'g1のナイトを、まん中の方へ。',win:'ナイトをf3へ。こまを出しながら相手をねらう、とてもいい手！',after:['f3e5'],missBy:{g1h3:'はしっこのナイトは、動けるマスが少ないよ。まん中の方へ出そう。'},miss:'ナイトで、e5のポーンをねらえるマスをさがそう。'},
+  {fen:'r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4',sol:['e1g1'],prompt:'やくそく③：キャスリングしよう。王さまをタップして、右へ2マス。',hint:'王さまをg1へ動かすと、ルークもいっしょに動くよ。',win:'王さまはポーンのかべのうしろへ、ルークはまん中へ。1手で2ついいことがある！',miss:'王さま（e1）をタップして、g1をえらぼう。'}
+ ]},
+{id:'scholar',pic:'q',title:'4手メイトをふせぐ',sub:'はやわざに引っかからない',
+ intro:'クイーンとビショップでf7のマスをねらう、ゆうめいなはやわざ。知らないと4手で負けてしまうけれど、知っていればかんたんにふせげるよ。',
+ ex:{fen:'r1bqkbnr/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 3 3',orient:'b',arrows:['h5f7','c4f7'],cap:'きみは黒。白のクイーンとビショップが、f7を同時にねらっている。'},
+ pts:['相手のクイーンが早く出てきたら「f7をねらっていないかな？」とたしかめる','ふせぎながら こまを出せると、ぎゃくに有利になる'],
+ pz:[
+  {fen:'r1bqkbnr/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 3 3',orient:'b',sol:['g7g6','d8e7','d8f6','g8h6'],prompt:'きみは黒の番。次にクイーンでf7を取られると、チェックメイト！ ふせぐ手は？',hint:'ポーンを1マス進めて、クイーンの通り道をふさごう。',win:'f7を守れたね！ ポーンをg6に進める手も、おぼえておこう。',winBy:{g7g6:'ポーンでクイーンの道をふさいだ！ いちばんいい守り方だよ。'},miss:'それだとf7があぶない。f7を守るか、クイーンの道をふさごう。'},
+  {fen:'r1bqkbnr/pppp1p1p/2n3p1/4p3/2B1P3/5Q2/PPPP1PPP/RNB1K1NR b KQkq - 1 4',orient:'b',sol:['g8f6','d8e7','d8f6','g8h6'],prompt:'白のクイーンはf3へにげて、またf7をねらっている。こまを出しながらふせごう。',hint:'ナイトを出すと、クイーンの道をふさげるよ。',win:'f7を守れたね！ ナイトをf6に出す手が、いちばんおすすめ。',winBy:{g8f6:'ナイトを出しながらふせいだ！ 相手のはやわざは、しっぱい。'},miss:'それだとf7があぶない。クイーンとf7の間に、こまをおけないかな？'}
+ ]},
+{id:'fork',pic:'n',title:'フォーク',sub:'1つのこまで、2つをねらう',
+ intro:'1つのこまで、相手のこま2つを同時にねらうわざ。相手は1つしかにがせないから、もう1つを取れる！',
+ ex:{fen:'r3k3/2N5/8/8/8/8/8/4K3 b - - 0 1',arrows:['c7e8','c7a8'],cap:'ナイトが、王さまとルークを同時にこうげき。'},
+ pts:['ナイトはフォークの名人','チェックしながらのフォークが、いちばん強い'],
+ pz:[
+  {fen:'6k1/3q1p1p/6p1/8/4N3/8/5PPP/6K1 w - - 0 1',sol:['e4f6'],prompt:'ナイトで、王さまとクイーンを同時にねらおう。',hint:'チェックになるマスをさがそう。',win:'チェック！ 王さまがにげたら、次にクイーンを取れるね。',after:['f6g8','f6d7'],miss:'王さまとクイーン、両方にとどくマスが1つあるよ。'},
+  {fen:'6k1/5ppp/2n1b3/8/3PP3/8/5PPP/6K1 w - - 0 1',sol:['d4d5'],prompt:'ポーンでもフォークができるよ。2つのこまを同時にねらおう。',hint:'ポーンは、ななめ前の2マスをこうげきするよ。',win:'1点のポーンが、3点のこま2つをフォーク！ どちらかを取れるよ。',after:['d5c6','d5e6'],miss:'ナイトとビショップの間に、ポーンを進められないかな？'}
+ ]},
+{id:'pin',pic:'b',title:'ピン',sub:'うしろが大事で、動けない',
+ intro:'うしろに大事なこまがあるせいで、前のこまが動けなくなること。ピン（くぎ）でとめられたみたい！',
+ ex:{fen:'4k3/8/2n5/1B6/8/8/8/4K3 b - - 0 1',arrows:['b5e8'],cap:'ナイトが動くと王さまが取られてしまう。だからナイトは動けない。'},
+ pts:['ピンができるのは、ビショップ・ルーク・クイーン','動けないこまは、あとでゆっくり取れる'],
+ pz:[
+  {fen:'4k3/5ppp/8/4q3/8/8/5PPP/3R1K2 w - - 0 1',sol:['d1e1'],prompt:'ルークで、黒のクイーンをピンしよう。',hint:'クイーンと王さまは、同じたての列にいるね。',win:'クイーンは王さまの前から動けない！ ルークを取っても、白の王さまが取り返すよ。',after:['e1e8'],miss:'クイーンと王さまを、1本の線でつらぬこう。'},
+  {fen:'7k/7p/6p1/4r3/8/8/3B1PPP/6K1 w - - 0 1',sol:['d2c3'],prompt:'ビショップで、黒のルークをピンしよう。',hint:'ルークと王さまは、同じななめの線にいるよ。',win:'ルークは動けない！ 次にビショップで取れば、3点で5点をゲット。',after:['c3h8'],miss:'ルークと王さまを、ななめの線でつらぬこう。'}
+ ]},
+{id:'skewer',pic:'r',title:'スキュア（くしざし）',sub:'にげたら、うしろを取る',
+ intro:'ピンの反対。点数の高いこまを先にねらって、にげたあとに うしろのこまを取るわざ。',
+ ex:{fen:'3r4/8/8/3k4/8/8/8/3RK3 b - - 0 1',arrows:['d1d8'],cap:'王さまがにげると、うしろのルークが取れる。'},
+ pts:['チェックでやると、相手はかならずにげないといけない','王さまやクイーンが1列にならんだら、チャンス'],
+ pz:[
+  {fen:'4q3/8/8/4k3/8/8/5PPP/R5K1 w - - 0 1',sol:['a1e1'],prompt:'ルークでチェックして、うしろのクイーンをねらおう。',hint:'王さまとクイーンが、同じ列にならんでいるよ。',win:'王さまがにげたら、うしろのクイーンをいただき！',after:['e1e8'],miss:'王さまのうしろにクイーンがいる列で、チェックしよう。'},
+  {fen:'6r1/8/8/3k4/8/8/6PP/3B2K1 w - - 0 1',sol:['d1b3'],prompt:'ビショップで、くしざしにしよう。',hint:'王さまのななめうしろに、ルークがいるよ。',win:'王さまがにげたら、g8のルークを取れるね。',after:['b3g8'],missBy:{d1f3:'チェックだけど、王さまのうしろに何もないよ。ルークがいる線をさがそう。'},miss:'王さまとルークが同じななめの線にいるよ。その線でチェックしよう。'}
+ ]},
+{id:'discover',pic:'b',title:'ディスカバードアタック',sub:'どいたら、うしろからこうげき',
+ intro:'前のこまがどくと、うしろにかくれていたこまのこうげきがとび出すわざ。どいたこまもこうげきすれば、2つ同時にねらえる！',
+ ex:{fen:'6k1/3q1ppp/8/8/8/3B4/5PPP/3R2K1 w - - 0 1',arrows:['d1d7'],cap:'ビショップがどくと、ルークがクイーンをねらう。'},
+ pts:['どくこまでチェックすると、とても強い','同じ列に「自分・自分・相手」とならんだら、チャンス'],
+ pz:[
+  {fen:'6k1/3q1ppp/8/8/8/3B4/5PPP/3R2K1 w - - 0 1',sol:['d3h7'],prompt:'ビショップを動かして、ルークのこうげきを出そう。どこへ動くのが、いちばん強い？',hint:'ビショップでチェックできるマスがあるよ。',win:'チェック！ 黒は王さまを守るしかないから、次にルークでクイーンを取れる。',after:['d1d7'],missFrom:{d3:'ルークのこうげきは出たけれど、クイーンににげられてしまう。チェックしながら動こう！'},miss:'ルークの前にいるビショップを動かそう。'},
+  {fen:'3qk3/5ppp/8/4N3/8/8/5PPP/4R1K1 w - - 0 1',sol:['e5c6'],prompt:'ナイトを動かして、かくれたチェックを出そう。ナイトでクイーンもねらえるマスは？',hint:'ナイトがどくと、ルークが王さまにチェックするよ。',win:'ルークがチェック、ナイトはクイーンをこうげき。黒は両方を守れない！',after:['e1e8','c6d8'],missBy:{e5f7:'おしい！ そこだと王さまにナイトを取られてしまう。'},missFrom:{e5:'チェックは出たね。でもナイトでクイーンをねらえるマスが、ほかにあるよ。'},miss:'ルークの前にいるナイトを動かそう。'}
+ ]},
+{id:'backrank',pic:'r',title:'バックランクメイト',sub:'おくの列でとどめ',
+ intro:'王さまが自分のポーンのうしろにとじこめられていると、いちばんおくの横の列（バックランク）でチェックメイトされる。',
+ ex:{fen:'3R2k1/5ppp/8/8/8/8/5PPP/6K1 b - - 0 1',arrows:['d8g8'],cap:'王さまは自分のポーンがじゃまで、にげられない。'},
+ pts:['ねらう：王さまの前にポーンが3つ、おくの列を守るこまがいない','守る：ポーンを1つ進めて「にげ道」を作っておく'],
+ pz:[
+  {fen:'6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1',sol:['d1d8'],prompt:'ルークで、チェックメイトしよう。',hint:'いちばんおくの列へ。',win:'チェックメイト！ 王さまは自分のポーンにじゃまされて、にげられない。',miss:'いちばんおくの列（8だん目）でチェックしよう。'},
+  {fen:'4r1k1/5p1p/6p1/8/8/2N5/5PPP/6K1 w - - 0 1',sol:['h2h3','g2g3','h2h4','g2g4','f2f3','f2f4','g1f1','c3e2','c3e4'],prompt:'こんどは守る番。黒のルークがe1に来ると、チェックメイトされてしまう。ふせぐ手を見つけよう。',hint:'王さまの前のポーンを1つ進めると、にげ道ができるよ。',win:'これで安心！ チェックされても、王さまがにげられる。',winBy:{g1f1:'王さまでe1を守ったね。これもせいかい！',c3e2:'ナイトでルークの道をふさいだね。これもせいかい！',c3e4:'ナイトでルークの道をふさいだね。これもせいかい！'},miss:'それだと黒のルークがe1に来て、チェックメイト！ 王さまのにげ道を作ろう。'}
+ ]},
+{id:'ladder',pic:'r',title:'はしごメイト',sub:'ルーク2つで追いこむ',
+ intro:'ルーク2つで、王さまを1だんずつ はしっこへ追いこむチェックメイト。はしごをのぼるみたいに、こうたいでチェックするよ。',
+ ex:{fen:'8/6k1/R7/8/8/8/8/1RK5 w - - 0 1',arrows:['a6h6'],cap:'a6のルークが「かべ」。王さまは6だん目に下りられない。'},
+ pts:['1つが列をふさぎ、もう1つがチェックする','これをおぼえると、勝っているゲームをしっかり勝ちきれる'],
+ pz:[
+  {fen:'8/6k1/R7/8/8/8/8/1RK5 w - - 0 1',sol:['b1b7'],prompt:'a6のルークが6だん目をふさいでいる。もう1つのルークで、王さまをおくへ追いこもう。',hint:'王さまと同じ7だん目でチェック！',win:'王さまは8だん目へにげるしかない。あと1手でメイトだ！',missBy:{a6a7:'チェックだけど、かべがなくなって王さまが6だん目へにげてしまうよ。'},miss:'かべのルークはそのまま。もう1つのルークで、7だん目からチェックしよう。'},
+  {fen:'6k1/1R6/R7/8/8/8/8/2K5 w - - 0 1',sol:['a6a8'],prompt:'つづきだよ。こんどは7だん目がかべ。とどめのチェックメイトを！',hint:'あいているルークを、8だん目へ。',win:'チェックメイト！ これが、はしごメイト。',miss:'かべのルーク（b7）はそのまま。もう1つを8だん目へ。'}
+ ]}
+];
+const NAME={p:'ポーン',n:'ナイト',b:'ビショップ',r:'ルーク',q:'クイーン',k:'キング'};
+const F='abcdefgh';
+const sq=s=>(8-+s[1])*8+F.indexOf(s[0]);
+const nm=i=>F[i%8]+(8-(i>>3));
+const isW=p=>!!p&&p===p.toUpperCase();
+function parse(fen){const[pl,t,c]=fen.split(' ');const b=[];for(const ch of pl){if(ch==='/')continue;if(ch>='1'&&ch<='8'){for(let k=0;k<+ch;k++)b.push('')}else b.push(ch)}return{b,turn:t,castle:c||'-'}}
+function pseudo(P,i,atk){
+  const p=P.b[i],w=isW(p),t=p.toLowerCase(),r=i>>3,f=i%8,o=[];
+  const add=(rr,ff)=>{if(rr<0||rr>7||ff<0||ff>7)return false;const j=rr*8+ff,q=P.b[j];if(!q){o.push(j);return true}if(isW(q)!==w)o.push(j);return false};
+  const slide=ds=>{for(const[dr,df]of ds){let rr=r+dr,ff=f+df;while(add(rr,ff)){rr+=dr;ff+=df}}};
+  const D=[[1,1],[1,-1],[-1,1],[-1,-1]],O=[[1,0],[-1,0],[0,1],[0,-1]];
+  if(t==='p'){
+    const d=w?-1:1;
+    for(const df of[-1,1]){const rr=r+d,ff=f+df;if(rr<0||rr>7||ff<0||ff>7)continue;const q=P.b[rr*8+ff];if(atk||(q&&isW(q)!==w))o.push(rr*8+ff)}
+    if(!atk&&r+d>=0&&r+d<=7&&!P.b[(r+d)*8+f]){o.push((r+d)*8+f);if(r===(w?6:1)&&!P.b[(r+2*d)*8+f])o.push((r+2*d)*8+f)}
+  }else if(t==='n'){for(const[a,b]of[[1,2],[2,1],[-1,2],[-2,1],[1,-2],[2,-1],[-1,-2],[-2,-1]])add(r+a,f+b)}
+  else if(t==='k'){for(const[a,b]of D.concat(O))add(r+a,f+b)}
+  else if(t==='b')slide(D);else if(t==='r')slide(O);else slide(D.concat(O));
+  return o;
+}
+function attacked(P,j,byW){for(let i=0;i<64;i++){const p=P.b[i];if(p&&isW(p)===byW&&pseudo(P,i,true).includes(j))return true}return false}
+function inCheck(P,w){const k=P.b.indexOf(w?'K':'k');return k>=0&&attacked(P,k,!w)}
+function apply(P,a,z){
+  const b=P.b.slice(),p=b[a];b[z]=p;b[a]='';
+  if(p.toLowerCase()==='k'&&Math.abs(z-a)===2){if(z>a){b[z-1]=b[z+1];b[z+1]=''}else{b[z+1]=b[z-2];b[z-2]=''}}
+  if(p==='P'&&z<8)b[z]='Q';if(p==='p'&&z>55)b[z]='q';
+  return{b,turn:P.turn==='w'?'b':'w',castle:P.castle};
+}
+function legal(P,i){
+  const p=P.b[i],w=isW(p);
+  const o=pseudo(P,i,false).filter(j=>!inCheck(apply(P,i,j),w));
+  if(p.toLowerCase()==='k'){
+    const h=w?60:4;
+    if(i===h&&!inCheck(P,w)){
+      const e=j=>!P.b[j],s=j=>!attacked(P,j,!w);
+      if(P.castle.includes(w?'K':'k')&&e(h+1)&&e(h+2)&&P.b[h+3]===(w?'R':'r')&&s(h+1)&&s(h+2))o.push(h+2);
+      if(P.castle.includes(w?'Q':'q')&&e(h-1)&&e(h-2)&&e(h-3)&&P.b[h-4]===(w?'R':'r')&&s(h-1)&&s(h-2))o.push(h-2);
+    }
+  }
+  return o;
+}
+
+if(typeof document!=='undefined'){
+const app=document.getElementById('app');
+const KEY='chess-dojo-v1';
+let solved=new Set();
+try{solved=new Set(JSON.parse(localStorage.getItem(KEY)||'[]'))}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify([...solved]))}catch(e){}};
+const TOTAL=LESSONS.reduce((n,l)=>n+l.pz.length,0);
+const byId=id=>LESSONS.find(l=>l.id===id);
+const ORDER=GROUPS.flatMap(g=>g.ids);
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pieceSvg=(t,c,x)=>`<svg class="pc ${c}${x||''}" viewBox="0 0 40 40" aria-hidden="true"><use href="#pc-${t}"/></svg>`;
+let S=null;
+
+function draw(el,P,o){
+  const fl=o.orient==='b';let h='';
+  for(let d=0;d<64;d++){
+    const i=fl?63-d:d,r=i>>3,f=i%8,p=P.b[i],cls=['sq',(r+f)%2?'dk':'lt'];
+    if(o.sel===i)cls.push('sel');
+    if(o.tg&&o.tg.includes(i))cls.push(p?'cap':'tg');
+    if(o.last&&o.last.includes(i))cls.push('last');
+    if(o.marks&&o.marks.includes(i))cls.push('mark');
+    const lab=nm(i)+(p?' '+(isW(p)?'白':'黒')+'の'+NAME[p.toLowerCase()]:'');
+    h+=`<button type="button" class="${cls.join(' ')}" data-i="${i}" aria-label="${lab}"${o.onTap?'':' tabindex="-1"'}>`;
+    if(d%8===0)h+=`<span class="rk">${8-r}</span>`;
+    if(d>=56)h+=`<span class="fl">${F[f]}</span>`;
+    if(p)h+=pieceSvg(p.toLowerCase(),isW(p)?'w':'b',o.pop===i?' pop':'');
+    h+='</button>';
+  }
+  if(o.arrows&&o.arrows.length){
+    const c=i=>[((fl?7-i%8:i%8))*10+5,((fl?7-(i>>3):i>>3))*10+5];
+    h+='<svg class="arrows" viewBox="0 0 80 80" aria-hidden="true">';
+    for(const[a,z]of o.arrows){
+      const[x1,y1]=c(a),[x2,y2]=c(z),L=Math.hypot(x2-x1,y2-y1),ux=(x2-x1)/L,uy=(y2-y1)/L;
+      const ex=x2-ux*4.2,ey=y2-uy*4.2,tx=x2-ux*1.4,ty=y2-uy*1.4;
+      h+=`<line x1="${x1+ux*3}" y1="${y1+uy*3}" x2="${ex}" y2="${ey}"/><path d="M${tx} ${ty}L${ex-uy*2.6} ${ey+ux*2.6}L${ex+uy*2.6} ${ey-ux*2.6}Z"/>`;
+    }
+    h+='</svg>';
+  }
+  el.innerHTML=h;
+  el.classList.toggle('live',!!o.onTap);
+  el.onclick=o.onTap?e=>{const b=e.target.closest('.sq');if(b)o.onTap(+b.dataset.i)}:null;
+}
+const pairs=a=>(a||[]).map(u=>[sq(u.slice(0,2)),sq(u.slice(2))]);
+
+function showHome(){
+  S=null;
+  const n=solved.size;
+  const rank=n>=TOTAL?'クイーン級（ぜんぶクリア！）':n>=14?'ルーク級':n>=9?'ナイト級':n>=4?'ポーン級':'みならい';
+  const nextL=ORDER.map(byId).find(l=>l.pz.some((_,k)=>!solved.has(l.id+'-'+k)))||byId(ORDER[0]);
+  let h=`<header class="hero"><div class="checks" aria-hidden="true">${'<i></i>'.repeat(8)}</div>
+  <h1>チェス<span>作戦</span>道場</h1>
+  <p class="lead">強い人が使っている作戦とわざを、問題をときながらおぼえよう。</p>
+  <div class="prog"><div class="n">★ ${n}<small> / ${TOTAL}</small></div><div class="rank">いまのランク：${rank}</div>
+  <a class="btn primary" href="#l-${nextL.id}">${n?'つづきから':'はじめる'}</a></div></header>`;
+  let no=0;
+  for(const g of GROUPS){
+    h+=`<section class="group"><h2>${g.t}</h2><p>${g.d}</p><ul class="cards">`;
+    for(const id of g.ids){
+      const l=byId(id);no++;
+      const st=l.pz.map((_,k)=>solved.has(id+'-'+k)?'★':'<i>★</i>').join('');
+      const got=l.pz.filter((_,k)=>solved.has(id+'-'+k)).length;
+      h+=`<li><a class="card" href="#l-${id}"><span class="pic">${pieceSvg(l.pic,'w').replace('class="pc w"','class="pc w" style="position:static;width:100%;height:100%"')}</span>
+      <span><b>${no}. ${l.title}</b><small>${l.sub}</small></span>
+      <span class="st" aria-label="${l.pz.length}問中${got}問クリア">${st}</span></a></li>`;
+    }
+    h+='</ul></section>';
+  }
+  app.innerHTML=h;
+}
+
+function showLesson(l,k0){
+  let h=`<a class="back" href="#home">← レッスン一覧</a>
+  <header class="sec"><h1>${l.title}</h1><p class="lead">${l.intro}</p></header>
+  <section class="sec"><h2>おぼえよう</h2>`;
+  if(l.vals)h+=`<div class="vals">${[['p','ポーン','1点'],['n','ナイト','3点'],['b','ビショップ','3点'],['r','ルーク','5点'],['q','クイーン','9点'],['k','キング','∞']].map(v=>`<div><svg viewBox="0 0 40 40" class="pcv" aria-hidden="true" style="fill:#fff;stroke:#1b2140;color:#1b2140;stroke-width:1.7;stroke-linejoin:round"><use href="#pc-${v[0]}"/></svg>${v[1]}<strong>${v[2]}</strong></div>`).join('')}</div><p class="cap">キングは取られたら負け。だから点数はつけられないよ。</p>`;
+  if(l.ex)h+=`<div class="board" id="exb" role="img" aria-label="${esc(l.ex.cap)}"></div><p class="cap">${l.ex.cap}</p>`;
+  h+=`<ul class="pts">${l.pts.map(p=>`<li>${p}</li>`).join('')}</ul></section>
+  <section class="sec" id="try"><h2>やってみよう</h2>
+  <div class="steps" id="steps"></div><p class="prompt" id="prompt"></p>
+  <div class="board" id="pzb"></div><p class="fb" id="fb" aria-live="polite"></p>
+  <div class="row"><button type="button" class="btn" id="hint">ヒント</button><button type="button" class="btn" id="retry">やり直す</button><button type="button" class="btn primary" id="next" hidden></button></div></section>`;
+  app.innerHTML=h;
+  if(l.ex)draw(document.getElementById('exb'),parse(l.ex.fen),{orient:l.ex.orient,arrows:pairs(l.ex.arrows),marks:(l.ex.marks||[]).map(sq)});
+  let k=k0;
+  if(k==null){k=l.pz.findIndex((_,j)=>!solved.has(l.id+'-'+j));if(k<0)k=0}
+  startPuzzle(l,Math.min(k,l.pz.length-1));
+  document.getElementById('hint').onclick=()=>{
+    if(S.done)return;S.hint++;
+    if(S.hint>1)S.marks=[sq(S.z.sol[0].slice(0,2))];
+    fb('',(S.hint>1?'わくのついたこまを動かすよ。':'ヒント：')+S.z.hint);paint();
+  };
+  document.getElementById('retry').onclick=()=>startPuzzle(S.l,S.k);
+  document.getElementById('next').onclick=()=>{
+    if(S.k<S.l.pz.length-1){startPuzzle(S.l,S.k+1);document.getElementById('try').scrollIntoView({block:'start'})}
+    else{const n=ORDER[ORDER.indexOf(S.l.id)+1];location.hash=n?'l-'+n:'home'}
+  };
+}
+function startPuzzle(l,k){
+  const z=l.pz[k];
+  S={l,k,z,P:parse(z.fen),sel:null,tg:[],done:false,hint:0,last:null,arr:[],pop:null,marks:[],shake:false};
+  document.getElementById('prompt').textContent=z.prompt;
+  fb('','こまをタップして、動かすマスをえらぼう。');
+  paint();
+}
+function fb(kind,text){const el=document.getElementById('fb');el.className='fb'+(kind?' '+kind:'');el.textContent=text}
+function paint(){
+  const el=document.getElementById('pzb');
+  draw(el,S.P,{orient:S.z.orient,sel:S.sel,tg:S.tg,last:S.last,arrows:S.arr,pop:S.pop,marks:S.marks,onTap:S.done?null:tap});
+  el.classList.remove('shake');
+  if(S.shake){void el.offsetWidth;el.classList.add('shake');S.shake=false}
+  S.pop=null;
+  document.getElementById('steps').innerHTML=S.l.pz.map((_,j)=>`<i class="${solved.has(S.l.id+'-'+j)?'ok':''}${j===S.k?' on':''}"></i>`).join('')+`<span>問題 ${S.k+1} / ${S.l.pz.length}</span>`;
+  const nx=document.getElementById('next');
+  nx.hidden=!S.done;
+  if(S.done){const last=S.k===S.l.pz.length-1,n=ORDER[ORDER.indexOf(S.l.id)+1];nx.textContent=!last?'次の問題へ':n?'次のレッスンへ':'レッスン一覧へ'}
+  document.getElementById('hint').hidden=S.done;
+}
+function tap(i){
+  if(S.done)return;
+  const p=S.P.b[i],mine=p&&(isW(p)===(S.P.turn==='w'));
+  if(S.sel!=null&&S.tg.includes(i)){
+    const u=nm(S.sel)+nm(i),z=S.z;
+    if(z.sol.includes(u)){
+      S.P=apply(S.P,S.sel,i);S.last=[S.sel,i];S.pop=i;S.done=true;S.arr=pairs(z.after);S.marks=[];
+      solved.add(S.l.id+'-'+S.k);save();
+      fb('good','★ せいかい！ '+((z.winBy&&z.winBy[u])||z.win));
+    }else{
+      const m=(z.missBy&&z.missBy[u])||(z.missFrom&&z.missFrom[nm(S.sel)])||z.miss;
+      S.shake=true;fb('bad',m);
+    }
+    S.sel=null;S.tg=[];paint();return;
+  }
+  if(mine&&S.sel!==i){S.sel=i;S.tg=legal(S.P,i)}else{S.sel=null;S.tg=[]}
+  paint();
+}
+function route(keep){
+  const m=location.hash.match(/^#l-([a-z]+)$/),l=m&&byId(m[1]);
+  if(l)showLesson(l,keep&&keep.id===l.id?keep.k:null);else showHome();
+  if(!keep)window.scrollTo(0,0);
+}
+window.addEventListener('hashchange',()=>route());
+const hot=window.claude&&window.claude.hot;
+if(hot&&hot.snapshot)hot.snapshot(()=>S?{id:S.l.id,k:S.k}:{});
+const start=d=>route(d&&d.id?d:{});
+if(hot&&hot.ready)hot.ready(start);else start((hot&&hot.data)||{});
+}
+</script>
+</body>
+</html>
