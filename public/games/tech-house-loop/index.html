@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tech House Loop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E6E4DF; --panel:#F3F2EE; --ink:#22242A; --muted:#63666E; --line:#C9C6BF;
+  --cell:#D6D3CC; --cell-alt:#CBC7BF; --on:#E8621A; --on-ink:#fff; --head:#22242A;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#1A1C22; --panel:#23262E; --ink:#ECEAE4; --muted:#9A9DA5; --line:#353944;
+    --cell:#2E323B; --cell-alt:#383C46; --on:#FF7A2E; --on-ink:#1A1C22; --head:#ECEAE4;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1A1C22; --panel:#23262E; --ink:#ECEAE4; --muted:#9A9DA5; --line:#353944;
+  --cell:#2E323B; --cell-alt:#383C46; --on:#FF7A2E; --on-ink:#1A1C22; --head:#ECEAE4;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:"Archivo","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+  font-size:16px; line-height:1.5;
+}
+main{max-width:720px; margin:0 auto; padding:28px 16px 40px}
+h1{
+  font-stretch:125%; font-weight:800; font-size:clamp(2rem,8vw,3.2rem);
+  line-height:1; letter-spacing:-.02em; margin:0 0 6px;
+}
+.sub{color:var(--muted); margin:0 0 22px; font-size:.95rem}
+.transport{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+#play{
+  width:72px; height:72px; border-radius:50%; border:0; cursor:pointer;
+  background:var(--ink); color:var(--bg); display:grid; place-items:center;
+  transition:transform .12s ease;
+}
+#play:active{transform:scale(.94)}
+#play svg{width:28px; height:28px}
+#status{font-weight:600}
+.hint{color:var(--muted); font-size:.85rem}
+
+.panel{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px 12px}
+.grid{display:grid; grid-template-columns:78px repeat(16,1fr); gap:3px; align-items:center}
+.row-label{
+  font:inherit; font-size:.78rem; font-weight:600; text-align:left; color:var(--ink);
+  background:none; border:0; padding:6px 4px; cursor:pointer; border-radius:6px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.row-label[aria-pressed="true"]{color:var(--muted); text-decoration:line-through}
+.cell{
+  aspect-ratio:1/1.35; border:0; padding:0; border-radius:4px; cursor:pointer;
+  background:var(--cell); position:relative;
+}
+.cell.alt{background:var(--cell-alt)}
+.cell.on{background:var(--on)}
+.cell.gap{margin-left:4px}
+.cell.now{box-shadow:inset 0 0 0 2px var(--head)}
+.muted-row .cell.on{opacity:.35}
+.beats{display:grid; grid-template-columns:78px repeat(16,1fr); gap:3px; margin-bottom:4px}
+.beats span{font-size:.68rem; color:var(--muted); text-align:center}
+.beats span.gap{margin-left:4px}
+
+.controls{display:grid; gap:16px; margin-top:18px}
+.ctrl label{display:flex; justify-content:space-between; font-size:.9rem; font-weight:600; margin-bottom:4px}
+.ctrl output{color:var(--muted); font-weight:400}
+input[type=range]{width:100%; accent-color:var(--on)}
+.presets{display:flex; gap:8px; flex-wrap:wrap}
+.presets button{
+  font:inherit; font-size:.9rem; font-weight:600; padding:8px 14px; border-radius:999px;
+  border:1px solid var(--line); background:var(--panel); color:var(--ink); cursor:pointer;
+}
+.presets button[aria-pressed="true"]{background:var(--ink); color:var(--bg); border-color:var(--ink)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--on); outline-offset:2px}
+.foot{color:var(--muted); font-size:.82rem; margin-top:22px}
+@media (max-width:420px){
+  .grid,.beats{grid-template-columns:58px repeat(16,1fr); gap:2px}
+  .row-label{font-size:.7rem}
+  .cell.gap,.beats span.gap{margin-left:2px}
+}
+@media (prefers-reduced-motion:reduce){#play{transition:none}}
+</style>
+</head>
+<body>
+<main>
+  <h1>Tech House Loop</h1>
+  <p class="sub" id="sub">125 BPM、Aマイナー、16ステップ</p>
+
+  <div class="transport">
+    <button id="play" aria-label="再生">
+      <svg viewBox="0 0 24 24" fill="currentColor" id="icon"><path d="M7 4l13 8-13 8z"/></svg>
+    </button>
+    <div>
+      <div id="status">停止中</div>
+      <div class="hint">マスをタップして打ち込み、楽器名のタップでミュート</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="beats" id="beats"></div>
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div class="controls">
+    <div class="ctrl">
+      <label>パターン</label>
+      <div class="presets" id="presets"></div>
+    </div>
+    <div class="ctrl">
+      <label for="bpm">テンポ <output id="bpmOut">125 BPM</output></label>
+      <input type="range" id="bpm" min="115" max="132" value="125">
+    </div>
+    <div class="ctrl">
+      <label for="swing">スウィング <output id="swingOut">12%</output></label>
+      <input type="range" id="swing" min="0" max="40" value="12">
+    </div>
+    <div class="ctrl">
+      <label for="cut">ベースのフィルター <output id="cutOut">480 Hz</output></label>
+      <input type="range" id="cut" min="150" max="2500" value="480">
+    </div>
+  </div>
+
+  <p class="foot">音はすべてブラウザ内で合成しています。iPhoneで音が出ない場合はサイレントモードを解除してください。</p>
+</main>
+
+<script>
+(() => {
+  const STEPS = 16;
+  const ROWS = [
+    {id:'kick',  name:'キック',   type:'bool'},
+    {id:'clap',  name:'クラップ', type:'bool'},
+    {id:'hat',   name:'ハット',   type:'bool'},
+    {id:'open',  name:'オープンH', type:'bool'},
+    {id:'perc',  name:'コンガ',   type:'note', def:60},
+    {id:'bass',  name:'ベース',   type:'note', def:33},
+    {id:'organ', name:'オルガン', type:'bool'}
+  ];
+
+  const mk = (steps) => { const a = Array(STEPS).fill(false); steps.forEach(s => a[s] = true); return a; };
+  const mkN = (map) => { const a = Array(STEPS).fill(null); Object.entries(map).forEach(([s,n]) => a[+s] = n); return a; };
+
+  const PRESETS = {
+    basic: {name:'ベーシック', p:{
+      kick: mk([0,4,8,12]), clap: mk([4,12]),
+      hat: mk([0,1,3,4,5,7,8,9,11,12,13,15]), open: mk([2,6,10,14]),
+      perc: mkN({3:64,7:57,10:62,11:57,15:64}),
+      bass: mkN({2:33,3:45,6:33,7:36,10:33,11:45,13:31,14:33}),
+      organ: mk([3,10])
+    }},
+    minimal: {name:'ミニマル', p:{
+      kick: mk([0,4,8,12]), clap: mk([4,12]),
+      hat: mk([1,5,9,13]), open: mk([2,6,10,14]),
+      perc: mkN({3:60,11:57}),
+      bass: mkN({2:33,6:33,10:33,14:33,15:36}),
+      organ: mk([6])
+    }},
+    funky: {name:'ファンキー', p:{
+      kick: mk([0,4,8,12]), clap: mk([4,12]),
+      hat: mk([0,1,3,4,5,7,8,9,11,12,13,15]), open: mk([2,6,10,14]),
+      perc: mkN({3:64,6:60,7:57,11:62,14:57}),
+      bass: mkN({2:33,3:33,5:45,6:33,9:43,10:33,12:36,14:45}),
+      organ: mk([2,7,10,15])
+    }}
+  };
+  const CHORD = [57,60,64,67]; // Am7
+
+  let pattern = clone(PRESETS.basic.p);
+  let preset = 'basic';
+  const muted = {};
+  function clone(p){ const o = {}; for (const k in p) o[k] = p[k].slice(); return o; }
+
+  // ---------- UI ----------
+  const grid = document.getElementById('grid');
+  const beats = document.getElementById('beats');
+  const cellsByStep = Array.from({length:STEPS}, () => []);
+  const rowEls = {};
+
+  beats.appendChild(document.createElement('span'));
+  for (let s = 0; s < STEPS; s++){
+    const sp = document.createElement('span');
+    sp.textContent = s % 4 === 0 ? (s/4 + 1) : '';
+    if (s % 4 === 0 && s) sp.className = 'gap';
+    beats.appendChild(sp);
+  }
+
+  ROWS.forEach(row => {
+    const label = document.createElement('button');
+    label.className = 'row-label'; label.textContent = row.name;
+    label.setAttribute('aria-pressed','false');
+    label.setAttribute('aria-label', row.name + 'をミュート');
+    label.onclick = () => {
+      muted[row.id] = !muted[row.id];
+      label.setAttribute('aria-pressed', String(!!muted[row.id]));
+      rowEls[row.id].forEach(c => c.parentRowMuted = muted[row.id]);
+      rowEls[row.id].forEach(c => c.classList.toggle('muted-cell', !!muted[row.id]));
+      rowEls[row.id].forEach(c => c.style.opacity = muted[row.id] && c.classList.contains('on') ? .35 : '');
+    };
+    grid.appendChild(label);
+    rowEls[row.id] = [];
+    for (let s = 0; s < STEPS; s++){
+      const c = document.createElement('button');
+      c.className = 'cell' + (Math.floor(s/4) % 2 ? ' alt' : '') + (s % 4 === 0 && s ? ' gap' : '');
+      c.setAttribute('aria-label', `${row.name} ステップ${s+1}`);
+      c.onclick = () => {
+        const v = pattern[row.id][s];
+        if (row.type === 'bool') pattern[row.id][s] = !v;
+        else pattern[row.id][s] = v == null ? row.def : null;
+        paint();
+      };
+      grid.appendChild(c);
+      rowEls[row.id].push(c);
+      cellsByStep[s].push(c);
+    }
+  });
+
+  function paint(){
+    ROWS.forEach(row => rowEls[row.id].forEach((c, s) => {
+      const on = row.type === 'bool' ? pattern[row.id][s] : pattern[row.id][s] != null;
+      c.classList.toggle('on', !!on);
+      c.setAttribute('aria-pressed', String(!!on));
+      c.style.opacity = muted[row.id] && on ? .35 : '';
+    }));
+  }
+
+  const presetsEl = document.getElementById('presets');
+  Object.entries(PRESETS).forEach(([key, val]) => {
+    const b = document.createElement('button');
+    b.textContent = val.name; b.dataset.key = key;
+    b.setAttribute('aria-pressed', String(key === preset));
+    b.onclick = () => {
+      preset = key; pattern = clone(val.p); paint();
+      presetsEl.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.key === key)));
+    };
+    presetsEl.appendChild(b);
+  });
+  paint();
+
+  const bpmEl = document.getElementById('bpm'), swingEl = document.getElementById('swing'), cutEl = document.getElementById('cut');
+  let bpm = +bpmEl.value, swing = +swingEl.value, cut = +cutEl.value;
+  bpmEl.oninput = () => {
+    bpm = +bpmEl.value;
+    document.getElementById('bpmOut').textContent = bpm + ' BPM';
+    document.getElementById('sub').textContent = `${bpm} BPM、Aマイナー、16ステップ`;
+    if (delay) delay.delayTime.setTargetAtTime(stepDur()*3, ctx.currentTime, .05);
+  };
+  swingEl.oninput = () => { swing = +swingEl.value; document.getElementById('swingOut').textContent = swing + '%'; };
+  cutEl.oninput = () => { cut = +cutEl.value; document.getElementById('cutOut').textContent = cut + ' Hz'; };
+
+  // ---------- Audio ----------
+  let ctx, master, duck, delayIn, delay, noiseBuf;
+  const stepDur = () => 60 / bpm / 4;
+  const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+
+  function initAudio(){
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -14; comp.ratio.value = 4; comp.attack.value = .005; comp.release.value = .15;
+    master = ctx.createGain(); master.gain.value = .8;
+    master.connect(comp); comp.connect(ctx.destination);
+
+    duck = ctx.createGain(); duck.connect(master);
+
+    delayIn = ctx.createGain();
+    delay = ctx.createDelay(2); delay.delayTime.value = stepDur()*3;
+    const fb = ctx.createGain(); fb.gain.value = .35;
+    const dlp = ctx.createBiquadFilter(); dlp.type = 'lowpass'; dlp.frequency.value = 2800;
+    const wet = ctx.createGain(); wet.gain.value = .28;
+    delayIn.connect(delay); delay.connect(dlp); dlp.connect(fb); fb.connect(delay); dlp.connect(wet); wet.connect(master);
+
+    noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random()*2 - 1;
+  }
+
+  function noise(t, dur){
+    const n = ctx.createBufferSource(); n.buffer = noiseBuf;
+    n.start(t); n.stop(t + dur); return n;
+  }
+  function env(g, t, peak, decay){
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + .002);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + decay);
+  }
+
+  function kick(t){
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.frequency.setValueAtTime(165, t);
+    o.frequency.exponentialRampToValueAtTime(48, t + .09);
+    env(g, t, 1, .45);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t + .5);
+    const n = noise(t, .02), hp = ctx.createBiquadFilter(), ng = ctx.createGain();
+    hp.type = 'highpass'; hp.frequency.value = 3000;
+    env(ng, t, .25, .012);
+    n.connect(hp); hp.connect(ng); ng.connect(master);
+    // サイドチェイン風にベースを沈める
+    duck.gain.cancelScheduledValues(t);
+    duck.gain.setValueAtTime(.2, t);
+    duck.gain.linearRampToValueAtTime(1, t + stepDur()*2.2);
+  }
+
+  function clap(t){
+    const n = noise(t, .3), bp = ctx.createBiquadFilter(), g = ctx.createGain();
+    bp.type = 'bandpass'; bp.frequency.value = 1150; bp.Q.value = .9;
+    g.gain.setValueAtTime(0.0001, t);
+    [0, .011, .022].forEach(o => {
+      g.gain.setValueAtTime(.7, t + o);
+      g.gain.exponentialRampToValueAtTime(.08, t + o + .009);
+    });
+    g.gain.setValueAtTime(.6, t + .033);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + .22);
+    n.connect(bp); bp.connect(g); g.connect(master);
+    const s = ctx.createGain(); s.gain.value = .15; g.connect(s); s.connect(delayIn);
+  }
+
+  function hat(t, open, vel){
+    const n = noise(t, open ? .35 : .08), hp = ctx.createBiquadFilter(), g = ctx.createGain();
+    hp.type = 'highpass'; hp.frequency.value = open ? 7500 : 8500;
+    env(g, t, (open ? .22 : .3) * vel, open ? .28 : .045);
+    n.connect(hp); hp.connect(g); g.connect(master);
+  }
+
+  let panFlip = false;
+  function perc(t, m){
+    const f = mtof(m), o = ctx.createOscillator(), g = ctx.createGain();
+    o.frequency.setValueAtTime(f*1.6, t);
+    o.frequency.exponentialRampToValueAtTime(f, t + .025);
+    env(g, t, .32, .18);
+    o.connect(g);
+    if (ctx.createStereoPanner){
+      const p = ctx.createStereoPanner(); p.pan.value = (panFlip = !panFlip) ? .35 : -.35;
+      g.connect(p); p.connect(master);
+    } else g.connect(master);
+    o.start(t); o.stop(t + .2);
+  }
+
+  function bass(t, m){
+    const f = mtof(m), dur = stepDur()*.85;
+    const o1 = ctx.createOscillator(), o2 = ctx.createOscillator();
+    o1.type = o2.type = 'sawtooth';
+    o1.frequency.value = f; o2.frequency.value = f; o2.detune.value = 9;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 7;
+    lp.frequency.setValueAtTime(Math.min(cut*4, 12000), t);
+    lp.frequency.exponentialRampToValueAtTime(cut, t + .12);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(.32, t + .005);
+    g.gain.setValueAtTime(.32, t + dur*.6);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o1.connect(lp); o2.connect(lp); lp.connect(g); g.connect(duck);
+    o1.start(t); o2.start(t); o1.stop(t + dur + .02); o2.stop(t + dur + .02);
+  }
+
+  function organ(t){
+    const out = ctx.createGain(), lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = 3200;
+    env(out, t, .09, .24);
+    out.connect(lp); lp.connect(master);
+    const s = ctx.createGain(); s.gain.value = .6; lp.connect(s); s.connect(delayIn);
+    CHORD.forEach(m => {
+      [[1,1],[2,.55],[3,.3],[4,.18]].forEach(([h,w]) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.frequency.value = mtof(m)*h; g.gain.value = w;
+        o.connect(g); g.connect(out); o.start(t); o.stop(t + .3);
+      });
+    });
+  }
+
+  function playStep(s, t){
+    const P = pattern, M = muted;
+    if (P.kick[s] && !M.kick) kick(t);
+    if (P.clap[s] && !M.clap) clap(t);
+    if (P.hat[s] && !M.hat) hat(t, false, s % 2 ? .55 : 1);
+    if (P.open[s] && !M.open) hat(t, true, 1);
+    if (P.perc[s] != null && !M.perc) perc(t, P.perc[s]);
+    if (P.bass[s] != null && !M.bass) bass(t, P.bass[s]);
+    if (P.organ[s] && !M.organ) organ(t);
+  }
+
+  // ---------- Scheduler ----------
+  let playing = false, timer = null, nextTime = 0, step = 0, queue = [], lastDrawn = -1;
+  function tick(){
+    while (nextTime < ctx.currentTime + .12){
+      const off = step % 2 ? stepDur() * swing / 100 : 0;
+      playStep(step, nextTime + off);
+      queue.push({step, time: nextTime + off});
+      nextTime += stepDur();
+      step = (step + 1) % STEPS;
+    }
+  }
+  function draw(){
+    if (!playing) return;
+    let cur = lastDrawn;
+    while (queue.length && queue[0].time <= ctx.currentTime) cur = queue.shift().step;
+    if (cur !== lastDrawn){
+      if (lastDrawn >= 0) cellsByStep[lastDrawn].forEach(c => c.classList.remove('now'));
+      cellsByStep[cur].forEach(c => c.classList.add('now'));
+      lastDrawn = cur;
+    }
+    requestAnimationFrame(draw);
+  }
+
+  const playBtn = document.getElementById('play'), icon = document.getElementById('icon'), status = document.getElementById('status');
+  async function toggle(){
+    if (!ctx) initAudio();
+    if (ctx.state === 'suspended') await ctx.resume();
+    playing = !playing;
+    if (playing){
+      step = 0; queue = []; nextTime = ctx.currentTime + .06;
+      tick(); timer = setInterval(tick, 25); requestAnimationFrame(draw);
+      icon.innerHTML = '<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>';
+      playBtn.setAttribute('aria-label','停止'); status.textContent = '再生中';
+    } else {
+      clearInterval(timer);
+      if (lastDrawn >= 0) cellsByStep[lastDrawn].forEach(c => c.classList.remove('now'));
+      lastDrawn = -1;
+      icon.innerHTML = '<path d="M7 4l13 8-13 8z"/>';
+      playBtn.setAttribute('aria-label','再生'); status.textContent = '停止中';
+    }
+  }
+  playBtn.onclick = toggle;
+  document.addEventListener('keydown', e => {
+    if (e.code === 'Space' && e.target.tagName !== 'INPUT'){ e.preventDefault(); toggle(); }
+  });
+})();
+</script>
+</body>
+</html>

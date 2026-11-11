@@ -1,4 +1,3 @@
-import { Suspense } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { House } from 'lucide-react'
 import { findGame } from '../games.js'
@@ -8,7 +7,8 @@ export default function GamePage() {
   const game = findGame(id)
   if (!game) return <Navigate to="/" replace />
 
-  const Game = game.component
+  // HTMLもReactも、iframeの中で動かす（ゲームの画面サイズやスタイルが外に影響しない）
+  const src = game.type === 'html' ? `/games/${game.id}/index.html` : `/play.html?id=${game.id}`
 
   return (
     <div className="flex h-full w-full flex-col">
@@ -26,26 +26,13 @@ export default function GamePage() {
         <span className="truncate font-bold text-slate-700">{game.title}</span>
       </header>
 
-      <div className="relative min-h-0 flex-1 overflow-hidden">
-        {game.type === 'html' ? (
-          <iframe
-            src={`/games/${game.id}/index.html`}
-            title={game.title}
-            allow="autoplay; fullscreen; gamepad"
-            className="h-full w-full border-0"
-          />
-        ) : (
-          <Suspense
-            fallback={
-              <div className="flex h-full items-center justify-center">
-                <game.icon className={`h-20 w-20 animate-pulse ${game.iconColor ?? 'text-slate-500'}`} />
-              </div>
-            }
-          >
-            <Game />
-          </Suspense>
-        )}
-      </div>
+      <iframe
+        key={game.id}
+        src={src}
+        title={game.title}
+        allow="autoplay; fullscreen; gamepad"
+        className="min-h-0 w-full flex-1 border-0"
+      />
     </div>
   )
 }

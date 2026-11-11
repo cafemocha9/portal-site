@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>残像 -ZANZO-</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:100%; height:100%; overflow:hidden; background:#0A0C16; touch-action:none; }
+  canvas { display:block; width:100%; height:100%; cursor:crosshair; }
+  #ui {
+    position:fixed; inset:0; pointer-events:none;
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",system-ui,sans-serif;
+    color:#EDE6D6;
+  }
+  .hud { position:absolute; top:16px; left:20px; }
+  .hud .score { font-size:34px; font-weight:800; letter-spacing:2px; font-variant-numeric:tabular-nums; }
+  .hud .combo { font-size:15px; color:#FFB84D; font-weight:700; letter-spacing:1px; min-height:20px; }
+  .energybar {
+    position:absolute; top:22px; right:20px; width:150px; height:10px;
+    border:1px solid rgba(237,230,214,.35); border-radius:5px; overflow:hidden;
+  }
+  .energybar div { height:100%; background:linear-gradient(90deg,#FFB84D,#FF7A59); width:100%; transition:width .08s linear; }
+  #overlay {
+    position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center;
+    background:rgba(10,12,22,.72); backdrop-filter:blur(3px); pointer-events:auto;
+  }
+  #overlay h1 {
+    font-size:min(15vw,88px); font-weight:900; letter-spacing:.12em;
+    background:linear-gradient(180deg,#FFE8B8,#FF7A59);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    text-shadow:0 0 60px rgba(255,122,89,.25);
+  }
+  #overlay .sub { font-size:14px; letter-spacing:.35em; color:#8FA3C8; margin-top:-6px; margin-bottom:28px; }
+  #overlay p { font-size:15px; line-height:1.9; color:#C9D2E4; max-width:420px; padding:0 24px; }
+  #overlay .key { color:#FFB84D; font-weight:700; }
+  #overlay .start {
+    margin-top:30px; font-size:16px; letter-spacing:.25em; color:#EDE6D6;
+    animation:pulse 1.6s ease-in-out infinite;
+  }
+  #overlay .final { font-size:20px; margin-bottom:8px; }
+  #overlay .best { font-size:14px; color:#8FA3C8; margin-bottom:20px; }
+  @keyframes pulse { 0%,100%{opacity:.45} 50%{opacity:1} }
+  .hidden { display:none !important; }
+  @media (prefers-reduced-motion: reduce){ #overlay .start{animation:none} }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="ui">
+  <div class="hud">
+    <div class="score" id="score">0</div>
+    <div class="combo" id="combo"></div>
+  </div>
+  <div class="energybar"><div id="energy"></div></div>
+  <div id="overlay">
+    <h1>残像</h1>
+    <div class="sub">Z A N Z O</div>
+    <p>
+      触れられたら終わり。ただし——<br>
+      <span class="key">クリック / タップ</span>で残像を残してダッシュ。<br>
+      ダッシュ中のあなたは<span class="key">無敵の刃</span>。<br>
+      敵を貫けばエネルギーが戻り、連鎖が加速する。<br>
+      逃げるな。<span class="key">突っ込め。</span>
+    </p>
+    <div class="start" id="startmsg">クリックして開始</div>
+  </div>
+</div>
+<script>
+(() => {
+const cv = document.getElementById('c');
+const ctx = cv.getContext('2d');
+let W=0,H=0,DPR=1;
+function resize(){
+  DPR = Math.min(window.devicePixelRatio||1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  cv.width = W*DPR; cv.height = H*DPR;
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+resize(); addEventListener('resize', resize);
+
+const scoreEl=document.getElementById('score'),
+      comboEl=document.getElementById('combo'),
+      energyEl=document.getElementById('energy'),
+      overlay=document.getElementById('overlay'),
+      startmsg=document.getElementById('startmsg');
+
+const rand=(a,b)=>a+Math.random()*(b-a);
+const TAU=Math.PI*2;
+
+let state='title'; // title | play | dead
+let score=0, best=+(localStorage.getItem('zanzo_best')||0);
+let combo=0, comboTimer=0, kills=0;
+let timeScale=1, slowTimer=0, shake=0, hitStop=0;
+let elapsed=0;
+
+const player={ x:0,y:0, vx:0,vy:0, r:9, energy:1,
+  dashing:false, dashT:0, dashDX:0, dashDY:0, trail:[] };
+let enemies=[], particles=[], ghosts=[], rings=[];
+let mouse={x:0,y:0};
+
+function reset(){
+  score=0; combo=0; comboTimer=0; kills=0; elapsed=0;
+  timeScale=1; slowTimer=0; shake=0; hitStop=0;
+  player.x=W/2; player.y=H/2; player.vx=0; player.vy=0;
+  player.energy=1; player.dashing=false; player.trail=[];
+  enemies=[]; particles=[]; ghosts=[]; rings=[];
+  scoreEl.textContent='0'; comboEl.textContent='';
+}
+
+// --- 敵の生成 ---
+function spawnEnemy(){
+  // 画面外周からスポーン
+  const side=Math.floor(rand(0,4)), m=40;
+  let x,y;
+  if(side===0){x=rand(0,W);y=-m}
+  else if(side===1){x=W+m;y=rand(0,H)}
+  else if(side===2){x=rand(0,W);y=H+m}
+  else {x=-m;y=rand(0,H)}
+  const t=Math.random(), diff=Math.min(1, elapsed/90);
+  let e;
+  if(t < 0.14+diff*0.1 && elapsed>12){
+    // ダーター：狙いをつけて高速突進
+    e={type:'dart',x,y,r:8,hp:1,vx:0,vy:0,phase:'aim',pt:rand(.6,1.1),ang:0,col:'#FF5D8F'};
+  } else if(t < 0.24+diff*0.14 && elapsed>25){
+    // スプリッター：倒すと分裂
+    e={type:'split',x,y,r:16,hp:1,vx:0,vy:0,sp:rand(38,55),col:'#B78CFF',gen:0};
+  } else {
+    // チェイサー：追ってくる基本形
+    e={type:'chase',x,y,r:rand(9,12),hp:1,vx:0,vy:0,sp:rand(55,80)+diff*50,col:'#5DD6FF'};
+  }
+  enemies.push(e);
+}
+let spawnAcc=0;
+function spawnRate(){ return Math.min(2.6, 0.7 + elapsed*0.028); } // 匹/秒
+
+// --- ダッシュ ---
+const DASH_COST=0.34, DASH_TIME=0.19, DASH_SPEED=1500;
+function tryDash(tx,ty){
+  if(state!=='play') return;
+  if(player.energy < DASH_COST || player.dashing) return;
+  const dx=tx-player.x, dy=ty-player.y;
+  const d=Math.hypot(dx,dy)||1;
+  player.energy-=DASH_COST;
+  player.dashing=true; player.dashT=DASH_TIME;
+  player.dashDX=dx/d; player.dashDY=dy/d;
+  rings.push({x:player.x,y:player.y,r:6,max:46,t:0,col:'255,184,77'});
+}
+
+// --- 入力 ---
+function ptr(e){
+  const t=e.touches?e.touches[0]:e;
+  return {x:t.clientX, y:t.clientY};
+}
+addEventListener('pointermove', e=>{ mouse=ptr(e); });
+addEventListener('pointerdown', e=>{
+  mouse=ptr(e);
+  if(state==='title'||state==='dead'){ startGame(); return; }
+  tryDash(mouse.x, mouse.y);
+});
+addEventListener('keydown', e=>{
+  if(e.code==='Space'){
+    if(state!=='play') startGame();
+    else tryDash(mouse.x, mouse.y);
+    e.preventDefault();
+  }
+});
+
+function startGame(){
+  reset(); state='play';
+  overlay.classList.add('hidden');
+}
+function die(){
+  state='dead'; shake=18; hitStop=0.25;
+  burst(player.x,player.y,'255,184,77',60,260);
+  if(score>best){ best=score; localStorage.setItem('zanzo_best',best); }
+  setTimeout(()=>{
+    overlay.classList.remove('hidden');
+    overlay.querySelector('h1').textContent='残像';
+    overlay.querySelector('p').innerHTML=
+      `<span class="final">SCORE <span class="key">${score.toLocaleString()}</span></span><br>`+
+      `<span class="best">BEST ${best.toLocaleString()} ／ 撃破 ${kills}体 ／ 生存 ${elapsed.toFixed(1)}秒</span>`;
+    startmsg.textContent='クリックで再挑戦';
+  }, 550);
+}
+
+// --- エフェクト ---
+function burst(x,y,col,n,sp){
+  for(let i=0;i<n;i++){
+    const a=rand(0,TAU), s=rand(sp*.3,sp);
+    particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,
+      life:rand(.3,.8),t:0,col,r:rand(1.5,3.5)});
+  }
+}
+function addCombo(){
+  combo++; comboTimer=2.2;
+  const mult=1+Math.floor(combo/3)*0.5;
+  const pts=Math.round(100*mult);
+  score+=pts;
+  scoreEl.textContent=score.toLocaleString();
+  comboEl.textContent = combo>1 ? `${combo} COMBO ×${mult.toFixed(1)}` : '';
+}
+
+// --- メインループ ---
+let last=performance.now();
+function loop(now){
+  requestAnimationFrame(loop);
+  let dt=Math.min((now-last)/1000, 0.05); last=now;
+
+  if(hitStop>0){ hitStop-=dt; dt*=0.05; }
+  if(slowTimer>0){ slowTimer-=dt; timeScale+= (0.35-timeScale)*0.4; }
+  else timeScale += (1-timeScale)*0.12;
+  const gdt = dt*timeScale;
+  if(state==='play') elapsed+=gdt;
+
+  update(gdt, dt);
+  draw();
+}
+requestAnimationFrame(loop);
+
+function update(gdt, rawdt){
+  // パーティクル等は常に動かす
+  particles=particles.filter(p=>{
+    p.t+=rawdt; p.x+=p.vx*rawdt; p.y+=p.vy*rawdt;
+    p.vx*=0.96; p.vy*=0.96;
+    return p.t<p.life;
+  });
+  rings=rings.filter(r=>{ r.t+=rawdt*3.2; return r.t<1; });
+  ghosts=ghosts.filter(g=>{ g.t+=rawdt*2.4; return g.t<1; });
+  shake*=Math.pow(0.0001,rawdt);
+
+  if(state!=='play') return;
+  comboTimer-=gdt;
+  if(comboTimer<=0 && combo>0){ combo=0; comboEl.textContent=''; }
+
+  // --- プレイヤー ---
+  if(player.dashing){
+    player.dashT-=gdt;
+    player.x+=player.dashDX*DASH_SPEED*gdt;
+    player.y+=player.dashDY*DASH_SPEED*gdt;
+    if(Math.random()<0.9) ghosts.push({x:player.x,y:player.y,t:0,
+      dx:player.dashDX,dy:player.dashDY});
+    if(player.dashT<=0) player.dashing=false;
+  } else {
+    // カーソル方向へゆっくりドリフト
+    const dx=mouse.x-player.x, dy=mouse.y-player.y;
+    const d=Math.hypot(dx,dy);
+    if(d>4){
+      const sp=Math.min(d*3.2, 200);
+      player.vx+=(dx/d*sp-player.vx)*0.09;
+      player.vy+=(dy/d*sp-player.vy)*0.09;
+    } else { player.vx*=0.85; player.vy*=0.85; }
+    player.x+=player.vx*gdt; player.y+=player.vy*gdt;
+    player.energy=Math.min(1, player.energy+gdt*0.22);
+  }
+  player.x=Math.max(10,Math.min(W-10,player.x));
+  player.y=Math.max(10,Math.min(H-10,player.y));
+  energyEl.style.width=(player.energy*100)+'%';
+
+  // --- スポーン ---
+  spawnAcc+=gdt*spawnRate();
+  while(spawnAcc>=1){ spawnAcc-=1; spawnEnemy(); }
+
+  // --- 敵 ---
+  for(const e of enemies){
+    if(e.type==='chase' || e.type==='split'){
+      const dx=player.x-e.x, dy=player.y-e.y, d=Math.hypot(dx,dy)||1;
+      const sp=(e.sp||60)*(e.type==='split'?1:1);
+      e.vx+=(dx/d*sp-e.vx)*0.06; e.vy+=(dy/d*sp-e.vy)*0.06;
+      e.x+=e.vx*gdt; e.y+=e.vy*gdt;
+    } else if(e.type==='dart'){
+      if(e.phase==='aim'){
+        e.pt-=gdt;
+        e.ang=Math.atan2(player.y-e.y, player.x-e.x);
+        if(e.pt<=0){ e.phase='go'; e.vx=Math.cos(e.ang)*430; e.vy=Math.sin(e.ang)*430; }
+      } else {
+        e.x+=e.vx*gdt; e.y+=e.vy*gdt;
+        if(e.x<-80||e.x>W+80||e.y<-80||e.y>H+80) e.hp=0;
+      }
+    }
+  }
+
+  // --- 衝突 ---
+  const killed=[];
+  for(const e of enemies){
+    if(e.hp<=0) continue;
+    const d=Math.hypot(e.x-player.x, e.y-player.y);
+    if(player.dashing){
+      if(d < e.r+player.r+8){
+        e.hp=0; killed.push(e);
+      }
+    } else {
+      if(d < e.r+player.r-2){ die(); return; }
+      else if(d < e.r+player.r+26 && (Math.abs(e.vx)+Math.abs(e.vy)>120)){
+        // ニアミス → 一瞬スロー＋ボーナス
+        if(!e.grazed){ e.grazed=true; slowTimer=0.12; score+=15;
+          scoreEl.textContent=score.toLocaleString(); }
+      }
+    }
+  }
+  for(const e of killed){
+    kills++;
+    addCombo();
+    player.energy=Math.min(1, player.energy+0.16);
+    hitStop=Math.max(hitStop,0.035);
+    shake=Math.min(14, shake+4);
+    const col = e.col==='#5DD6FF'?'93,214,255': e.col==='#FF5D8F'?'255,93,143':'183,140,255';
+    burst(e.x,e.y,col,16,220);
+    rings.push({x:e.x,y:e.y,r:e.r,max:e.r+30,t:0,col});
+    if(e.type==='split' && e.gen<1){
+      for(let i=0;i<3;i++){
+        const a=rand(0,TAU);
+        enemies.push({type:'split',x:e.x+Math.cos(a)*14,y:e.y+Math.sin(a)*14,
+          r:9,hp:1,vx:Math.cos(a)*140,vy:Math.sin(a)*140,sp:75,col:'#B78CFF',gen:1});
+      }
+    }
+  }
+  enemies=enemies.filter(e=>e.hp>0);
+}
+
+// --- 描画 ---
+function draw(){
+  ctx.save();
+  if(shake>0.3) ctx.translate(rand(-shake,shake), rand(-shake,shake));
+
+  // 背景
+  ctx.fillStyle='#0A0C16'; ctx.fillRect(-40,-40,W+80,H+80);
+  // 淡い格子
+  ctx.strokeStyle='rgba(143,163,200,0.05)'; ctx.lineWidth=1;
+  const g=64;
+  ctx.beginPath();
+  for(let x=0;x<W;x+=g){ ctx.moveTo(x,0); ctx.lineTo(x,H); }
+  for(let y=0;y<H;y+=g){ ctx.moveTo(0,y); ctx.lineTo(W,y); }
+  ctx.stroke();
+
+  // リング
+  for(const r of rings){
+    const rr=r.r+(r.max-r.r)*r.t;
+    ctx.strokeStyle=`rgba(${r.col},${(1-r.t)*.8})`;
+    ctx.lineWidth=2.5*(1-r.t)+0.5;
+    ctx.beginPath(); ctx.arc(r.x,r.y,rr,0,TAU); ctx.stroke();
+  }
+
+  // 残像（ゴースト）
+  for(const gh of ghosts){
+    const a=(1-gh.t)*0.5;
+    ctx.fillStyle=`rgba(255,184,77,${a})`;
+    ctx.save();
+    ctx.translate(gh.x,gh.y);
+    ctx.rotate(Math.atan2(gh.dy,gh.dx));
+    ctx.beginPath();
+    ctx.moveTo(12,0); ctx.lineTo(-8,-6); ctx.lineTo(-4,0); ctx.lineTo(-8,6);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+
+  // 敵
+  for(const e of enemies){
+    ctx.fillStyle=e.col;
+    if(e.type==='dart' && e.phase==='aim'){
+      // 照準線
+      ctx.strokeStyle='rgba(255,93,143,0.35)';
+      ctx.lineWidth=1;
+      ctx.setLineDash([6,6]);
+      ctx.beginPath();
+      ctx.moveTo(e.x,e.y);
+      ctx.lineTo(e.x+Math.cos(e.ang)*900, e.y+Math.sin(e.ang)*900);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.save(); ctx.translate(e.x,e.y); ctx.rotate(e.ang);
+      ctx.beginPath(); ctx.moveTo(12,0); ctx.lineTo(-8,-7); ctx.lineTo(-8,7);
+      ctx.closePath(); ctx.fill(); ctx.restore();
+    } else if(e.type==='dart'){
+      ctx.save(); ctx.translate(e.x,e.y); ctx.rotate(e.ang);
+      ctx.beginPath(); ctx.moveTo(14,0); ctx.lineTo(-9,-7); ctx.lineTo(-9,7);
+      ctx.closePath(); ctx.fill(); ctx.restore();
+    } else if(e.type==='split'){
+      ctx.save(); ctx.translate(e.x,e.y);
+      ctx.rotate(performance.now()*0.002);
+      const n=5;
+      ctx.beginPath();
+      for(let i=0;i<n;i++){
+        const a=i/n*TAU;
+        ctx.lineTo(Math.cos(a)*e.r, Math.sin(a)*e.r);
+      }
+      ctx.closePath(); ctx.fill(); ctx.restore();
+    } else {
+      ctx.beginPath(); ctx.arc(e.x,e.y,e.r,0,TAU); ctx.fill();
+      ctx.fillStyle='rgba(10,12,22,0.55)';
+      ctx.beginPath(); ctx.arc(e.x,e.y,e.r*0.45,0,TAU); ctx.fill();
+    }
+  }
+
+  // パーティクル
+  for(const p of particles){
+    ctx.fillStyle=`rgba(${p.col},${1-p.t/p.life})`;
+    ctx.fillRect(p.x-p.r/2, p.y-p.r/2, p.r, p.r);
+  }
+
+  // プレイヤー
+  if(state==='play' || state==='title'){
+    const px=state==='play'?player.x:W/2, py=state==='play'?player.y:H/2;
+    if(state==='play'){
+      const glow = player.dashing?26:14;
+      const grd=ctx.createRadialGradient(px,py,0,px,py,glow);
+      grd.addColorStop(0,'rgba(255,184,77,0.9)');
+      grd.addColorStop(1,'rgba(255,184,77,0)');
+      ctx.fillStyle=grd;
+      ctx.beginPath(); ctx.arc(px,py,glow,0,TAU); ctx.fill();
+      ctx.fillStyle='#FFE8B8';
+      ctx.save(); ctx.translate(px,py);
+      const ang=player.dashing
+        ? Math.atan2(player.dashDY,player.dashDX)
+        : Math.atan2(mouse.y-py, mouse.x-px);
+      ctx.rotate(ang);
+      ctx.beginPath();
+      ctx.moveTo(13,0); ctx.lineTo(-9,-7); ctx.lineTo(-5,0); ctx.lineTo(-9,7);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+  }
+  ctx.restore();
+}
+})();
+</script>
+</body>
+</html>

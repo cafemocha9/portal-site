@@ -15,8 +15,10 @@ npm run dev
 
 ### A. Reactのアーティファクト（.jsx）
 
-1. `src/games/<id>/` フォルダを作り、アーティファクトのコードを `Game.jsx` などの名前で保存
+1. `src/games/<id>/` フォルダを作り、アーティファクトのコードを `Game.jsx` として保存
    （`export default function ...` の形であればそのまま動きます）
+   Reactのゲームは `play.html?id=<id>` としてiframeの中で動くので、
+   `100vh` などで画面いっぱいを前提にしたゲームも、上部バーの下にそのまま収まります。
 2. `src/games.js` の先頭でアイコンを import し、一覧に1件追加
 
 ```js

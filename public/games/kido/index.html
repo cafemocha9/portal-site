@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>軌道 -KIDO-</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;overflow:hidden;background:#060913;touch-action:none}
+  canvas{display:block;width:100%;height:100%;cursor:pointer}
+  #ui{position:fixed;inset:0;pointer-events:none;
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",system-ui,sans-serif;color:#E8ECF6}
+  .hud{position:absolute;top:16px;left:0;right:0;text-align:center}
+  .hud .score{font-size:40px;font-weight:800;letter-spacing:2px;font-variant-numeric:tabular-nums;
+    text-shadow:0 0 24px rgba(120,200,255,.35)}
+  .hud .streak{font-size:14px;color:#7DE3C8;font-weight:700;letter-spacing:2px;min-height:18px}
+  #overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;text-align:center;background:rgba(6,9,19,.7);
+    backdrop-filter:blur(3px);pointer-events:auto}
+  #overlay h1{font-size:min(15vw,88px);font-weight:900;letter-spacing:.14em;
+    background:linear-gradient(180deg,#CFEFFF,#5B8CFF);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    text-shadow:0 0 60px rgba(91,140,255,.25)}
+  #overlay .sub{font-size:14px;letter-spacing:.35em;color:#7A8BB0;margin-top:-4px;margin-bottom:26px}
+  #overlay p{font-size:15px;line-height:1.95;color:#C6D0E6;max-width:430px;padding:0 24px}
+  #overlay .key{color:#7DE3C8;font-weight:700}
+  #overlay .warn{color:#FF8FA3;font-weight:700}
+  #overlay .start{margin-top:28px;font-size:16px;letter-spacing:.25em;
+    animation:pulse 1.6s ease-in-out infinite}
+  #overlay .final{font-size:20px;margin-bottom:6px}
+  #overlay .best{font-size:14px;color:#7A8BB0;margin-bottom:16px}
+  @keyframes pulse{0%,100%{opacity:.45}50%{opacity:1}}
+  .hidden{display:none!important}
+  @media (prefers-reduced-motion:reduce){#overlay .start{animation:none}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="ui">
+  <div class="hud">
+    <div class="score" id="score">0</div>
+    <div class="streak" id="streak"></div>
+  </div>
+  <div id="overlay">
+    <h1>軌道</h1>
+    <div class="sub">K I D O</div>
+    <p>
+      あなたは惑星の重力に囚われた探査機。<br>
+      <span class="key">クリック / タップ</span>で軌道を離脱し、<br>
+      接線方向へまっすぐ飛び、次の惑星に捕まれ。<br>
+      中心近くを掠めれば <span class="key">PERFECT</span>。<br>
+      ただし——留まりすぎた惑星は<span class="warn">崩壊する。</span>
+    </p>
+    <div class="start" id="startmsg">クリックして発進</div>
+  </div>
+</div>
+<script>
+(()=>{
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+let W=0,H=0,DPR=1;
+function resize(){DPR=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;
+  cv.width=W*DPR;cv.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0)}
+resize();addEventListener('resize',resize);
+
+const scoreEl=document.getElementById('score'),streakEl=document.getElementById('streak'),
+  overlay=document.getElementById('overlay'),startmsg=document.getElementById('startmsg');
+const rand=(a,b)=>a+Math.random()*(b-a);
+const TAU=Math.PI*2;
+
+let state='title';
+let score=0,best=+(localStorage.getItem('kido_best')||0),streak=0,planetCount=0;
+let cam={x:0,y:0},shake=0;
+let stars=[];
+function makeStars(){stars=[];for(let i=0;i<160;i++)
+  stars.push({x:rand(-2000,2000),y:rand(-4000,1000),z:rand(.25,1),r:rand(.6,1.8)})}
+makeStars();
+
+// プレイヤー
+const P={mode:'orbit',planet:null,ang:0,angSp:2.2,dir:1,
+  x:0,y:0,vx:0,vy:0,speed:340,trail:[]};
+let planets=[],particles=[],texts=[];
+
+function newPlanet(prev){
+  planetCount++;
+  const diff=Math.min(1,planetCount/25);
+  const r=rand(26,46-diff*10);
+  let x,y;
+  if(!prev){x=0;y=0}
+  else{
+    const dist=rand(200,320)+r;
+    const spread=0.55+diff*0.5; // 難度で横ブレ増
+    const a=-Math.PI/2+rand(-spread,spread);
+    x=prev.x+Math.cos(a)*dist;
+    y=prev.y+Math.sin(a)*dist;
+  }
+  const hues=['#5B8CFF','#7DE3C8','#C58CFF','#FFB86B','#FF8FA3'];
+  const p={x,y,r,capture:r+34,col:hues[planetCount%hues.length],
+    life:1,decay:0, // 着陸後に崩壊開始
+    drift: planetCount>8 ? rand(0,1)<Math.min(.5,diff) : false,
+    dx:rand(-1,1),dphase:rand(0,TAU),damp:rand(30,70)};
+  planets.push(p);
+  return p;
+}
+
+function reset(){
+  score=0;streak=0;planetCount=0;shake=0;
+  planets=[];particles=[];texts=[];P.trail=[];
+  const first=newPlanet(null);
+  newPlanet(first);newPlanet(planets[1]);
+  P.mode='orbit';P.planet=first;P.ang=-Math.PI/2;P.dir=1;P.angSp=2.0;
+  first.decay=0.0001; // 最初の惑星もいずれ崩壊
+  cam.x=first.x;cam.y=first.y-H*0.15;
+  scoreEl.textContent='0';streakEl.textContent='';
+}
+
+function orbitRadius(pl){return pl.r+22}
+function playerPos(){
+  if(P.mode==='orbit'){
+    const pl=P.planet,orad=orbitRadius(pl);
+    return {x:pl.x+Math.cos(P.ang)*orad,y:pl.y+Math.sin(P.ang)*orad};
+  }
+  return {x:P.x,y:P.y};
+}
+
+function release(){
+  if(state!=='play'||P.mode!=='orbit')return;
+  const pl=P.planet,orad=orbitRadius(pl),pos=playerPos();
+  P.mode='fly';P.x=pos.x;P.y=pos.y;P.flyDist=0;
+  // 接線方向（回転方向に依存）
+  const t=P.ang+P.dir*Math.PI/2;
+  P.vx=Math.cos(t)*P.speed;P.vy=Math.sin(t)*P.speed;
+  pl.decay=Math.max(pl.decay,0.5); // 離れた惑星は加速崩壊
+  burst(pos.x,pos.y,'125,227,200',10,140);
+}
+
+addEventListener('pointerdown',()=>{
+  if(state==='title'||state==='dead'){start();return}
+  release();
+});
+addEventListener('keydown',e=>{
+  if(e.code==='Space'){
+    if(state!=='play')start();else release();
+    e.preventDefault();
+  }
+});
+function start(){reset();state='play';overlay.classList.add('hidden')}
+
+function die(msg){
+  state='dead';shake=16;
+  const pos=playerPos();
+  burst(pos.x,pos.y,'207,239,255',50,240);
+  if(score>best){best=score;localStorage.setItem('kido_best',best)}
+  setTimeout(()=>{
+    overlay.classList.remove('hidden');
+    overlay.querySelector('p').innerHTML=
+      `<span class="final">SCORE <span class="key">${score.toLocaleString()}</span></span><br>`+
+      `<span class="best">BEST ${best.toLocaleString()} ／ 惑星 ${Math.max(0,planetCount-2)}個到達</span>`+
+      `<span style="font-size:13px;color:#7A8BB0">${msg}</span>`;
+    startmsg.textContent='クリックで再発進';
+  },600);
+}
+
+function burst(x,y,col,n,sp){
+  for(let i=0;i<n;i++){const a=rand(0,TAU),s=rand(sp*.3,sp);
+    particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rand(.35,.8),t:0,col,r:rand(1.5,3)})}
+}
+function popText(x,y,str,col){texts.push({x,y,str,col,t:0})}
+
+function land(pl,dist){
+  P.mode='orbit';P.planet=pl;
+  P.ang=Math.atan2(P.y-pl.y,P.x-pl.x);
+  // 進行方向を保つ向きで回転
+  const t=P.ang+Math.PI/2;
+  const dot=Math.cos(t)*P.vx+Math.sin(t)*P.vy;
+  P.dir=dot>=0?1:-1;
+  pl.decay=Math.max(pl.decay,0.14); // 着陸で崩壊カウント開始
+  streak = dist<pl.r*0.45 ? streak+1 : 0;
+  const perfect=dist<pl.r*0.45;
+  const base=100,bonus=perfect?100*streak:0;
+  score+=base+bonus;
+  scoreEl.textContent=score.toLocaleString();
+  if(perfect){popText(pl.x,pl.y-pl.r-30,`PERFECT ×${streak}`,'125,227,200');
+    streakEl.textContent=`PERFECT STREAK ${streak}`;shake=Math.min(10,4+streak)}
+  else{streakEl.textContent='';popText(pl.x,pl.y-pl.r-30,'+100','160,180,220')}
+  burst(P.x,P.y,'125,227,200',14,150);
+  // 惑星回転速度は徐々に上がる
+  P.angSp=2.0+Math.min(2.2,planetCount*0.06);
+  // 先の惑星を補充
+  while(planets[planets.length-1]===pl||planets.length<planets.indexOf(pl)+3)
+    newPlanet(planets[planets.length-1]);
+  newPlanet(planets[planets.length-1]);
+}
+
+let last=performance.now();
+function loop(now){
+  requestAnimationFrame(loop);
+  const dt=Math.min((now-last)/1000,0.05);last=now;
+  update(dt);draw();
+}
+requestAnimationFrame(loop);
+
+function update(dt){
+  particles=particles.filter(p=>{p.t+=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;
+    p.vx*=.96;p.vy*=.96;return p.t<p.life});
+  texts=texts.filter(t=>{t.t+=dt;return t.t<1});
+  shake*=Math.pow(0.0001,dt);
+  if(state!=='play')return;
+
+  // 惑星ドリフトと崩壊
+  for(const pl of planets){
+    if(pl.drift){pl.dphase+=dt;pl.x+=Math.sin(pl.dphase)*pl.damp*dt}
+    if(pl.decay>0){pl.life-=dt*pl.decay*(pl===P.planet?1:0.6);
+      if(pl.life<=0&&pl===P.planet&&P.mode==='orbit'){die('足場が崩壊した。長居は禁物。');return}}
+  }
+  planets=planets.filter(pl=>pl.life>0||pl===P.planet);
+
+  if(P.mode==='orbit'){
+    P.ang+=P.dir*P.angSp*dt;
+    const pos=playerPos();
+    P.x=pos.x;P.y=pos.y;
+  }else{
+    P.x+=P.vx*dt;P.y+=P.vy*dt;
+    // 捕獲判定（現在の惑星以外）
+    for(const pl of planets){
+      if(pl===P.planet)continue;
+      const d=Math.hypot(P.x-pl.x,P.y-pl.y);
+      if(d<pl.capture){land(pl,d);break}
+    }
+    // 一定距離飛んで捕まらなければ漂流死
+    P.flyDist=(P.flyDist||0)+P.speed*dt;
+    if(P.flyDist>750)die('虚空へ漂流。接線の向きを読もう。');
+  }
+  P.trail.push({x:P.x,y:P.y,t:0});
+  for(const t of P.trail)t.t+=dt;
+  P.trail=P.trail.filter(t=>t.t<0.5);
+
+  // カメラ：プレイヤー先読み追従
+  const tx=P.x+(P.mode==='fly'?P.vx*0.22:0);
+  const ty=P.y+(P.mode==='fly'?P.vy*0.22:0)-H*0.1;
+  cam.x+=(tx-cam.x)*Math.min(1,dt*4);
+  cam.y+=(ty-cam.y)*Math.min(1,dt*4);
+}
+
+function draw(){
+  ctx.save();
+  ctx.fillStyle='#060913';ctx.fillRect(0,0,W,H);
+  if(shake>0.3)ctx.translate(rand(-shake,shake),rand(-shake,shake));
+  ctx.translate(W/2-cam.x,H/2-cam.y);
+
+  // 星（パララックス）
+  for(const s of stars){
+    const px=cam.x+(s.x-cam.x)*s.z,py=cam.y+(s.y-cam.y)*s.z;
+    // 画面内へラップ
+    let sx=((px-cam.x+W/2)%W+W)%W, sy=((py-cam.y+H/2)%H+H)%H;
+    ctx.fillStyle=`rgba(200,215,255,${0.25+s.z*0.4})`;
+    ctx.fillRect(cam.x-W/2+sx,cam.y-H/2+sy,s.r,s.r);
+  }
+
+  // 惑星
+  for(const pl of planets){
+    const a=Math.max(0,pl.life);
+    // 捕獲リング
+    ctx.strokeStyle=`rgba(150,170,210,${0.14*a})`;
+    ctx.setLineDash([4,8]);ctx.lineWidth=1;
+    ctx.beginPath();ctx.arc(pl.x,pl.y,pl.capture,0,TAU);ctx.stroke();
+    ctx.setLineDash([]);
+    // 本体（崩壊が進むと赤く・欠ける）
+    const danger=1-a;
+    ctx.fillStyle=pl.col;
+    ctx.globalAlpha=0.25+a*0.75;
+    ctx.beginPath();ctx.arc(pl.x,pl.y,pl.r*(0.7+a*0.3),0,TAU);ctx.fill();
+    ctx.globalAlpha=1;
+    if(danger>0.35){
+      ctx.strokeStyle=`rgba(255,120,140,${danger})`;
+      ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(pl.x,pl.y,pl.r*(0.7+a*0.3)+4,0,TAU*a);ctx.stroke();
+    }
+    // コア
+    ctx.fillStyle='rgba(6,9,19,0.5)';
+    ctx.beginPath();ctx.arc(pl.x,pl.y,pl.r*0.4*a,0,TAU);ctx.fill();
+  }
+
+  // 軌跡
+  for(const t of P.trail){
+    const a=1-t.t/0.5;
+    ctx.fillStyle=`rgba(125,227,200,${a*0.5})`;
+    ctx.fillRect(t.x-1.5,t.y-1.5,3,3);
+  }
+
+  // 接線予測線（軌道中のみ）
+  if(state==='play'&&P.mode==='orbit'){
+    const t=P.ang+P.dir*Math.PI/2;
+    ctx.strokeStyle='rgba(125,227,200,0.28)';
+    ctx.lineWidth=1;ctx.setLineDash([5,7]);
+    ctx.beginPath();ctx.moveTo(P.x,P.y);
+    ctx.lineTo(P.x+Math.cos(t)*260,P.y+Math.sin(t)*260);
+    ctx.stroke();ctx.setLineDash([]);
+  }
+
+  // プレイヤー
+  if(state!=='dead'){
+    const ang=P.mode==='fly'?Math.atan2(P.vy,P.vx):P.ang+P.dir*Math.PI/2;
+    const grd=ctx.createRadialGradient(P.x,P.y,0,P.x,P.y,16);
+    grd.addColorStop(0,'rgba(207,239,255,0.9)');grd.addColorStop(1,'rgba(207,239,255,0)');
+    ctx.fillStyle=grd;ctx.beginPath();ctx.arc(P.x,P.y,16,0,TAU);ctx.fill();
+    ctx.fillStyle='#EAF4FF';
+    ctx.save();ctx.translate(P.x,P.y);ctx.rotate(ang);
+    ctx.beginPath();ctx.moveTo(11,0);ctx.lineTo(-7,-6);ctx.lineTo(-4,0);ctx.lineTo(-7,6);
+    ctx.closePath();ctx.fill();ctx.restore();
+  }
+
+  // パーティクル
+  for(const p of particles){
+    ctx.fillStyle=`rgba(${p.col},${1-p.t/p.life})`;
+    ctx.fillRect(p.x-p.r/2,p.y-p.r/2,p.r,p.r);
+  }
+  // ポップテキスト
+  for(const t of texts){
+    ctx.fillStyle=`rgba(${t.col},${1-t.t})`;
+    ctx.font='700 15px system-ui';
+    ctx.textAlign='center';
+    ctx.fillText(t.str,t.x,t.y-t.t*24);
+  }
+  ctx.restore();
+}
+})();
+</script>
+</body>
+</html>

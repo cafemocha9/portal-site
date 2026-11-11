@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>NEON HOP — Tiles Hop</title>
+<style>
+  :root{
+    --bg:#04060f;
+    --cyan:#00f0ff;
+    --magenta:#ff2fd6;
+    --violet:#7b5cff;
+    --text:#dfe9ff;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Segoe UI',system-ui,sans-serif;color:var(--text)}
+  #wrap{position:fixed;inset:0}
+  canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+  canvas:active{cursor:grabbing}
+
+  /* ===== HUD ===== */
+  #hud{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;padding:16px 20px;pointer-events:none;z-index:5}
+  .hud-block{display:flex;flex-direction:column;gap:2px}
+  .hud-label{font-size:10px;letter-spacing:.35em;text-transform:uppercase;color:rgba(223,233,255,.45)}
+  #score{font-size:42px;font-weight:800;letter-spacing:.05em;line-height:1;
+    background:linear-gradient(180deg,#fff,var(--cyan));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+    filter:drop-shadow(0 0 12px rgba(0,240,255,.55));font-variant-numeric:tabular-nums}
+  #combo{font-size:16px;font-weight:700;color:var(--magenta);text-align:right;
+    text-shadow:0 0 10px rgba(255,47,214,.8);opacity:0;transition:opacity .2s;font-variant-numeric:tabular-nums}
+  #combo.on{opacity:1}
+  #best{font-size:13px;color:rgba(223,233,255,.55);text-align:right;font-variant-numeric:tabular-nums}
+
+  /* ===== Overlays ===== */
+  .overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:22px;z-index:10;background:radial-gradient(ellipse at 50% 60%,rgba(8,12,30,.55),rgba(2,3,10,.92));
+    backdrop-filter:blur(3px);transition:opacity .35s;text-align:center;padding:24px}
+  .overlay.hidden{opacity:0;pointer-events:none}
+  .title{font-size:clamp(40px,9vw,72px);font-weight:900;letter-spacing:.12em;line-height:1;
+    background:linear-gradient(115deg,var(--cyan) 20%,#fff 50%,var(--magenta) 80%);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+    filter:drop-shadow(0 0 24px rgba(0,240,255,.4)) drop-shadow(0 0 40px rgba(255,47,214,.25))}
+  .subtitle{font-size:12px;letter-spacing:.5em;text-transform:uppercase;color:rgba(223,233,255,.5)}
+  .btn{pointer-events:auto;padding:15px 52px;font-size:15px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;
+    color:#031018;background:linear-gradient(90deg,var(--cyan),#6ef2ff);border:none;border-radius:999px;cursor:pointer;
+    box-shadow:0 0 24px rgba(0,240,255,.55),0 0 60px rgba(0,240,255,.2),inset 0 0 12px rgba(255,255,255,.4);
+    transition:transform .15s,box-shadow .15s}
+  .btn:hover{transform:scale(1.05);box-shadow:0 0 34px rgba(0,240,255,.8),0 0 90px rgba(0,240,255,.3),inset 0 0 12px rgba(255,255,255,.5)}
+  .btn:focus-visible{outline:2px solid #fff;outline-offset:4px}
+  .hint{font-size:12px;letter-spacing:.15em;color:rgba(223,233,255,.45);line-height:1.9}
+  .final-score{font-size:64px;font-weight:900;line-height:1;color:#fff;
+    text-shadow:0 0 20px rgba(0,240,255,.8),0 0 50px rgba(123,92,255,.5);font-variant-numeric:tabular-nums}
+  .final-label{font-size:11px;letter-spacing:.45em;text-transform:uppercase;color:rgba(223,233,255,.5)}
+  .newbest{font-size:13px;font-weight:700;letter-spacing:.3em;color:var(--magenta);
+    text-shadow:0 0 12px rgba(255,47,214,.8);animation:pulse 1s infinite alternate}
+  /* ===== 音楽設定 ===== */
+  .controls{pointer-events:auto;display:flex;flex-direction:column;gap:10px;align-items:center}
+  .file-label{display:inline-block;padding:10px 26px;font-size:12px;letter-spacing:.2em;cursor:pointer;
+    color:var(--cyan);border:1px solid rgba(0,240,255,.5);border-radius:999px;
+    box-shadow:0 0 14px rgba(0,240,255,.2),inset 0 0 8px rgba(0,240,255,.08);transition:box-shadow .15s}
+  .file-label:hover{box-shadow:0 0 22px rgba(0,240,255,.45),inset 0 0 10px rgba(0,240,255,.15)}
+  .file-label input{display:none}
+  .file-name{font-size:11px;letter-spacing:.08em;color:rgba(223,233,255,.55);max-width:80vw;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .param-row{display:flex;gap:18px}
+  .param-row label{display:flex;flex-direction:column;gap:4px;font-size:10px;letter-spacing:.25em;
+    text-transform:uppercase;color:rgba(223,233,255,.5);align-items:center}
+  .param-row input{width:90px;padding:7px 10px;font-size:15px;font-weight:700;text-align:center;
+    color:var(--text);background:rgba(10,16,40,.7);border:1px solid rgba(123,92,255,.5);border-radius:8px;
+    font-variant-numeric:tabular-nums}
+  .param-row input:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+  /* ===== モード選択 ===== */
+  .mode-select{pointer-events:auto;display:flex;gap:10px}
+  .mode-btn{padding:9px 24px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;
+    cursor:pointer;color:rgba(223,233,255,.6);background:rgba(10,16,40,.5);
+    border:1px solid rgba(123,92,255,.4);border-radius:999px;transition:all .15s}
+  .mode-btn.active{color:#031018;background:linear-gradient(90deg,var(--cyan),#6ef2ff);
+    border-color:transparent;box-shadow:0 0 16px rgba(0,240,255,.5)}
+  .mode-btn:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+  @keyframes pulse{from{opacity:.6}to{opacity:1}}
+  @media (prefers-reduced-motion: reduce){
+    .newbest{animation:none}
+    .btn{transition:none}
+  }
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="game"></canvas></div>
+
+<div id="hud">
+  <div class="hud-block">
+    <span class="hud-label">Score</span>
+    <span id="score">0</span>
+  </div>
+  <div class="hud-block" style="align-items:flex-end">
+    <span id="combo"></span>
+    <span id="best">BEST 0</span>
+  </div>
+</div>
+
+<div id="startOverlay" class="overlay">
+  <div class="subtitle">Tiles Hop</div>
+  <div class="title">NEON HOP</div>
+
+  <div class="mode-select" role="group" aria-label="モード選択">
+    <button type="button" class="mode-btn active" id="modeMusicBtn" data-mode="music">音楽シンク</button>
+    <button type="button" class="mode-btn" id="modeClassicBtn" data-mode="classic">スピードアップ</button>
+  </div>
+
+  <div class="controls" id="musicControls">
+    <label class="file-label">♫ 音楽ファイルを選択
+      <input type="file" id="musicFile" accept="audio/*">
+    </label>
+    <div id="fileName" class="file-name">未選択(内蔵シンセモードで動作)</div>
+    <div class="param-row">
+      <label>BPM<input type="number" id="bpmInput" value="128" min="40" max="240" step="0.5"></label>
+      <label>Offset ms<input type="number" id="offsetInput" value="0" step="10"></label>
+    </div>
+  </div>
+
+  <button id="startBtn" class="btn">Start</button>
+  <div class="hint" id="modeHint">ドラッグ / ← → キーでボールを操作 — 1バウンド = 1拍で曲に同期<br>着地がビートより早い/遅い場合は Offset で補正(+で跳ねが遅れる方向)<br>50点を超えると足場が左右に動き出します</div>
+</div>
+
+<div id="overOverlay" class="overlay hidden">
+  <div class="final-label">Final Score</div>
+  <div id="finalScore" class="final-score">0</div>
+  <div id="newBest" class="newbest" style="display:none">NEW RECORD</div>
+  <button id="retryBtn" class="btn">Retry</button>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ================= 基本セットアップ ================= */
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+
+function resize(){
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  canvas.width = W * DPR; canvas.height = H * DPR;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+window.addEventListener('resize', resize);
+resize();
+
+/* ================= 遠近投影 =================
+   world: x ∈ [-1,1](横位置), z ≥ 0(奥行き)
+   scale(z) = FOCAL / (FOCAL + z) — zが大きいほど小さく上に描画 */
+const FOCAL = 3.2;
+const HORIZON = 0.30;   // 消失点の縦位置(画面比)
+const GROUND  = 0.80;   // 手前の地面ライン(画面比)
+const scaleAt = z => FOCAL / (FOCAL + z);
+function project(x, z){
+  const s = scaleAt(z);
+  const groundY = H * HORIZON + (H * GROUND - H * HORIZON) * s;
+  return { x: W / 2 + x * (W * 0.42) * s, y: groundY, s };
+}
+
+/* ================= オーディオ ================= */
+let AC = null, master = null, analyser = null, freqData = null;
+let musicBuffer = null, musicSource = null, musicStartTime = 0;
+let bpm = 128, offsetSec = 0;
+const MELODY = [329.63,392.00,440.00,493.88,587.33,493.88,440.00,392.00,
+                329.63,293.66,329.63,392.00,493.88,440.00,392.00,329.63]; // Emペンタ系オリジナル進行(シンセモード用)
+let noteIdx = 0;
+
+function initAudio(){
+  if (AC) return;
+  try{
+    AC = new (window.AudioContext || window.webkitAudioContext)();
+    master = AC.createGain(); master.gain.value = 0.5; master.connect(AC.destination);
+    analyser = AC.createAnalyser();
+    analyser.fftSize = 256;              // 128ビン。低域抽出には十分な分解能
+    analyser.smoothingTimeConstant = 0.7;
+    analyser.connect(master);
+    freqData = new Uint8Array(analyser.frequencyBinCount);
+  }catch(e){ AC = null; }
+}
+
+/* --- 音楽ファイル制御 --- */
+function startMusic(){
+  stopMusic();
+  if (!musicBuffer || !AC) return;
+  musicSource = AC.createBufferSource();
+  musicSource.buffer = musicBuffer;
+  musicSource.loop = true;
+  musicSource.connect(analyser);
+  const t0 = AC.currentTime + 0.12;      // わずかに先の時刻を予約し、開始タイミングを確定させる
+  musicSource.start(t0);
+  musicStartTime = t0;
+}
+function stopMusic(){
+  if (musicSource){ try{ musicSource.stop(); }catch(e){} musicSource = null; }
+}
+/* 低域(キック帯域 ≈ 0〜350Hz)のエネルギーを 0..1 で返す */
+function bassLevel(){
+  if (!analyser || !musicSource) return 0;
+  analyser.getByteFrequencyData(freqData);
+  let sum = 0; const n = 8;              // 128ビン中の先頭8ビン ≈ 〜350Hz
+  for (let i = 0; i < n; i++) sum += freqData[i];
+  return sum / (n * 255);
+}
+function playNote(perfect){
+  if (!AC) return;
+  if (AC.state === 'suspended') AC.resume();
+  const t = AC.currentTime;
+  const musicOn = !!musicSource;         // 音楽モードでは効果音を減衰させ、曲を主役に保つ
+  const vol = musicOn ? 0.30 : 1;
+  const f = MELODY[noteIdx % MELODY.length]; noteIdx++;
+  // メイン音(三角波+短いエンベロープ)
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = 'triangle'; o.frequency.value = f;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime((perfect ? 0.4 : 0.28) * vol, t + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
+  o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.5);
+  // 低音キック(音楽モードでは曲側のキックと衝突するため省略)
+  if (!musicOn){
+    const k = AC.createOscillator(), kg = AC.createGain();
+    k.type = 'sine';
+    k.frequency.setValueAtTime(150, t);
+    k.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+    kg.gain.setValueAtTime(0.35, t);
+    kg.gain.exponentialRampToValueAtTime(0.0001, t + 0.15);
+    k.connect(kg); kg.connect(master); k.start(t); k.stop(t + 0.16);
+  }
+  // PERFECT時はオクターブ上を重ねる
+  if (perfect){
+    const o2 = AC.createOscillator(), g2 = AC.createGain();
+    o2.type = 'sine'; o2.frequency.value = f * 2;
+    g2.gain.setValueAtTime(0.0001, t);
+    g2.gain.exponentialRampToValueAtTime(0.18, t + 0.01);
+    g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
+    o2.connect(g2); g2.connect(master); o2.start(t); o2.stop(t + 0.65);
+  }
+}
+function playCrash(){
+  if (!AC) return;
+  const t = AC.currentTime;
+  const len = 0.5, buf = AC.createBuffer(1, AC.sampleRate * len, AC.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random()*2-1) * Math.pow(1 - i/d.length, 2);
+  const src = AC.createBufferSource(); src.buffer = buf;
+  const g = AC.createGain(); g.gain.value = 0.4;
+  const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 800;
+  src.connect(lp); lp.connect(g); g.connect(master); src.start(t);
+}
+
+/* ================= ゲーム状態 ================= */
+const TILE_GAP = 1.35;        // タイル間隔(world z)
+const TILE_HALF_W = 0.17;     // タイル半幅(world x)
+const TILE_LEN = 0.42;        // タイル奥行き
+const SPAWN_Z = 14;           // 生成距離
+const BASE_SPEED = 3.4;       // 初速(z/秒)
+
+let state = 'idle';           // idle | play | over
+let gameMode = 'music';       // 'music'(音楽シンク) | 'classic'(スピードアップ)
+let tiles = [];               // {x, baseX, z, hit, judged, moving, moveAmp, moveFreq, movePhase}
+let particles = [];
+let stars = [];
+let ballX = 0, targetX = 0;
+let travel = 0;               // 累積移動距離 → バウンド位相に使用
+let speed = BASE_SPEED;
+let moveClock = 0;            // 可動床の振動位相に使う実時間クロック(travelとは独立)
+let score = 0, best = 0, combo = 0;
+let shake = 0, flash = 0;
+let lastTilePassed = null;
+
+const MOVING_TILE_SCORE_THRESHOLD = 50;  // このスコアを超えたら可動床が出現し始める
+const MOVING_TILE_CHANCE = 0.3;          // 出現条件を満たしたタイルが可動床になる確率
+
+const $score = document.getElementById('score');
+const $combo = document.getElementById('combo');
+const $best  = document.getElementById('best');
+const $start = document.getElementById('startOverlay');
+const $over  = document.getElementById('overOverlay');
+const $final = document.getElementById('finalScore');
+const $newBest = document.getElementById('newBest');
+
+function makeStars(){
+  stars = [];
+  for (let i = 0; i < 90; i++){
+    stars.push({ x: Math.random(), y: Math.random() * HORIZON * 1.4,
+                 r: Math.random() * 1.4 + 0.3, tw: Math.random() * Math.PI * 2 });
+  }
+}
+makeStars();
+
+function reset(){
+  tiles = []; particles = [];
+  ballX = 0; targetX = 0; travel = 0; moveClock = 0;
+  // 音楽シンクモード:1バウンド(TILE_GAP)= 1拍 になる速度で固定
+  // スピードアップモード:初速からスタートし、update()内で毎フレーム緩やかに加速
+  speed = gameMode === 'music' ? TILE_GAP * bpm / 60 : BASE_SPEED;
+  score = 0; combo = 0;
+  noteIdx = 0; shake = 0; flash = 0; lastTilePassed = null;
+  let x = 0;
+  for (let z = TILE_GAP; z < SPAWN_Z; z += TILE_GAP){
+    const t = makeTile(x, z);
+    if (z === TILE_GAP && Math.abs(x) < TILE_HALF_W) t.hit = true;
+    tiles.push(t);
+    x = nextTileX(x);
+  }
+  updateHUD();
+}
+/* 可動床の抽選込みでタイルを生成する。
+   score が閾値を超えた後だけ、一定確率で左右に振動する足場になる。
+   基準位置は baseX に保持し、見た目のx はここから振動分をずらして描画・判定する。 */
+function makeTile(x, z){
+  const eligible = score > MOVING_TILE_SCORE_THRESHOLD;
+  const moving = eligible && Math.random() < MOVING_TILE_CHANCE;
+  return {
+    x, baseX: x, z, hit: false, judged: false,
+    moving,
+    moveAmp:  moving ? 0.10 + Math.random() * 0.10 : 0,   // 振幅 0.10〜0.20(world x)
+    moveFreq: moving ? 1.0  + Math.random() * 1.2  : 0,   // 角速度係数(rad/秒相当)
+    movePhase: moving ? Math.random() * Math.PI * 2 : 0
+  };
+}
+function nextTileX(prev){
+  // テンポ/加速方式に関わらず難度は横移動幅の拡大で表現する
+  // reach: 0.42 から始まり、進行距離に比例して最大 0.80 まで増加
+  const reach = Math.min(0.80, 0.42 + travel * 0.006);
+  let nx = prev + (Math.random()*2 - 1) * reach;
+  return Math.max(-0.8, Math.min(0.8, nx));
+}
+function updateHUD(){
+  $score.textContent = score;
+  $best.textContent = 'BEST ' + best;
+  if (combo >= 3){ $combo.textContent = 'COMBO ×' + combo; $combo.classList.add('on'); }
+  else $combo.classList.remove('on');
+}
+
+/* ================= パーティクル ================= */
+function burst(px, py, color, n){
+  for (let i = 0; i < n; i++){
+    const a = Math.random() * Math.PI * 2, v = Math.random() * 4 + 1.5;
+    particles.push({ x: px, y: py, vx: Math.cos(a)*v, vy: Math.sin(a)*v - 2,
+                     life: 1, color });
+  }
+}
+
+/* ================= 入力 ================= */
+let dragging = false, dragStartPX = 0, dragStartWX = 0;
+canvas.addEventListener('pointerdown', e => {
+  dragging = true; dragStartPX = e.clientX; dragStartWX = targetX;
+  canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointermove', e => {
+  if (!dragging) return;
+  const dx = (e.clientX - dragStartPX) / (W * 0.42 * scaleAt(0)) ;
+  targetX = Math.max(-0.95, Math.min(0.95, dragStartWX + dx * 1.35));
+});
+canvas.addEventListener('pointerup', () => dragging = false);
+canvas.addEventListener('pointercancel', () => dragging = false);
+
+const keys = {};
+window.addEventListener('keydown', e => {
+  keys[e.key] = true;
+  if ((e.key === ' ' || e.key === 'Enter')){
+    if (state === 'idle') startGame();
+    else if (state === 'over') startGame();
+  }
+});
+window.addEventListener('keyup', e => keys[e.key] = false);
+
+/* ================= モード切替 ================= */
+const $musicControls = document.getElementById('musicControls');
+const $modeHint = document.getElementById('modeHint');
+const HINTS = {
+  music:   'ドラッグ / ← → キーでボールを操作 — 1バウンド = 1拍で曲に同期<br>着地がビートより早い/遅い場合は Offset で補正(+で跳ねが遅れる方向)<br>50点を超えると足場が左右に動き出します',
+  classic: 'ドラッグ / ← → キーでボールを操作 — 進むほどスピードが徐々に上昇<br>光るタイルに着地し続けよう — 中央着地で PERFECT<br>50点を超えると足場が左右に動き出します'
+};
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    gameMode = btn.dataset.mode;
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b === btn));
+    $musicControls.style.display = gameMode === 'music' ? 'flex' : 'none';
+    $modeHint.innerHTML = HINTS[gameMode];
+  });
+});
+
+/* ================= ゲーム開始・終了 ================= */
+function startGame(){
+  initAudio();
+  if (AC && AC.state === 'suspended') AC.resume();
+  if (gameMode === 'music'){
+    // パラメータ確定はリセット前に行う(speedがbpmに依存するため)
+    bpm = Math.min(240, Math.max(40, parseFloat(document.getElementById('bpmInput').value) || 128));
+    offsetSec = (parseFloat(document.getElementById('offsetInput').value) || 0) / 1000;
+  }
+  reset();
+  if (gameMode === 'music') startMusic(); else stopMusic();
+  state = 'play';
+  $start.classList.add('hidden');
+  $over.classList.add('hidden');
+}
+function gameOver(){
+  state = 'over';
+  stopMusic();
+  playCrash();
+  shake = 14;
+  const isNew = score > best;
+  if (isNew) best = score;
+  $final.textContent = score;
+  $newBest.style.display = isNew && score > 0 ? 'block' : 'none';
+  updateHUD();
+  setTimeout(() => $over.classList.remove('hidden'), 550);
+}
+document.getElementById('startBtn').addEventListener('click', startGame);
+document.getElementById('retryBtn').addEventListener('click', startGame);
+
+document.getElementById('musicFile').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  const $fn = document.getElementById('fileName');
+  if (!file) return;
+  initAudio();
+  if (!AC){ $fn.textContent = 'このブラウザはWeb Audio非対応です'; return; }
+  $fn.textContent = '読み込み中…';
+  try{
+    const buf = await file.arrayBuffer();
+    musicBuffer = await AC.decodeAudioData(buf);
+    $fn.textContent = `♫ ${file.name}(${Math.round(musicBuffer.duration)}秒 / ループ再生)`;
+  }catch(err){
+    musicBuffer = null;
+    $fn.textContent = 'デコード失敗:別の形式(MP3/M4A/WAV)を試してください';
+  }
+});
+
+/* ================= 更新 ================= */
+let prevT = performance.now();
+function update(dt){
+  if (state !== 'play') return;
+
+  // キーボード入力
+  if (keys['ArrowLeft'])  targetX = Math.max(-0.95, targetX - 2.6 * dt);
+  if (keys['ArrowRight']) targetX = Math.min( 0.95, targetX + 2.6 * dt);
+
+  // ボール横移動(スムージング)
+  ballX += (targetX - ballX) * Math.min(1, dt * 14);
+
+  // 前進方式はモードで異なる
+  let newTravel;
+  if (gameMode === 'music' && musicSource && AC){
+    // 音楽シンクモード:オーディオクロックを唯一の時間基準にする。
+    // rAF累積は端末負荷でドリフトするが、AC.currentTimeは曲自身と同じ時計なので
+    // 何分経過してもビートと着地がズレない。offsetSecは曲頭の無音等を補正する。速度は固定(BPM由来)。
+    newTravel = Math.max(0, (AC.currentTime - musicStartTime - offsetSec) * speed);
+  } else {
+    // スピードアップモード:速度自体を毎フレーム緩やかに加速させ、フレーム積算で進める
+    if (gameMode === 'classic') speed += dt * 0.055;
+    newTravel = travel + speed * dt;
+  }
+  const dz = Math.max(0, newTravel - travel);
+  travel = newTravel;
+  moveClock += dt;
+  for (const t of tiles) t.z -= dz;
+
+  // 可動床の横位置を更新(判定済みタイルは基準位置に固定し、着地後の見た目のブレを防ぐ)
+  for (const t of tiles){
+    if (t.moving && !t.judged){
+      const wobble = t.moveAmp * Math.sin(moveClock * t.moveFreq + t.movePhase);
+      t.x = Math.max(-0.95, Math.min(0.95, t.baseX + wobble));
+    }
+  }
+
+  // タイル補充(baseX基準で連鎖させ、可動床の振動位相が配置間隔に影響しないようにする)
+  let maxZ = 0, lastX = 0;
+  for (const t of tiles){ if (t.z > maxZ){ maxZ = t.z; lastX = t.baseX; } }
+  while (maxZ < SPAWN_Z){
+    lastX = nextTileX(lastX);
+    maxZ += TILE_GAP;
+    tiles.push(makeTile(lastX, maxZ));
+  }
+
+  // 着地判定:タイルが z=0 を横切った瞬間
+  for (const t of tiles){
+    if (!t.judged && t.z <= 0){
+      t.judged = true;
+      const dx = Math.abs(ballX - t.x);
+      if (dx <= TILE_HALF_W + 0.02){
+        const perfect = dx < TILE_HALF_W * 0.35;
+        t.hit = true;
+        combo++;
+        score += 1;             // 得点は着地1回につき常に+1
+        playNote(perfect);
+        const p = project(ballX, 0);
+        burst(p.x, p.y, perfect ? '#ff2fd6' : '#00f0ff', perfect ? 26 : 14);
+        if (perfect) flash = 0.35;
+        lastTilePassed = t;
+        updateHUD();
+      } else {
+        gameOver();
+        return;
+      }
+    }
+  }
+  tiles = tiles.filter(t => t.z > -TILE_LEN - 0.5);
+
+  // パーティクル
+  for (const p of particles){
+    p.x += p.vx; p.y += p.vy; p.vy += 0.18; p.life -= dt * 1.8;
+  }
+  particles = particles.filter(p => p.life > 0);
+}
+
+/* ================= 描画 ================= */
+function bounceOffset(){
+  // タイル間隔ごとに1バウンド。f=0/1でタイル通過位相=着地
+  const f = ((travel % TILE_GAP) / TILE_GAP);
+  return 4 * f * (1 - f); // 0→1→0 の放物線
+}
+
+function draw(now){
+  ctx.clearRect(0, 0, W, H);
+
+  // 画面シェイク
+  ctx.save();
+  if (shake > 0.3){
+    ctx.translate((Math.random()-0.5)*shake, (Math.random()-0.5)*shake);
+    shake *= 0.88;
+  }
+
+  // ---- 背景:宇宙グラデーション ----
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#02030c');
+  bg.addColorStop(HORIZON, '#0a0f2e');
+  bg.addColorStop(HORIZON + 0.02, '#120a2a');
+  bg.addColorStop(1, '#04060f');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // 星
+  for (const s of stars){
+    const a = 0.35 + 0.45 * Math.abs(Math.sin(now * 0.001 + s.tw));
+    ctx.fillStyle = `rgba(200,230,255,${a})`;
+    ctx.beginPath(); ctx.arc(s.x * W, s.y * H, s.r, 0, 7); ctx.fill();
+  }
+
+  // 地平線グロー(音楽の低域エネルギーで脈動:キックに同期して空間が光る)
+  const bass = bassLevel();
+  const glowA = 0.20 + bass * 0.45;
+  const hg = ctx.createLinearGradient(0, H*HORIZON - 40, 0, H*HORIZON + 60);
+  hg.addColorStop(0, 'rgba(0,240,255,0)');
+  hg.addColorStop(0.5, `rgba(0,240,255,${glowA})`);
+  hg.addColorStop(1, 'rgba(123,92,255,0)');
+  ctx.fillStyle = hg;
+  ctx.fillRect(0, H*HORIZON - 40 - bass*30, W, 100 + bass*60);
+
+  // ---- パースグリッド ----
+  ctx.lineWidth = 1;
+  // 縦線
+  for (let gx = -1.2; gx <= 1.21; gx += 0.3){
+    const p0 = project(gx, 0.001), p1 = project(gx, 30);
+    const grad = ctx.createLinearGradient(p0.x, p0.y, p1.x, p1.y);
+    grad.addColorStop(0, 'rgba(0,240,255,0.16)');
+    grad.addColorStop(1, 'rgba(0,240,255,0)');
+    ctx.strokeStyle = grad;
+    ctx.beginPath(); ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y); ctx.stroke();
+  }
+  // 横線(スクロール)
+  const gridOff = travel % 1.0;
+  for (let gz = -gridOff; gz < 20; gz += 1.0){
+    if (gz < 0.001) continue;
+    const pl = project(-1.2, gz), pr = project(1.2, gz);
+    const alpha = 0.14 * scaleAt(gz);
+    ctx.strokeStyle = `rgba(123,92,255,${alpha})`;
+    ctx.beginPath(); ctx.moveTo(pl.x, pl.y); ctx.lineTo(pr.x, pr.y); ctx.stroke();
+  }
+
+  // ---- タイル(奥→手前の順) ----
+  const sorted = [...tiles].sort((a,b) => b.z - a.z);
+  for (const t of sorted){
+    const zN = Math.max(t.z, 0.001), zF = t.z + TILE_LEN;
+    const nl = project(t.x - TILE_HALF_W, zN), nr = project(t.x + TILE_HALF_W, zN);
+    const fl = project(t.x - TILE_HALF_W, zF), fr = project(t.x + TILE_HALF_W, zF);
+    const s = scaleAt(zN);
+
+    ctx.beginPath();
+    ctx.moveTo(fl.x, fl.y); ctx.lineTo(fr.x, fr.y);
+    ctx.lineTo(nr.x, nr.y); ctx.lineTo(nl.x, nl.y);
+    ctx.closePath();
+
+    if (t.hit){
+      ctx.fillStyle = `rgba(255,47,214,${0.28 * s + 0.08})`;
+      ctx.shadowColor = '#ff2fd6';
+    } else if (t.moving){
+      const g = ctx.createLinearGradient(fl.x, fl.y, nl.x, nl.y);
+      g.addColorStop(0, `rgba(90,40,200,${0.25 * s + 0.05})`);
+      g.addColorStop(1, `rgba(160,110,255,${0.55 * s + 0.15})`);
+      ctx.fillStyle = g;
+      ctx.shadowColor = '#7b5cff';
+    } else {
+      const g = ctx.createLinearGradient(fl.x, fl.y, nl.x, nl.y);
+      g.addColorStop(0, `rgba(0,140,200,${0.25 * s + 0.05})`);
+      g.addColorStop(1, `rgba(0,240,255,${0.5 * s + 0.15})`);
+      ctx.fillStyle = g;
+      ctx.shadowColor = '#00f0ff';
+    }
+    ctx.shadowBlur = 18 * s;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = t.hit ? `rgba(255,150,235,${0.7*s})`
+                     : t.moving ? `rgba(210,180,255,${0.85*s})`
+                     : `rgba(160,250,255,${0.85*s})`;
+    ctx.lineWidth = Math.max(1, 2 * s);
+    ctx.stroke();
+
+    // タイル中央ライン(PERFECTゾーンの視覚化)
+    if (!t.hit){
+      const cl = project(t.x, zN), cf = project(t.x, zF);
+      ctx.strokeStyle = `rgba(255,255,255,${0.35*s})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(cf.x, cf.y); ctx.lineTo(cl.x, cl.y); ctx.stroke();
+    }
+  }
+
+  // ---- ボール ----
+  if (state !== 'over' || shake > 1){
+    const bp = project(ballX, 0);
+    const bounce = state === 'play' ? bounceOffset() : 0.4;
+    const jumpPx = H * 0.16 * bounce;
+    const r = Math.max(10, W * 0.017);
+    const by = bp.y - r - jumpPx;
+
+    // 影
+    const shScale = 1 - bounce * 0.5;
+    ctx.fillStyle = `rgba(0,240,255,${0.25 * shScale})`;
+    ctx.beginPath();
+    ctx.ellipse(bp.x, bp.y + 2, r * shScale, r * 0.32 * shScale, 0, 0, 7);
+    ctx.fill();
+
+    // トレイル
+    ctx.strokeStyle = 'rgba(0,240,255,0.25)';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(bp.x, bp.y - 2); ctx.lineTo(bp.x, by + r); ctx.stroke();
+
+    // 本体(グロー球)
+    const bg2 = ctx.createRadialGradient(bp.x - r*0.3, by - r*0.3, r*0.1, bp.x, by, r);
+    bg2.addColorStop(0, '#ffffff');
+    bg2.addColorStop(0.45, '#8ef8ff');
+    bg2.addColorStop(1, '#0090c8');
+    ctx.shadowColor = '#00f0ff';
+    ctx.shadowBlur = 26 + bass * 30;   // キックでボールの発光も強まる
+    ctx.fillStyle = bg2;
+    ctx.beginPath(); ctx.arc(bp.x, by, r, 0, 7); ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+
+  // ---- パーティクル ----
+  for (const p of particles){
+    ctx.globalAlpha = Math.max(0, p.life);
+    ctx.fillStyle = p.color;
+    ctx.shadowColor = p.color; ctx.shadowBlur = 8;
+    ctx.beginPath(); ctx.arc(p.x, p.y, 3 * p.life + 1, 0, 7); ctx.fill();
+  }
+  ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+
+  // PERFECTフラッシュ
+  if (flash > 0){
+    ctx.fillStyle = `rgba(255,47,214,${flash * 0.18})`;
+    ctx.fillRect(0, 0, W, H);
+    flash -= 0.03;
+  }
+
+  ctx.restore();
+}
+
+/* ================= メインループ ================= */
+function loop(now){
+  const dt = Math.min(0.033, (now - prevT) / 1000);
+  prevT = now;
+  update(dt);
+  draw(now);
+  requestAnimationFrame(loop);
+}
+reset();
+requestAnimationFrame(loop);
+
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>特異点 -SINGULARITY-</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;overflow:hidden;background:#03040A;touch-action:none}
+  canvas{display:block;width:100%;height:100%;cursor:none}
+  #ui{position:fixed;inset:0;pointer-events:none;
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",system-ui,sans-serif;color:#E9E4F2}
+  .hud{position:absolute;top:16px;left:0;right:0;text-align:center}
+  .hud .mass{font-size:38px;font-weight:800;letter-spacing:1px;font-variant-numeric:tabular-nums;
+    text-shadow:0 0 28px rgba(190,140,255,.4)}
+  .hud .mass small{font-size:15px;color:#9C8CC8;font-weight:600;letter-spacing:3px}
+  .hud .info{font-size:13px;color:#8A7FB0;letter-spacing:1px;min-height:18px;margin-top:2px}
+  #overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;text-align:center;background:rgba(3,4,10,.74);
+    backdrop-filter:blur(3px);pointer-events:auto;cursor:auto}
+  #overlay h1{font-size:min(13vw,76px);font-weight:900;letter-spacing:.1em;
+    background:linear-gradient(180deg,#E9D8FF,#8A5CFF 60%,#FF8C42);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    text-shadow:0 0 70px rgba(138,92,255,.3)}
+  #overlay .sub{font-size:13px;letter-spacing:.4em;color:#7A6FA5;margin-top:-2px;margin-bottom:26px}
+  #overlay p{font-size:15px;line-height:2;color:#CBC2E4;max-width:460px;padding:0 24px}
+  #overlay .key{color:#C9A8FF;font-weight:700}
+  #overlay .warn{color:#FF9E6B;font-weight:700}
+  #overlay .start{margin-top:26px;font-size:16px;letter-spacing:.25em;
+    animation:pulse 1.7s ease-in-out infinite}
+  #overlay .final{font-size:20px;margin-bottom:6px}
+  #overlay .best{font-size:14px;color:#7A6FA5;margin-bottom:14px}
+  @keyframes pulse{0%,100%{opacity:.45}50%{opacity:1}}
+  .hidden{display:none!important}
+  @media (prefers-reduced-motion:reduce){#overlay .start{animation:none}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="ui">
+  <div class="hud">
+    <div class="mass"><span id="mass">10</span> <small>M☉</small></div>
+    <div class="info" id="info"></div>
+  </div>
+  <div id="overlay">
+    <h1>特異点</h1>
+    <div class="sub">S I N G U L A R I T Y</div>
+    <p>
+      あなたはブラックホール。<br>
+      <span class="key">カーソル / 指</span>に引かれて漂い、<br>
+      自分より小さな天体を<span class="key">呑み込んで質量を増やせ</span>。<br>
+      大きな恒星に触れれば質量を失う。<br>
+      そして——ホーキング放射により、<br>
+      あなたは<span class="warn">常に蒸発し続けている</span>。<br>
+      喰らい続けなければ、消える。
+    </p>
+    <div class="start" id="startmsg">クリックして誕生</div>
+  </div>
+</div>
+<script>
+(()=>{
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+let W=0,H=0,DPR=1;
+function resize(){DPR=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;
+  cv.width=W*DPR;cv.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0)}
+resize();addEventListener('resize',resize);
+
+const massEl=document.getElementById('mass'),infoEl=document.getElementById('info'),
+  overlay=document.getElementById('overlay'),startmsg=document.getElementById('startmsg');
+const rand=(a,b)=>a+Math.random()*(b-a);
+const TAU=Math.PI*2;
+
+let state='title';
+let best=+(localStorage.getItem('sing_best')||0);
+let elapsed=0,eaten=0,peak=0,shake=0;
+let mouse={x:innerWidth/2,y:innerHeight/2};
+
+// ブラックホール
+const BH={x:0,y:0,vx:0,vy:0,mass:10,spin:0};
+// 半径は質量の平方根でスケール（面積∝質量）
+const bhR=()=>6+Math.sqrt(BH.mass)*2.2;
+const pullR=()=>bhR()*5.5;
+
+let bodies=[],disk=[],particles=[],waves=[],stars=[];
+function makeStars(){stars=[];for(let i=0;i<140;i++)
+  stars.push({x:rand(0,1),y:rand(0,1),r:rand(.5,1.6),tw:rand(0,TAU)})}
+makeStars();
+
+// 天体タイプ：mass比較で食えるかが決まる
+function spawnBody(){
+  const side=Math.floor(rand(0,4)),m=60;
+  let x,y;
+  if(side===0){x=rand(0,W);y=-m}else if(side===1){x=W+m;y=rand(0,H)}
+  else if(side===2){x=rand(0,W);y=H+m}else{x=-m;y=rand(0,H)}
+  const diff=Math.min(1,elapsed/100);
+  const roll=Math.random();
+  let b;
+  const toC=Math.atan2(H/2-y,W/2-x)+rand(-.7,.7);
+  const drift=rand(20,50);
+  if(roll<0.42){ // 小惑星・彗星（常に食える側）
+    b={kind:'rock',mass:rand(1,4),col:'#9FB4D8',glow:'159,180,216'};
+  }else if(roll<0.72){ // 恒星（中型）
+    b={kind:'star',mass:rand(6,18)*(0.7+diff*0.9),col:'#FFD98A',glow:'255,217,138'};
+  }else if(roll<0.9){ // 巨星
+    b={kind:'giant',mass:rand(22,60)*(0.7+diff*1.1),col:'#FF8C6B',glow:'255,140,107'};
+  }else{ // 中性子星：高密度・高速・高報酬
+    b={kind:'neutron',mass:rand(40,110)*(0.8+diff),col:'#9FF2FF',glow:'159,242,255'};
+  }
+  b.x=x;b.y=y;
+  const sp=b.kind==='neutron'?rand(70,110):drift;
+  b.vx=Math.cos(toC)*sp;b.vy=Math.sin(toC)*sp;
+  b.r=b.kind==='neutron'?5+Math.sqrt(b.mass)*0.6:4+Math.sqrt(b.mass)*1.9;
+  b.stretch=0;b.hit=false;
+  bodies.push(b);
+}
+let spawnAcc=0;
+const spawnRate=()=>Math.min(2.2,0.8+elapsed*0.02);
+
+// 超新星：巨星が寿命で爆発 → 衝撃波（質量を削られる）
+function supernova(b){
+  waves.push({x:b.x,y:b.y,r:b.r,max:200+b.mass*2,t:0});
+  burst(b.x,b.y,b.glow,40,300);
+  shake=Math.min(16,shake+8);
+}
+
+function reset(){
+  elapsed=0;eaten=0;peak=10;shake=0;spawnAcc=0;
+  BH.x=W/2;BH.y=H/2;BH.vx=0;BH.vy=0;BH.mass=10;BH.spin=0;
+  bodies=[];disk=[];particles=[];waves=[];
+  for(let i=0;i<6;i++)spawnBody();
+  massEl.textContent='10';infoEl.textContent='';
+}
+function start(){reset();state='play';overlay.classList.add('hidden')}
+function die(msg){
+  state='dead';
+  burst(BH.x,BH.y,'201,168,255',70,320);
+  waves.push({x:BH.x,y:BH.y,r:4,max:300,t:0});
+  const score=Math.round(peak);
+  if(score>best){best=score;localStorage.setItem('sing_best',best)}
+  setTimeout(()=>{
+    overlay.classList.remove('hidden');
+    overlay.querySelector('p').innerHTML=
+      `<span class="final">最大質量 <span class="key">${score.toLocaleString()} M☉</span></span><br>`+
+      `<span class="best">BEST ${best.toLocaleString()} M☉ ／ 呑んだ天体 ${eaten}個 ／ ${elapsed.toFixed(0)}秒</span>`+
+      `<span style="font-size:13px;color:#7A6FA5">${msg}</span>`;
+    startmsg.textContent='クリックで再誕生';
+  },700);
+}
+
+addEventListener('pointermove',e=>{const t=e.touches?e.touches[0]:e;
+  mouse={x:t.clientX,y:t.clientY}});
+addEventListener('pointerdown',e=>{const t=e.touches?e.touches[0]:e;
+  mouse={x:t.clientX,y:t.clientY};
+  if(state!=='play')start()});
+addEventListener('keydown',e=>{if(e.code==='Space'&&state!=='play'){start();e.preventDefault()}});
+
+function burst(x,y,col,n,sp){
+  for(let i=0;i<n;i++){const a=rand(0,TAU),s=rand(sp*.25,sp);
+    particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rand(.4,.9),t:0,col,r:rand(1.5,3.5)})}
+}
+
+let last=performance.now();
+function loop(now){
+  requestAnimationFrame(loop);
+  const dt=Math.min((now-last)/1000,0.05);last=now;
+  update(dt);draw(now/1000);
+}
+requestAnimationFrame(loop);
+
+function update(dt){
+  particles=particles.filter(p=>{p.t+=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;
+    p.vx*=.96;p.vy*=.96;return p.t<p.life});
+  waves=waves.filter(w=>{w.t+=dt*1.6;return w.t<1});
+  shake*=Math.pow(0.0001,dt);
+  BH.spin+=dt*(1.2+BH.mass*0.004);
+
+  // 降着円盤パーティクル
+  disk=disk.filter(d=>{
+    d.ang+=d.sp*dt;d.dist-=d.fall*dt;
+    d.x=BH.x+Math.cos(d.ang)*d.dist;d.y=BH.y+Math.sin(d.ang)*d.dist*0.55; // 楕円=傾いた円盤
+    return d.dist>bhR()*0.7;
+  });
+
+  if(state!=='play')return;
+  elapsed+=dt;
+
+  // --- ブラックホール移動：質量が大きいほど鈍重 ---
+  const agility=5.5/(1+BH.mass*0.006);
+  BH.vx+=(mouse.x-BH.x)*agility*dt;
+  BH.vy+=(mouse.y-BH.y)*agility*dt;
+  BH.vx*=Math.pow(0.03,dt);BH.vy*=Math.pow(0.03,dt);
+  BH.x+=BH.vx*dt;BH.y+=BH.vy*dt;
+
+  // --- ホーキング放射：質量が大きいほど蒸発が速い（均衡圧力） ---
+  const evap=0.35+BH.mass*0.012+elapsed*0.008;
+  BH.mass-=evap*dt;
+  if(BH.mass<=3){die('蒸発しきった。喰らう速度が放射に負けた。');return}
+  peak=Math.max(peak,BH.mass);
+  massEl.textContent=Math.round(BH.mass);
+  infoEl.textContent=`蒸発 −${evap.toFixed(1)}/s`;
+
+  // --- スポーン ---
+  spawnAcc+=dt*spawnRate();
+  while(spawnAcc>=1){spawnAcc-=1;spawnBody()}
+
+  // --- 天体 ---
+  const pr=pullR(),br=bhR();
+  for(const b of bodies){
+    // 重力：pull半径内で引き込み（距離二乗に近い減衰）
+    const dx=BH.x-b.x,dy=BH.y-b.y,d=Math.hypot(dx,dy)||1;
+    if(d<pr){
+      const f=(1-d/pr);
+      const g=f*f*(140+BH.mass*3.5);
+      b.vx+=dx/d*g*dt;b.vy+=dy/d*g*dt;
+      b.stretch=Math.min(1,f*1.6); // スパゲッティ化
+    }else b.stretch*=0.9;
+    b.x+=b.vx*dt;b.y+=b.vy*dt;
+    // 巨星の寿命
+    if(b.kind==='giant'){b.age=(b.age||0)+dt;
+      if(b.age>rand(9,12)&&!b.boom){b.boom=true;b.dead=true;supernova(b)}}
+    // 画面外遠くで消滅
+    if(b.x<-160||b.x>W+160||b.y<-160||b.y>H+160)b.dead=true;
+
+    // --- 接触判定 ---
+    if(!b.dead&&d<br+b.r*0.6){
+      if(b.mass<BH.mass*0.8){
+        // 呑み込む
+        b.dead=true;eaten++;
+        const gain=b.mass*(b.kind==='neutron'?1.25:0.75);
+        BH.mass+=gain;
+        shake=Math.min(12,shake+2+gain*0.05);
+        // 降着円盤に破片を供給
+        const n=Math.min(16,4+b.mass*0.3);
+        for(let i=0;i<n;i++)
+          disk.push({ang:rand(0,TAU),dist:rand(br*1.4,br*3),
+            sp:rand(2.5,5),fall:rand(6,16),col:b.glow});
+        burst(b.x,b.y,b.glow,10,120);
+      }else if(!b.hit){
+        // 大きすぎる天体 → 弾かれて質量損失
+        b.hit=true;
+        const loss=Math.min(BH.mass*0.22,b.mass*0.3);
+        BH.mass-=loss;
+        shake=Math.min(16,shake+10);
+        burst(BH.x,BH.y,'255,140,107',24,220);
+        const push=Math.atan2(b.y-BH.y,b.x-BH.x);
+        b.vx+=Math.cos(push)*180;b.vy+=Math.sin(push)*180;
+        setTimeout(()=>b.hit=false,600);
+        if(BH.mass<=3){die('恒星に引き裂かれた。身の丈を知れ。');return}
+      }
+    }
+  }
+  bodies=bodies.filter(b=>!b.dead);
+
+  // --- 超新星衝撃波 ---
+  for(const w of waves){
+    const wr=w.r+(w.max-w.r)*w.t;
+    const d=Math.hypot(BH.x-w.x,BH.y-w.y);
+    if(Math.abs(d-wr)<14&&!w.hurt){
+      w.hurt=true;
+      BH.mass-=BH.mass*0.15;shake=Math.min(16,shake+8);
+      burst(BH.x,BH.y,'255,158,107',20,200);
+      if(BH.mass<=3){die('超新星の衝撃波に吹き飛ばされた。');return}
+    }
+  }
+}
+
+function draw(t){
+  ctx.save();
+  ctx.fillStyle='#03040A';ctx.fillRect(0,0,W,H);
+  if(shake>0.3)ctx.translate(rand(-shake,shake),rand(-shake,shake));
+
+  // 星空（ブラックホール近傍はレンズ効果風に歪ませる＝位置をずらして描く）
+  const br=bhR();
+  for(const s of stars){
+    let sx=s.x*W,sy=s.y*H;
+    const dx=sx-BH.x,dy=sy-BH.y,d=Math.hypot(dx,dy)||1;
+    const lens=Math.max(0,1-d/(br*8));
+    if(lens>0){const k=1+lens*lens*1.8;sx=BH.x+dx*k;sy=BH.y+dy*k}
+    const a=0.3+0.35*Math.sin(t*1.5+s.tw);
+    ctx.fillStyle=`rgba(210,220,255,${a})`;
+    ctx.fillRect(sx,sy,s.r,s.r);
+  }
+
+  // 衝撃波
+  for(const w of waves){
+    const wr=w.r+(w.max-w.r)*w.t;
+    ctx.strokeStyle=`rgba(255,158,107,${(1-w.t)*0.8})`;
+    ctx.lineWidth=5*(1-w.t)+1;
+    ctx.beginPath();ctx.arc(w.x,w.y,wr,0,TAU);ctx.stroke();
+  }
+
+  // 天体（スパゲッティ化：BH方向に引き伸ばして描画）
+  for(const b of bodies){
+    const ang=Math.atan2(BH.y-b.y,BH.x-b.x);
+    const st=1+b.stretch*2.2;
+    ctx.save();ctx.translate(b.x,b.y);ctx.rotate(ang);ctx.scale(st,1/Math.sqrt(st));
+    const grd=ctx.createRadialGradient(0,0,0,0,0,b.r*2);
+    grd.addColorStop(0,`rgba(${b.glow},0.55)`);grd.addColorStop(1,`rgba(${b.glow},0)`);
+    ctx.fillStyle=grd;ctx.beginPath();ctx.arc(0,0,b.r*2,0,TAU);ctx.fill();
+    ctx.fillStyle=b.col;
+    ctx.beginPath();ctx.arc(0,0,b.r,0,TAU);ctx.fill();
+    if(b.kind==='neutron'){ // パルサービーム
+      ctx.strokeStyle=`rgba(159,242,255,${0.4+0.3*Math.sin(t*20)})`;
+      ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(-b.r*3,0);ctx.lineTo(b.r*3,0);ctx.stroke();
+    }
+    ctx.restore();
+    // 食えるかどうかのシグナル（食える=白リング）
+    if(state==='play'){
+      const ok=b.mass<BH.mass*0.8;
+      ctx.strokeStyle=ok?'rgba(233,228,242,0.35)':'rgba(255,140,107,0.4)';
+      ctx.lineWidth=1;
+      ctx.beginPath();ctx.arc(b.x,b.y,b.r+5,0,TAU);ctx.stroke();
+    }
+  }
+
+  // 降着円盤（後ろ半分 → BH本体 → 前半分の順で描いて奥行きを出す）
+  const back=disk.filter(d=>Math.sin(d.ang)<0),front=disk.filter(d=>Math.sin(d.ang)>=0);
+  const drawDisk=arr=>{for(const d of arr){
+    ctx.fillStyle=`rgba(${d.col},${0.5+0.4*Math.min(1,(bhR()*3-d.dist)/50)})`;
+    ctx.fillRect(d.x-1.5,d.y-1.5,3,3)}};
+  drawDisk(back);
+
+  // ブラックホール本体：光子リング＋事象の地平面
+  if(state!=='dead'){
+    const ringGrd=ctx.createRadialGradient(BH.x,BH.y,br*0.9,BH.x,BH.y,br*2.6);
+    ringGrd.addColorStop(0,'rgba(255,170,90,0.9)');
+    ringGrd.addColorStop(0.25,'rgba(190,120,255,0.35)');
+    ringGrd.addColorStop(1,'rgba(138,92,255,0)');
+    ctx.fillStyle=ringGrd;
+    ctx.beginPath();ctx.arc(BH.x,BH.y,br*2.6,0,TAU);ctx.fill();
+    // 回転する歪み光条
+    ctx.save();ctx.translate(BH.x,BH.y);ctx.rotate(BH.spin);
+    ctx.strokeStyle='rgba(255,200,140,0.5)';ctx.lineWidth=2;
+    ctx.beginPath();ctx.ellipse(0,0,br*1.7,br*0.55,0,0,TAU);ctx.stroke();
+    ctx.restore();
+    // 地平面（完全な黒）
+    ctx.fillStyle='#000';
+    ctx.beginPath();ctx.arc(BH.x,BH.y,br,0,TAU);ctx.fill();
+    ctx.strokeStyle='rgba(255,190,120,0.85)';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.arc(BH.x,BH.y,br+1,0,TAU);ctx.stroke();
+  }
+  drawDisk(front);
+
+  // パーティクル
+  for(const p of particles){
+    ctx.fillStyle=`rgba(${p.col},${1-p.t/p.life})`;
+    ctx.fillRect(p.x-p.r/2,p.y-p.r/2,p.r,p.r);
+  }
+  ctx.restore();
+}
+})();
+</script>
+</body>
+</html>
