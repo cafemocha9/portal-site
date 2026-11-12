@@ -19,13 +19,14 @@ npm run dev
    （`export default function ...` の形であればそのまま動きます）
    Reactのゲームは `play.html?id=<id>` としてiframeの中で動くので、
    `100vh` などで画面いっぱいを前提にしたゲームも、上部バーの下にそのまま収まります。
-2. `src/games.js` の先頭でアイコンを import し、一覧に1件追加
+2. `src/games.js` の先頭でアイコンを import し、一覧に1件追加（`genre` に `genres` の id を書くと、そのジャンルに並びます）
 
 ```js
 import { Balloon, Palette, Shapes } from 'lucide-react'
 
 {
   id: 'shapes',
+  genre: 'puzzle',
   title: 'かたち パズル',
   icon: Shapes,
   iconColor: 'text-emerald-800',
@@ -44,7 +45,7 @@ import { Balloon, Palette, Shapes } from 'lucide-react'
 2. `src/games.js` に `type: 'html'` で1行追加（`component` は不要）
 
 ```js
-{ id: 'memory', title: 'しんけいすいじゃく', icon: Layers, color: 'bg-amber-300', iconColor: 'text-amber-800', type: 'html' },
+{ id: 'memory', genre: 'puzzle', title: 'しんけいすいじゃく', icon: Layers, color: 'bg-amber-300', iconColor: 'text-amber-800', type: 'html' },
 ```
 
 ### ゲームの中で絵文字を使わないために

@@ -1,11 +1,21 @@
-import { Link, Navigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { House } from 'lucide-react'
 import { findGame } from '../games.js'
 
 export default function GamePage() {
   const { id } = useParams()
   const game = findGame(id)
+  const location = useLocation()
+  const navigate = useNavigate()
   if (!game) return <Navigate to="/" replace />
+
+  // トップから開いたときは履歴を戻る（選んでいたジャンルとスクロール位置のまま戻れる）
+  const back = (e) => {
+    if (location.key !== 'default') {
+      e.preventDefault()
+      navigate(-1)
+    }
+  }
 
   // HTMLもReactも、iframeの中で動かす（ゲームの画面サイズやスタイルが外に影響しない）
   const src = game.type === 'html' ? `/games/${game.id}/index.html` : `/play.html?id=${game.id}`
@@ -16,6 +26,7 @@ export default function GamePage() {
       <header className="flex h-12 shrink-0 items-center gap-3 bg-white px-2 shadow-sm">
         <Link
           to="/"
+          onClick={back}
           aria-label="もどる"
           className="flex h-10 items-center gap-1 rounded-full bg-amber-100 px-4 font-bold text-amber-700 active:scale-95"
         >
