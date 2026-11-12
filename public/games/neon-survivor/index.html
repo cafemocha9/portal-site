@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>NEON SURVIVOR</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap');
+
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; }
+  html,body { width:100%; height:100%; overflow:hidden; background:#05060d; font-family:'Rajdhani',sans-serif; }
+
+  #wrap { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; }
+  canvas { display:block; background:
+      radial-gradient(circle at 50% 50%, #0d1326 0%, #05060d 70%);
+      image-rendering:auto; touch-action:none; }
+
+  /* HUD */
+  #hud { position:absolute; top:0; left:0; right:0; padding:10px 14px; pointer-events:none;
+         display:flex; flex-direction:column; gap:6px; z-index:5; }
+  .bar { height:14px; background:rgba(255,255,255,.08); border-radius:8px; overflow:hidden;
+         box-shadow:0 0 0 1px rgba(255,255,255,.12) inset; }
+  #xpFill { height:100%; width:0%; background:linear-gradient(90deg,#36e0ff,#5d7bff); transition:width .15s; }
+  #topRow { display:flex; justify-content:space-between; align-items:center;
+            font-family:'Orbitron'; color:#cfe5ff; letter-spacing:1px; }
+  #timer { font-size:22px; font-weight:900; text-shadow:0 0 12px #36e0ff88; }
+  #lvl { font-size:15px; color:#9fd0ff; }
+  #stats { font-size:14px; color:#ff7aa8; font-weight:700; }
+
+  /* Overlays */
+  .overlay { position:absolute; inset:0; z-index:10; display:flex; flex-direction:column;
+             align-items:center; justify-content:center; gap:18px; text-align:center;
+             background:rgba(3,4,10,.86); backdrop-filter:blur(4px); padding:24px; }
+  .hidden { display:none !important; }
+  h1 { font-family:'Orbitron'; font-weight:900; font-size:clamp(32px,9vw,64px);
+       color:#fff; letter-spacing:4px;
+       text-shadow:0 0 18px #36e0ff, 0 0 40px #5d7bff88; }
+  .sub { color:#7fa8d8; font-size:16px; letter-spacing:1px; max-width:340px; line-height:1.5; }
+  .btn { font-family:'Orbitron'; font-weight:700; font-size:18px; letter-spacing:2px;
+         color:#05060d; background:linear-gradient(90deg,#36e0ff,#5d7bff);
+         padding:14px 34px; border:none; border-radius:10px; cursor:pointer;
+         box-shadow:0 0 24px #36e0ff66; pointer-events:auto; transition:transform .1s; }
+  .btn:active { transform:scale(.95); }
+
+  /* Level up cards */
+  #cards { display:flex; flex-wrap:wrap; gap:14px; justify-content:center; max-width:560px; }
+  .card { width:150px; background:linear-gradient(160deg,#141d38,#0a1026);
+          border:1px solid #2a3a6a; border-radius:14px; padding:16px 14px; cursor:pointer;
+          pointer-events:auto; transition:transform .12s, box-shadow .12s; }
+  .card:active { transform:scale(.95); }
+  .card:hover { box-shadow:0 0 22px #36e0ff55; border-color:#36e0ff; }
+  .card .ic { font-size:34px; }
+  .card .nm { font-family:'Orbitron'; font-size:14px; color:#fff; margin:8px 0 4px; letter-spacing:1px; }
+  .card .ds { font-size:13px; color:#8fb4dd; line-height:1.35; }
+  .card .tag { font-size:11px; color:#ff7aa8; font-weight:700; letter-spacing:1px; }
+
+  #endStats { color:#cfe5ff; font-size:18px; font-family:'Orbitron'; line-height:1.8; }
+  .hint { color:#5b7297; font-size:13px; letter-spacing:1px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game"></canvas>
+
+  <div id="hud" class="hidden">
+    <div id="topRow">
+      <span id="lvl">Lv 1</span>
+      <span id="timer">00:00</span>
+      <span id="stats">❤ 100 &nbsp; ☠ 0</span>
+    </div>
+    <div class="bar"><div id="xpFill"></div></div>
+  </div>
+
+  <!-- Title -->
+  <div id="titleScreen" class="overlay">
+    <h1>NEON<br>SURVIVOR</h1>
+    <p class="sub">5分間、迫りくる敵の群れを生き延びろ。攻撃は自動。君は動くことに集中せよ。</p>
+    <button class="btn" id="startBtn">START</button>
+    <p class="hint">PC: WASD / 矢印キー　　モバイル: 画面ドラッグで移動</p>
+  </div>
+
+  <!-- Level up -->
+  <div id="levelScreen" class="overlay hidden">
+    <h1 style="font-size:clamp(24px,7vw,44px)">LEVEL UP</h1>
+    <div id="cards"></div>
+  </div>
+
+  <!-- Game over -->
+  <div id="overScreen" class="overlay hidden">
+    <h1 style="color:#ff5d8f;text-shadow:0 0 18px #ff5d8f">GAME OVER</h1>
+    <div id="endStats"></div>
+    <button class="btn" id="retryBtn">RETRY</button>
+  </div>
+
+  <!-- Clear -->
+  <div id="clearScreen" class="overlay hidden">
+    <h1 style="color:#ffd34d;text-shadow:0 0 18px #ffd34d,0 0 40px #ff9a3d88">SURVIVED!</h1>
+    <p class="sub">5分間を生き延びた。君は群れを制した。</p>
+    <div id="clearStats"></div>
+    <button class="btn" id="clearRetryBtn">PLAY AGAIN</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ===========================================================
+   NEON SURVIVOR — ヴァンサバ系サバイバルアクション
+   設計の骨子:
+   1) 固定タイムステップのゲームループ
+   2) プレイヤーは移動のみ操作。武器は自動発射(ロジック分離)
+   3) 敵は時間経過でスポーン頻度と種類が増える(難易度曲線)
+   4) 撃破→経験値ジェム→レベルアップ→武器/ステータス強化を選択
+   =========================================================== */
+
+const cv = document.getElementById('game');
+const ctx = cv.getContext('2d');
+
+/* ---------- 画面サイズ ---------- */
+let W, H, DPR;
+function resize(){
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  cv.style.width = W+'px'; cv.style.height = H+'px';
+  cv.width = W*DPR; cv.height = H*DPR;
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+window.addEventListener('resize', resize); resize();
+
+/* ---------- 入力 ---------- */
+const keys = {};
+addEventListener('keydown', e=>{ keys[e.key.toLowerCase()]=true; });
+addEventListener('keyup',   e=>{ keys[e.key.toLowerCase()]=false; });
+
+// タッチ/ドラッグ移動: 仮想ジョイスティック方式
+let touchActive=false, touchOrigin={x:0,y:0}, touchVec={x:0,y:0};
+function ptr(e){ const t=e.touches?e.touches[0]:e; return {x:t.clientX, y:t.clientY}; }
+cv.addEventListener('touchstart', e=>{ e.preventDefault(); touchActive=true; touchOrigin=ptr(e); touchVec={x:0,y:0}; }, {passive:false});
+cv.addEventListener('touchmove',  e=>{ e.preventDefault(); if(!touchActive)return; const p=ptr(e);
+  let dx=p.x-touchOrigin.x, dy=p.y-touchOrigin.y; const m=Math.hypot(dx,dy)||1;
+  const cap=Math.min(m,50)/50; touchVec={x:dx/m*cap, y:dy/m*cap}; }, {passive:false});
+cv.addEventListener('touchend', e=>{ e.preventDefault(); touchActive=false; touchVec={x:0,y:0}; }, {passive:false});
+
+/* ---------- ユーティリティ ---------- */
+const rand=(a,b)=>a+Math.random()*(b-a);
+const dist2=(a,b)=>{const dx=a.x-b.x,dy=a.y-b.y;return dx*dx+dy*dy;};
+function nearestEnemy(x,y){
+  let best=null,bd=Infinity;
+  for(const e of enemies){ const d=(e.x-x)**2+(e.y-y)**2; if(d<bd){bd=d;best=e;} }
+  return best;
+}
+
+/* ===========================================================
+   ゲーム状態
+   =========================================================== */
+let player, enemies, bullets, gems, particles, items, fields;
+let gameTime, spawnTimer, lastTs, running, paused, killCount;
+const CLEAR_TIME = 300;  // 5分(秒)生存でクリア
+const cam = {x:0,y:0}; // ワールド座標カメラ(プレイヤー中心)
+
+/* 武器定義: それぞれ独立した発射ロジックを持つ */
+const WEAPONS = {
+  bolt:   { name:'ボルト', lv:1, max:8, cd:0, ic:'⚡', desc:'最寄りの敵へ弾を撃つ' },
+  orbit:  { name:'オービット', lv:0, max:6, cd:0, ic:'🛡', desc:'周囲を回る護衛体' },
+  nova:   { name:'ノヴァ', lv:0, max:6, cd:0, ic:'💥', desc:'周囲に衝撃波を放つ' },
+  laser:  { name:'レーザー', lv:0, max:6, cd:0, ic:'🔆', desc:'貫通する直線ビーム' },
+  homing: { name:'ホーミング', lv:0, max:6, cd:0, ic:'🎯', desc:'敵を追尾する誘導弾' },
+  field:  { name:'フィールド', lv:0, max:6, cd:0, ic:'☢', desc:'足元に持続ダメージ領域' },
+};
+
+function reset(){
+  player = { x:0, y:0, r:14, speed:170, hp:100, maxhp:100,
+             xp:0, level:1, next:4, pickup:90, dmgMul:1, // ステータス
+             orbitAngle:0, freezeT:0, rushT:0, shieldT:0 };
+  enemies=[]; bullets=[]; gems=[]; particles=[]; items=[]; fields=[];
+  gameTime=0; spawnTimer=0; killCount=0; running=true; paused=false;
+  for(const k in WEAPONS) WEAPONS[k].lv=0;
+  WEAPONS.bolt.lv=1;
+  for(const k in WEAPONS) WEAPONS[k].cd=0;
+  cam.x=0; cam.y=0;
+}
+
+/* ===========================================================
+   敵スポーン — 時間で難易度上昇
+   =========================================================== */
+function spawnInterval(){
+  // 初期1.4s、緩やかに短縮して下限0.22s
+  return Math.max(0.22, 1.4 - gameTime*0.009);
+}
+function spawnEnemy(forceType, px, py){
+  const ang = Math.random()*Math.PI*2;
+  const dst = Math.hypot(W,H)/2 + 60;          // 画面外周から出現
+  const x = px!==undefined ? px : player.x + Math.cos(ang)*dst;
+  const y = py!==undefined ? py : player.y + Math.sin(ang)*dst;
+
+  // 時間でグレード抽選
+  let type = forceType || 'grunt';
+  if(!forceType){
+    const r=Math.random();
+    if(gameTime>70 && r<0.07)       type='bomber';
+    else if(gameTime>55 && r<0.16)  type='shielder';
+    else if(gameTime>50 && r<0.24)  type='brute';
+    else if(gameTime>35 && r<0.36)  type='splitter';
+    else if(gameTime>20 && r<0.56)  type='runner';
+  }
+
+  const def = {
+    grunt:    { r:13, hp:12+gameTime*0.4, speed:48, dmg:8,  color:'#ff5d8f', xp:1, kind:'grunt' },
+    runner:   { r:10, hp:8+gameTime*0.28, speed:95, dmg:6,  color:'#ffd34d', xp:1, kind:'runner' },
+    brute:    { r:24, hp:80+gameTime*1.3,  speed:34, dmg:18, color:'#b066ff', xp:5, kind:'brute' },
+    shielder: { r:18, hp:60+gameTime*1.0, speed:40, dmg:12, color:'#4dd2b0', xp:4, kind:'shielder', armor:0.4 },
+    splitter: { r:16, hp:28+gameTime*0.55, speed:52, dmg:9,  color:'#ff9a3d', xp:3, kind:'splitter' },
+    bomber:   { r:15, hp:34+gameTime*0.7,  speed:60, dmg:10, color:'#ff3b3b', xp:4, kind:'bomber', blast:60 },
+  }[type];
+
+  enemies.push({ x,y, ...def, maxhp:def.hp });
+}
+
+/* ===========================================================
+   武器ロジック (自動発射)
+   =========================================================== */
+function fireWeapons(dt){
+  // ラッシュ効果中は発射レート2倍(クールダウン進行を倍速化)
+  if(player.rushT>0) dt*=2;
+  // --- BOLT: クールダウンで最寄り敵へ ---
+  const b=WEAPONS.bolt;
+  if(b.lv>0){
+    b.cd-=dt;
+    const interval = 0.65 - b.lv*0.05;       // レベルで連射UP
+    if(b.cd<=0){
+      const tg=nearestEnemy(player.x,player.y);
+      if(tg){
+        b.cd=interval;
+        const cnt = 1 + Math.floor((b.lv-1)/2); // Lv上昇で多重発射
+        for(let i=0;i<cnt;i++){
+          const a=Math.atan2(tg.y-player.y,tg.x-player.x)+rand(-0.12,0.12);
+          bullets.push({ x:player.x,y:player.y, vx:Math.cos(a)*420, vy:Math.sin(a)*420,
+                         r:6, dmg:(8+b.lv*3)*player.dmgMul, life:1.1, kind:'bolt' });
+        }
+      }
+    }
+  }
+  // --- NOVA: 一定間隔で全方位衝撃波(短距離弾を放射) ---
+  const n=WEAPONS.nova;
+  if(n.lv>0){
+    n.cd-=dt;
+    if(n.cd<=0){
+      n.cd = 2.2 - n.lv*0.15;
+      const num = 8 + n.lv*2;
+      for(let i=0;i<num;i++){
+        const a=(i/num)*Math.PI*2;
+        bullets.push({ x:player.x,y:player.y, vx:Math.cos(a)*300, vy:Math.sin(a)*300,
+                       r:7, dmg:(6+n.lv*2)*player.dmgMul, life:.55, kind:'nova' });
+      }
+    }
+  }
+  // --- LASER: 一定間隔で最寄り敵方向へ貫通ビーム ---
+  const ls=WEAPONS.laser;
+  if(ls.lv>0){
+    ls.cd-=dt;
+    if(ls.cd<=0){
+      const tg=nearestEnemy(player.x,player.y);
+      if(tg){
+        ls.cd = 1.4 - ls.lv*0.1;
+        const a=Math.atan2(tg.y-player.y,tg.x-player.x);
+        // 貫通弾: 長寿命・高速・命中しても消えない(hitリスト方式)
+        bullets.push({ x:player.x,y:player.y, vx:Math.cos(a)*900, vy:Math.sin(a)*900,
+                       r:8+ls.lv, dmg:(10+ls.lv*5)*player.dmgMul, life:.6, kind:'laser',
+                       pierce:true, hit:new Set() });
+      }
+    }
+  }
+  // --- HOMING: 一定間隔で誘導弾を放つ ---
+  const hm=WEAPONS.homing;
+  if(hm.lv>0){
+    hm.cd-=dt;
+    if(hm.cd<=0){
+      hm.cd = 1.0 - hm.lv*0.07;
+      const cnt = 1 + Math.floor(hm.lv/2);
+      for(let i=0;i<cnt;i++){
+        const a=Math.random()*Math.PI*2;
+        bullets.push({ x:player.x,y:player.y, vx:Math.cos(a)*200, vy:Math.sin(a)*200,
+                       r:6, dmg:(7+hm.lv*3)*player.dmgMul, life:2.0, kind:'homing', turn:6 });
+      }
+    }
+  }
+  // --- FIELD: 足元に持続ダメージ領域を一定間隔で設置 ---
+  const fd=WEAPONS.field;
+  if(fd.lv>0){
+    fd.cd-=dt;
+    if(fd.cd<=0){
+      fd.cd = 1.6;
+      fields.push({ x:player.x, y:player.y, r:50+fd.lv*10,
+                    dmg:(5+fd.lv*2)*player.dmgMul, life:1.5 });
+    }
+  }
+  // --- ORBIT: プレイヤー周囲を回る常設体。接触ダメージ ---
+  // 描画/判定は update 内で行う(ステートとして角度のみ進める)
+  player.orbitAngle += dt*3;
+}
+
+/* オービット護衛体の現在位置を計算 */
+function orbitNodes(){
+  const o=WEAPONS.orbit; const out=[];
+  if(o.lv<=0) return out;
+  const count=o.lv+1, R=58+o.lv*4;
+  for(let i=0;i<count;i++){
+    const a=player.orbitAngle + (i/count)*Math.PI*2;
+    out.push({ x:player.x+Math.cos(a)*R, y:player.y+Math.sin(a)*R,
+               r:11, dmg:(7+o.lv*3)*player.dmgMul });
+  }
+  return out;
+}
+
+/* ===========================================================
+   更新
+   =========================================================== */
+function update(dt){
+  gameTime += dt;
+
+  /* クリア判定: 規定時間を生き延びたら勝利 */
+  if(gameTime>=CLEAR_TIME){ gameClear(); return; }
+
+  /* 持続効果のタイマー減算 */
+  if(player.freezeT>0) player.freezeT-=dt;
+  if(player.rushT>0)   player.rushT-=dt;
+  if(player.shieldT>0) player.shieldT-=dt;
+
+  /* 入力→移動ベクトル */
+  let mx=0,my=0;
+  if(keys['w']||keys['arrowup'])    my-=1;
+  if(keys['s']||keys['arrowdown'])  my+=1;
+  if(keys['a']||keys['arrowleft'])  mx-=1;
+  if(keys['d']||keys['arrowright']) mx+=1;
+  if(touchActive){ mx+=touchVec.x; my+=touchVec.y; }
+  const ml=Math.hypot(mx,my);
+  if(ml>0){ mx/=ml; my/=ml; if(ml<1 && touchActive){mx*=ml;my*=ml;} }
+  const spd = player.speed * (player.rushT>0 ? 1.4 : 1);
+  player.x += mx*spd*dt;
+  player.y += my*spd*dt;
+
+  /* カメラ追従 */
+  cam.x=player.x; cam.y=player.y;
+
+  /* スポーン */
+  spawnTimer-=dt;
+  if(spawnTimer<=0){
+    const burst = 1 + Math.floor(gameTime/45);
+    for(let i=0;i<burst;i++) spawnEnemy();
+    spawnTimer = spawnInterval();
+  }
+
+  fireWeapons(dt);
+
+  /* 敵移動&プレイヤー接触 */
+  const frozen = player.freezeT>0;
+  for(const e of enemies){
+    const dx=player.x-e.x, dy=player.y-e.y, d=Math.hypot(dx,dy)||1;
+    if(!frozen){ e.x+=dx/d*e.speed*dt; e.y+=dy/d*e.speed*dt; }
+    if(d < e.r+player.r && player.shieldT<=0){
+      player.hp -= e.dmg*dt*3;       // 接触ダメージ(時間比例)
+      if(player.hp<=0){ player.hp=0; gameOver(); return; }
+    }
+  }
+
+  /* 弾移動&命中 */
+  for(const bl of bullets){
+    // 誘導弾は最寄り敵へ進路を曲げる
+    if(bl.kind==='homing'){
+      const tg=nearestEnemy(bl.x,bl.y);
+      if(tg){
+        const desired=Math.atan2(tg.y-bl.y,tg.x-bl.x);
+        const cur=Math.atan2(bl.vy,bl.vx);
+        let diff=desired-cur;
+        while(diff>Math.PI)diff-=Math.PI*2; while(diff<-Math.PI)diff+=Math.PI*2;
+        const na=cur+Math.max(-bl.turn*dt,Math.min(bl.turn*dt,diff));
+        const sp=Math.hypot(bl.vx,bl.vy);
+        bl.vx=Math.cos(na)*sp; bl.vy=Math.sin(na)*sp;
+      }
+    }
+    bl.x+=bl.vx*dt; bl.y+=bl.vy*dt; bl.life-=dt;
+    for(const e of enemies){
+      if(dist2(bl,e) < (bl.r+e.r)**2){
+        if(bl.pierce){
+          if(bl.hit.has(e)) continue;   // 貫通弾は同一敵に1回だけ
+          bl.hit.add(e);
+          e.hp-=bl.dmg*(1-(e.armor||0));
+        } else {
+          e.hp-=bl.dmg*(1-(e.armor||0));
+          bl.life=0;
+        }
+        spawnHit(bl.x,bl.y,bl.kind==='nova'?'#ffd34d':(bl.kind==='laser'?'#fff':'#36e0ff'));
+        if(!bl.pierce) break;
+      }
+    }
+  }
+  bullets=bullets.filter(b=>b.life>0);
+
+  /* フィールド(持続ダメージ領域) */
+  for(const f of fields){
+    f.life-=dt;
+    for(const e of enemies){
+      if(dist2(f,e)<(f.r+e.r)**2){ e.hp-=f.dmg*dt*(1-(e.armor||0)); }
+    }
+  }
+  fields=fields.filter(f=>f.life>0);
+
+  /* オービット判定 */
+  for(const o of orbitNodes()){
+    for(const e of enemies){
+      if(dist2(o,e)<(o.r+e.r)**2){ e.hp-=o.dmg*dt*6*(1-(e.armor||0)); }
+    }
+  }
+
+  /* 敵死亡処理 */
+  const newborn=[];
+  for(const e of enemies){
+    if(e.hp<=0 && !e.dead){
+      e.dead=true; killCount++;
+      gems.push({x:e.x,y:e.y,xp:e.xp,r:6});
+      spawnHit(e.x,e.y,e.color,12);
+
+      // スプリッター: 撃破時に小型2体へ分裂
+      if(e.kind==='splitter'){
+        for(let i=0;i<2;i++){
+          const a=Math.random()*Math.PI*2, off=14;
+          newborn.push({ x:e.x+Math.cos(a)*off, y:e.y+Math.sin(a)*off,
+            r:9, hp:12+gameTime*0.2, maxhp:12+gameTime*0.2, speed:70, dmg:6,
+            color:'#ffc07a', xp:1, kind:'grunt' });
+        }
+      }
+      // ボマー: 撃破時に範囲爆発(プレイヤーが近いと被弾)
+      if(e.kind==='bomber'){
+        spawnHit(e.x,e.y,'#ff3b3b',24);
+        if(dist2(e,player) < (e.blast+player.r)**2){
+          player.hp-=20;
+          if(player.hp<=0){ player.hp=0; gameOver(); return; }
+        }
+      }
+      // アイテムドロップ(低確率)
+      maybeDropItem(e.x,e.y,e.kind);
+    }
+  }
+  enemies=enemies.filter(e=>!e.dead);
+  for(const n of newborn) enemies.push(n);
+
+  /* ジェム吸引&取得 */
+  for(const g of gems){
+    const dx=player.x-g.x, dy=player.y-g.y, d=Math.hypot(dx,dy)||1;
+    if(d<player.pickup){ g.x+=dx/d*260*dt; g.y+=dy/d*260*dt; }
+    if(d<player.r+4){ g.got=true; gainXP(g.xp); }
+  }
+  gems=gems.filter(g=>!g.got);
+
+  /* アイテム吸引&取得 */
+  for(const it of items){
+    const dx=player.x-it.x, dy=player.y-it.y, d=Math.hypot(dx,dy)||1;
+    if(d<player.pickup){ it.x+=dx/d*200*dt; it.y+=dy/d*200*dt; }
+    if(d<player.r+10){ it.got=true; applyItem(it.type); }
+  }
+  items=items.filter(it=>!it.got);
+
+  /* パーティクル */
+  for(const p of particles){ p.x+=p.vx*dt; p.y+=p.vy*dt; p.life-=dt; p.vx*=0.92; p.vy*=0.92; }
+  particles=particles.filter(p=>p.life>0);
+
+  /* HP自然回復(微量) */
+  player.hp=Math.min(player.maxhp, player.hp+dt*0.5);
+}
+
+function spawnHit(x,y,color,n=6){
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2, s=rand(40,160);
+    particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rand(.2,.5),color});
+  }
+}
+
+/* ===========================================================
+   アイテム — 低確率ドロップ
+   定義: 回復 / マグネット / ボム / コイン
+   =========================================================== */
+const ITEMS = {
+  heal:   { ic:'❤', color:'#ff5d8f' },
+  magnet: { ic:'🧲', color:'#36e0ff' },
+  bomb:   { ic:'💣', color:'#ffd34d' },
+  coin:   { ic:'🪙', color:'#ffc24d' },
+  freeze: { ic:'❄', color:'#9be8ff' },
+  rush:   { ic:'⚡', color:'#b066ff' },
+  shield: { ic:'🛡', color:'#4dd2b0' },
+};
+function maybeDropItem(x,y,kind){
+  // 強い敵ほどドロップ率UP
+  let rate = 0.02;
+  if(kind==='brute'||kind==='shielder'||kind==='bomber') rate=0.10;
+  if(Math.random()>rate) return;
+  const r=Math.random();
+  let type='coin';
+  if(r<0.22)      type='heal';
+  else if(r<0.40) type='magnet';
+  else if(r<0.54) type='bomb';
+  else if(r<0.66) type='freeze';
+  else if(r<0.78) type='rush';
+  else if(r<0.88) type='shield';
+  items.push({ x,y, type, r:11 });
+}
+function applyItem(type){
+  if(type==='heal'){
+    player.hp=Math.min(player.maxhp, player.hp+player.maxhp*0.3);
+    spawnHit(player.x,player.y,'#ff5d8f',16);
+  } else if(type==='magnet'){
+    // 画面内の全ジェムを即時取得
+    for(const g of gems){ gainXP(g.xp); g.got=true; }
+    spawnHit(player.x,player.y,'#36e0ff',20);
+  } else if(type==='bomb'){
+    // 画面内の全敵に大ダメージ
+    for(const e of enemies){ e.hp-=120+gameTime*2; spawnHit(e.x,e.y,e.color,6); }
+    spawnHit(player.x,player.y,'#ffd34d',30);
+  } else if(type==='coin'){
+    gainXP(5);
+    spawnHit(player.x,player.y,'#ffc24d',12);
+  } else if(type==='freeze'){
+    // 全敵を3秒停止
+    player.freezeT=3;
+    spawnHit(player.x,player.y,'#9be8ff',24);
+  } else if(type==='rush'){
+    // 6秒間 連射2倍 + 移動速度1.4倍
+    player.rushT=6;
+    spawnHit(player.x,player.y,'#b066ff',24);
+  } else if(type==='shield'){
+    // 5秒間 無敵
+    player.shieldT=5;
+    spawnHit(player.x,player.y,'#4dd2b0',24);
+  }
+}
+
+/* ===========================================================
+   経験値 / レベルアップ
+   =========================================================== */
+function gainXP(n){
+  player.xp+=n;
+  if(player.xp>=player.next){
+    player.xp-=player.next;
+    player.level++;
+    player.next=Math.floor(player.next*1.18+2);  // 傾斜を緩やかに
+    openLevelUp();
+  }
+}
+
+/* 強化候補プール */
+function upgradePool(){
+  const pool=[];
+  // 武器: 既存はレベルアップ、未取得は新規取得
+  for(const k in WEAPONS){
+    const w=WEAPONS[k];
+    if(w.lv===0) pool.push({ic:w.ic,nm:w.name,ds:w.desc,tag:'NEW WEAPON',apply:()=>w.lv=1});
+    else if(w.lv<w.max) pool.push({ic:w.ic,nm:w.name+' Lv'+(w.lv+1),ds:'威力・効果を強化',tag:'WEAPON UP',apply:()=>w.lv++});
+  }
+  // ステータス
+  pool.push({ic:'👟',nm:'移動速度',ds:'+12% スピード',tag:'STAT',apply:()=>player.speed*=1.12});
+  pool.push({ic:'❤',nm:'最大HP',ds:'+25 最大HP / 全回復',tag:'STAT',apply:()=>{player.maxhp+=25;player.hp=player.maxhp;}});
+  pool.push({ic:'🔮',nm:'攻撃力',ds:'全武器ダメージ +15%',tag:'STAT',apply:()=>player.dmgMul*=1.15});
+  pool.push({ic:'🧲',nm:'回収範囲',ds:'ジェム吸引範囲 +30%',tag:'STAT',apply:()=>player.pickup*=1.3});
+  // シャッフルして3枚
+  for(let i=pool.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[pool[i],pool[j]]=[pool[j],pool[i]];}
+  return pool.slice(0,3);
+}
+
+const levelScreen=document.getElementById('levelScreen');
+const cardsEl=document.getElementById('cards');
+function openLevelUp(){
+  paused=true;
+  cardsEl.innerHTML='';
+  for(const u of upgradePool()){
+    const c=document.createElement('div'); c.className='card';
+    c.innerHTML=`<div class="ic">${u.ic}</div><div class="tag">${u.tag}</div>
+                 <div class="nm">${u.nm}</div><div class="ds">${u.ds}</div>`;
+    c.onclick=()=>{ u.apply(); levelScreen.classList.add('hidden'); paused=false; lastTs=performance.now(); };
+    cardsEl.appendChild(c);
+  }
+  levelScreen.classList.remove('hidden');
+}
+
+/* ===========================================================
+   描画
+   =========================================================== */
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  const ox=W/2-cam.x, oy=H/2-cam.y; // ワールド→スクリーン変換オフセット
+
+  /* 背景グリッド */
+  ctx.strokeStyle='rgba(60,90,160,.12)'; ctx.lineWidth=1;
+  const gs=60;
+  const sx=((ox%gs)+gs)%gs, sy=((oy%gs)+gs)%gs;
+  ctx.beginPath();
+  for(let x=sx;x<W;x+=gs){ctx.moveTo(x,0);ctx.lineTo(x,H);}
+  for(let y=sy;y<H;y+=gs){ctx.moveTo(0,y);ctx.lineTo(W,y);}
+  ctx.stroke();
+
+  /* フィールド(持続ダメージ領域) */
+  for(const f of fields){
+    const al=Math.max(0,f.life/1.5);
+    ctx.fillStyle=`rgba(110,255,180,${0.12*al})`;
+    ctx.strokeStyle=`rgba(110,255,180,${0.5*al})`; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(f.x+ox,f.y+oy,f.r,0,7); ctx.fill(); ctx.stroke();
+  }
+
+  /* ジェム */
+  for(const g of gems){
+    ctx.fillStyle='#36e0ff'; ctx.shadowColor='#36e0ff'; ctx.shadowBlur=10;
+    ctx.beginPath(); ctx.arc(g.x+ox,g.y+oy,g.r,0,7); ctx.fill();
+  }
+  ctx.shadowBlur=0;
+
+  /* アイテム */
+  for(const it of items){
+    const def=ITEMS[it.type];
+    ctx.fillStyle=def.color; ctx.shadowColor=def.color; ctx.shadowBlur=14;
+    ctx.beginPath(); ctx.arc(it.x+ox,it.y+oy,it.r,0,7); ctx.fill();
+    ctx.shadowBlur=0;
+    ctx.font='14px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(def.ic, it.x+ox, it.y+oy+1);
+  }
+  ctx.textAlign='start'; ctx.textBaseline='alphabetic';
+  ctx.shadowBlur=0;
+
+  /* 敵 */
+  const frz = player.freezeT>0;
+  for(const e of enemies){
+    const col = frz ? '#9be8ff' : e.color;
+    ctx.fillStyle=col; ctx.shadowColor=col; ctx.shadowBlur=14;
+    ctx.beginPath(); ctx.arc(e.x+ox,e.y+oy,e.r,0,7); ctx.fill();
+    ctx.shadowBlur=0;
+    // シールダー: 装甲リング
+    if(e.kind==='shielder'){
+      ctx.strokeStyle='#bff7e6'; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(e.x+ox,e.y+oy,e.r+4,0,7); ctx.stroke();
+    }
+    // ボマー: 内側の警告コア
+    if(e.kind==='bomber'){
+      ctx.fillStyle='#fff';
+      ctx.beginPath(); ctx.arc(e.x+ox,e.y+oy,e.r*0.4,0,7); ctx.fill();
+    }
+    // HPバー
+    if(e.hp<e.maxhp){
+      ctx.fillStyle='rgba(0,0,0,.5)';
+      ctx.fillRect(e.x+ox-e.r,e.y+oy-e.r-8,e.r*2,4);
+      ctx.fillStyle='#fff';
+      ctx.fillRect(e.x+ox-e.r,e.y+oy-e.r-8,e.r*2*(e.hp/e.maxhp),4);
+    }
+  }
+  ctx.shadowBlur=0;
+
+  /* 弾 */
+  for(const bl of bullets){
+    let col='#9be8ff';
+    if(bl.kind==='nova')   col='#ffd34d';
+    if(bl.kind==='laser')  col='#ffffff';
+    if(bl.kind==='homing') col='#7affc0';
+    ctx.fillStyle=col; ctx.shadowColor=col; ctx.shadowBlur=12;
+    if(bl.kind==='laser'){
+      // 進行方向に伸びた光条
+      const a=Math.atan2(bl.vy,bl.vx);
+      ctx.save(); ctx.translate(bl.x+ox,bl.y+oy); ctx.rotate(a);
+      ctx.fillRect(-18,-bl.r/2, 36, bl.r);
+      ctx.restore();
+    } else {
+      ctx.beginPath(); ctx.arc(bl.x+ox,bl.y+oy,bl.r,0,7); ctx.fill();
+    }
+  }
+  ctx.shadowBlur=0;
+
+  /* オービット */
+  for(const o of orbitNodes()){
+    ctx.fillStyle='#5d7bff'; ctx.shadowColor='#5d7bff'; ctx.shadowBlur=16;
+    ctx.beginPath(); ctx.arc(o.x+ox,o.y+oy,o.r,0,7); ctx.fill();
+  }
+  ctx.shadowBlur=0;
+
+  /* パーティクル */
+  for(const p of particles){
+    ctx.globalAlpha=Math.max(0,p.life*2); ctx.fillStyle=p.color;
+    ctx.fillRect(p.x+ox-2,p.y+oy-2,4,4);
+  }
+  ctx.globalAlpha=1;
+
+  /* プレイヤー */
+  ctx.fillStyle='#eaf6ff'; ctx.shadowColor='#36e0ff'; ctx.shadowBlur=20;
+  ctx.beginPath(); ctx.arc(W/2,H/2,player.r,0,7); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.strokeStyle='#36e0ff'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.arc(W/2,H/2,player.r+4,0,7); ctx.stroke();
+  // シールド: 外周リング
+  if(player.shieldT>0){
+    ctx.strokeStyle='#4dd2b0'; ctx.lineWidth=3; ctx.shadowColor='#4dd2b0'; ctx.shadowBlur=14;
+    ctx.beginPath(); ctx.arc(W/2,H/2,player.r+11,0,7); ctx.stroke(); ctx.shadowBlur=0;
+  }
+  // ラッシュ: 紫の二重リング
+  if(player.rushT>0){
+    ctx.strokeStyle='#b066ff'; ctx.lineWidth=2; ctx.shadowColor='#b066ff'; ctx.shadowBlur=12;
+    ctx.beginPath(); ctx.arc(W/2,H/2,player.r+16,0,7); ctx.stroke(); ctx.shadowBlur=0;
+  }
+}
+
+/* ===========================================================
+   HUD
+   =========================================================== */
+const hud=document.getElementById('hud');
+const xpFill=document.getElementById('xpFill');
+const timerEl=document.getElementById('timer');
+const lvlEl=document.getElementById('lvl');
+const statsEl=document.getElementById('stats');
+function updateHUD(){
+  xpFill.style.width=(player.xp/player.next*100)+'%';
+  const rem=Math.max(0, CLEAR_TIME-gameTime);
+  const m=Math.floor(rem/60), s=Math.floor(rem%60);
+  timerEl.textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  // 残り30秒で警告色
+  timerEl.style.color = rem<=30 ? '#ffd34d' : '#cfe5ff';
+  lvlEl.textContent='Lv '+player.level;
+  statsEl.textContent=`❤ ${Math.ceil(player.hp)}  ☠ ${killCount}`;
+}
+
+/* ===========================================================
+   ループ
+   =========================================================== */
+function loop(ts){
+  if(!running) return;
+  let dt=(ts-lastTs)/1000; lastTs=ts;
+  if(dt>0.05) dt=0.05;                 // スパイク防止
+  if(!paused){ update(dt); }
+  if(!running) return;                 // gameOver で false 化
+  draw(); updateHUD();
+  requestAnimationFrame(loop);
+}
+
+/* ===========================================================
+   状態遷移
+   =========================================================== */
+const titleScreen=document.getElementById('titleScreen');
+const overScreen=document.getElementById('overScreen');
+const endStats=document.getElementById('endStats');
+
+function startGame(){
+  reset();
+  titleScreen.classList.add('hidden');
+  overScreen.classList.add('hidden');
+  document.getElementById('clearScreen').classList.add('hidden');
+  levelScreen.classList.add('hidden');
+  hud.classList.remove('hidden');
+  lastTs=performance.now();
+  requestAnimationFrame(loop);
+}
+function gameOver(){
+  running=false;
+  const m=Math.floor(gameTime/60), s=Math.floor(gameTime%60);
+  endStats.innerHTML=`生存時間 &nbsp;${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}<br>
+                      撃破数 &nbsp;${killCount}<br>到達レベル &nbsp;${player.level}`;
+  hud.classList.add('hidden');
+  overScreen.classList.remove('hidden');
+}
+function gameClear(){
+  running=false;
+  const cs=document.getElementById('clearStats');
+  cs.innerHTML=`撃破数 &nbsp;${killCount}<br>到達レベル &nbsp;${player.level}`;
+  spawnHit(player.x,player.y,'#ffd34d',40);
+  hud.classList.add('hidden');
+  document.getElementById('clearScreen').classList.remove('hidden');
+}
+
+document.getElementById('startBtn').onclick=startGame;
+document.getElementById('retryBtn').onclick=startGame;
+document.getElementById('clearRetryBtn').onclick=startGame;
+</script>
+</body>
+</html>

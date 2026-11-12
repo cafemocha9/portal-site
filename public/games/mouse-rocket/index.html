@@ -1,0 +1,929 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Mouse Rocket</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@500;700;800&display=swap">
+<style>
+/* Layout: one-column game console under a night sky — header, square board, arrow tray, action row */
+:root {
+  --space: #141838;
+  --space-2: #1d2350;
+  --panel: #262e66;
+  --panel-2: #313a7a;
+  --ink: #fff6e8;
+  --muted: #aab1e2;
+  --tile-a: #c4ead8;
+  --tile-b: #ade0c9;
+  --wall: #2a2140;
+  --arrow: #ff8a1f;
+  --arrow-hi: #ffd166;
+  --rocket: #ff5a4e;
+  --danger: #ff6278;
+  --ok: #5fe3b4;
+  --f-display: 'Dela Gothic One', 'Hiragino Sans', 'Yu Gothic', sans-serif;
+  --f-body: 'M PLUS Rounded 1c', 'Hiragino Maru Gothic ProN', 'Hiragino Sans', sans-serif;
+  color-scheme: dark;
+}
+html, body { background: var(--space); }
+body {
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-weight: 500;
+  background:
+    radial-gradient(1.5px 1.5px at 12% 18%, #ffffffaa 50%, transparent 51%),
+    radial-gradient(1px 1px at 78% 8%, #ffffff99 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 88% 42%, #ffe9b8aa 50%, transparent 51%),
+    radial-gradient(1px 1px at 30% 64%, #ffffff77 50%, transparent 51%),
+    radial-gradient(1px 1px at 62% 88%, #ffffff88 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 6% 92%, #c9d0ff99 50%, transparent 51%),
+    radial-gradient(120% 70% at 50% -10%, var(--space-2), var(--space) 70%);
+  background-color: var(--space);
+  min-height: 100%;
+  -webkit-user-select: none; user-select: none;
+}
+.app {
+  max-width: 520px; margin: 0 auto;
+  padding-block: 14px 32px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 12px;
+}
+
+/* header */
+.top { display: flex; flex-direction: column; gap: 10px; }
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand svg { width: 34px; height: 34px; flex: none; }
+.brand h1 {
+  margin: 0; font-family: var(--f-display); font-weight: 400;
+  font-size: clamp(22px, 6.4vw, 30px); letter-spacing: .04em; line-height: 1;
+  color: var(--ink);
+}
+.brand h1 em { font-style: normal; color: var(--rocket); }
+.stage-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.stage { min-width: 0; }
+.stage small { display: block; font-size: 11px; letter-spacing: .14em; color: var(--muted); font-weight: 700; }
+.stage b { font-family: var(--f-display); font-weight: 400; font-size: 20px; line-height: 1.25; }
+.saved { text-align: right; flex: none; }
+.saved small { display: block; font-size: 11px; letter-spacing: .14em; color: var(--muted); font-weight: 700; }
+.saved span { font-family: var(--f-display); font-size: 22px; font-variant-numeric: tabular-nums; color: var(--ok); }
+.dots { display: flex; gap: 6px; flex-wrap: wrap; }
+.dot {
+  width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--panel-2);
+  background: var(--space-2); color: var(--muted); font: 700 12px var(--f-body);
+  display: grid; place-items: center; cursor: pointer; padding: 0;
+}
+.dot.cleared { background: var(--panel-2); color: var(--ok); border-color: var(--ok); }
+.dot.current { background: var(--arrow-hi); color: var(--wall); border-color: var(--arrow-hi); }
+.dot:disabled { opacity: .35; cursor: default; }
+
+/* board */
+.frame {
+  position: relative; border-radius: 22px; padding: 10px;
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  box-shadow: 0 6px 0 #0c0f2a, 0 18px 40px #0008;
+}
+#board { display: block; width: 100%; height: auto; touch-action: none; border-radius: 12px; overflow: visible; }
+.tile-a { fill: var(--tile-a); } .tile-b { fill: var(--tile-b); }
+.wall { stroke: var(--wall); stroke-width: 6; stroke-linecap: round; }
+.rim { fill: none; stroke: var(--wall); stroke-width: 6; }
+.pad { fill: var(--arrow-hi); opacity: .35; }
+.cell-hot { fill: #ffffff; opacity: 0; transition: opacity .12s; }
+.cell-hot.on { opacity: .35; }
+.atile { fill: var(--arrow-hi); opacity: .55; }
+.cracked .apoly { fill: #ffc58f; }
+.cracked { transform: scale(.82); }
+.crack { stroke: var(--wall); stroke-width: 1.6; fill: none; stroke-linecap: round; }
+.ghost { animation: ghost 1s ease-in-out infinite alternate; }
+@keyframes ghost { from { opacity: .25; } to { opacity: .85; } }
+
+.wig { transform-box: fill-box; transform-origin: center; }
+.running .u-mouse .wig { animation: scurry .18s ease-in-out infinite alternate; }
+.running .u-cat .wig { animation: prowl .3s ease-in-out infinite alternate; }
+@keyframes scurry { from { transform: rotate(-5deg); } to { transform: rotate(5deg); } }
+@keyframes prowl { from { transform: rotate(-3deg) scale(1); } to { transform: rotate(3deg) scale(1.03); } }
+.fx-rescue { animation: rescue .45s ease-in forwards !important; }
+@keyframes rescue { to { transform: scale(.1); opacity: 0; } }
+.fx-fall { animation: fall .7s ease-in forwards !important; }
+@keyframes fall { to { transform: rotate(540deg) scale(0); opacity: .2; } }
+.fx-eaten { animation: eaten .6s ease-out forwards !important; }
+@keyframes eaten { 30% { transform: scale(1.25); } to { transform: scale(.4); opacity: 0; } }
+.fx-chomp { animation: chomp .25s ease-in-out 3 !important; }
+@keyframes chomp { 50% { transform: scale(1.18); } }
+
+.rocket-body { transform-box: fill-box; transform-origin: center bottom; animation: idle 1.6s ease-in-out infinite alternate; }
+@keyframes idle { to { transform: translateY(-2px); } }
+.rocket-body.bump { animation: bump .3s ease-out; }
+@keyframes bump { 40% { transform: scale(1.15, .9); } }
+.rocket-body.shake { animation: shake .4s linear 2; }
+@keyframes shake { 25% { transform: rotate(-8deg); } 75% { transform: rotate(8deg); } }
+.flame { opacity: 0; }
+.launch .flame { opacity: 1; animation: flick .08s linear infinite alternate; transform-box: fill-box; transform-origin: center top; }
+@keyframes flick { to { transform: scaleY(1.3); } }
+.launch .rocket-body { animation: launch 1.3s cubic-bezier(.55,0,.8,.4) .25s forwards; }
+@keyframes launch { 0% { transform: translateY(0); } 15% { transform: translateY(3px); } 100% { transform: translateY(-560px); } }
+.pulse { fill: none; stroke: var(--danger); stroke-width: 4; animation: pulse .7s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes pulse { from { transform: scale(.5); opacity: 1; } to { transform: scale(1.4); opacity: 0; } }
+.burst { fill: var(--arrow-hi); animation: burst .5s ease-out forwards; transform-box: fill-box; transform-origin: center; }
+@keyframes burst { to { transform: scale(2.4); opacity: 0; } }
+
+/* overlay */
+.overlay {
+  position: absolute; inset: 0; border-radius: 22px;
+  background: #11143acc; backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; gap: 8px; padding: 24px;
+}
+.overlay[hidden] { display: none; }
+.overlay h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clamp(30px, 10vw, 44px); letter-spacing: .04em; }
+.overlay.win h2 { color: var(--arrow-hi); }
+.overlay.lose h2 { color: var(--danger); }
+.overlay p { margin: 0 0 10px; color: var(--ink); font-weight: 700; text-wrap: balance; }
+.ov-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+.tip { margin: 0; min-height: 2.6em; color: var(--muted); font-size: 14px; line-height: 1.5; font-weight: 700; text-align: center; text-wrap: balance; }
+.tip.warn { color: var(--danger); }
+
+/* tray */
+.tray { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.chip {
+  position: relative; aspect-ratio: 1 / .82; max-width: 100%;
+  border: none; border-radius: 16px; cursor: pointer;
+  background: var(--panel); box-shadow: 0 5px 0 #0c0f2a;
+  display: grid; place-items: center; padding: 0;
+  transition: transform .06s;
+}
+.chip svg { width: 52%; height: auto; }
+.chip .n {
+  position: absolute; top: 6px; right: 8px;
+  font: 400 15px var(--f-display); font-variant-numeric: tabular-nums; color: var(--ink);
+}
+.chip.sel { background: var(--arrow-hi); }
+.chip.sel .n { color: var(--wall); }
+.chip:disabled { opacity: .35; cursor: default; }
+.chip:active:not(:disabled), .btn:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 2px 0 #0c0f2a; }
+
+.actions { display: grid; grid-template-columns: 1fr 1fr 1fr 1.6fr; gap: 10px; }
+.btn {
+  border: none; border-radius: 14px; padding: 14px 8px; cursor: pointer;
+  font: 800 15px var(--f-body); color: var(--ink); background: var(--panel);
+  box-shadow: 0 5px 0 #0c0f2a; transition: transform .06s; white-space: nowrap;
+}
+.btn.go { background: var(--rocket); color: #fff; font-family: var(--f-display); font-weight: 400; font-size: 17px; letter-spacing: .06em; }
+.btn.go.stop { background: var(--panel-2); }
+.btn.alt { background: var(--arrow-hi); color: var(--wall); }
+.btn:disabled { opacity: .4; cursor: default; }
+button:focus-visible { outline: 3px solid var(--arrow-hi); outline-offset: 2px; }
+
+.rules { background: var(--space-2); border-radius: 14px; padding: 4px 14px; }
+.rules summary { cursor: pointer; padding: 10px 0; font-weight: 800; }
+.rules ul { margin: 0 0 12px; padding-left: 1.2em; line-height: 1.75; color: var(--muted); font-size: 14px; }
+.rules b { color: var(--ink); }
+
+@media (prefers-reduced-motion: reduce) {
+  .running .u-mouse .wig, .running .u-cat .wig, .rocket-body, .ghost, .pulse { animation: none !important; }
+}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <svg viewBox="-24 -24 48 48" aria-hidden="true"><g id="brandRocket"></g></svg>
+      <h1>MOUSE <em>ROCKET</em></h1>
+    </div>
+    <div class="stage-row">
+      <div class="stage"><small id="stageNo">STAGE 1</small><b id="stageName"></b></div>
+      <div class="saved"><small>救出</small><span id="rescued">0 / 1</span></div>
+    </div>
+    <nav class="dots" id="dots" aria-label="ステージ選択"></nav>
+  </header>
+
+  <div class="frame">
+    <svg id="board" viewBox="-6 -6 444 444" aria-label="ゲーム盤面">
+      <g id="gTiles"></g>
+      <g id="gThings"></g>
+      <g id="gArrows"></g>
+      <g id="gGhost"></g>
+      <g id="gWalls"></g>
+      <g id="gUnits"></g>
+      <g id="gRocket"></g>
+      <g id="gFx"></g>
+    </svg>
+    <div class="overlay" id="overlay" hidden>
+      <h2 id="ovTitle"></h2>
+      <p id="ovText"></p>
+      <div class="ov-btns" id="ovBtns"></div>
+    </div>
+  </div>
+
+  <p class="tip" id="tip"></p>
+
+  <div class="tray" id="tray"></div>
+
+  <div class="actions">
+    <button class="btn" id="btnClear">はずす</button>
+    <button class="btn" id="btnHint">ヒント</button>
+    <button class="btn" id="btnSpeed">×1</button>
+    <button class="btn go" id="btnGo">スタート</button>
+  </div>
+
+  <details class="rules">
+    <summary>あそびかた</summary>
+    <ul>
+      <li><b>ネズミ</b>をすべて<b>ロケット</b>に入れればクリア。</li>
+      <li>ネズミとネコはまっすぐ進み、かべに当たると<b>右</b>へ（ダメなら左、それでもダメなら後ろへ）曲がる。</li>
+      <li>マスを<b>スワイプ</b>するとその向きの矢印を置ける。タップで選んだ向きを置き、置いた矢印をタップすると外れる。</li>
+      <li>ネコが矢印に<b>正面から</b>ぶつかると矢印は傷つき、2回目でこわれる。</li>
+      <li>ネズミが1匹でも食べられたり穴に落ちたら失敗。ネコがロケットに入っても失敗。</li>
+    </ul>
+  </details>
+</div>
+
+<script>
+// ===== Mouse Rocket simulation core (shared by game and solver) =====
+const MR = (() => {
+  const SUB = 12;                       // sub-steps per cell
+  const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0]; // 0:N 1:E 2:S 3:W
+  const SPEED = { mouse: 3, cat: 2 };   // cat is slower than mouse
+  const LIMIT = 4000;                   // ticks before we call it a loop
+  const DCH = { n: 0, e: 1, s: 2, w: 3 };
+
+  // Level: rows = strings of W chars. '.' empty, 'R' rocket, 'O' hole,
+  // n/e/s/w mouse facing that way, N/E/S/W cat. walls = ["x,y:nesw", ...]
+  function parse(def) {
+    const H = def.rows.length, W = def.rows[0].length;
+    const lv = { W, H, wall: new Array(W * H).fill(''), rocket: -1, holes: new Set(),
+      mice: [], cats: [], inv: def.inv.slice(), name: def.name, tip: def.tip || '' };
+    def.rows.forEach((row, y) => [...row].forEach((ch, x) => {
+      const k = y * W + x;
+      if (ch === 'R') lv.rocket = k;
+      else if (ch === 'O') lv.holes.add(k);
+      else if ('nesw'.includes(ch)) lv.mice.push({ x, y, d: DCH[ch] });
+      else if ('NESW'.includes(ch)) lv.cats.push({ x, y, d: DCH[ch.toLowerCase()] });
+    }));
+    (def.walls || []).forEach(s => {
+      const [xy, sides] = s.split(':'); const [x, y] = xy.split(',').map(Number);
+      lv.wall[y * W + x] += sides;
+    });
+    return lv;
+  }
+
+  function blocked(lv, x, y, d) {
+    const nx = x + DX[d], ny = y + DY[d];
+    if (nx < 0 || ny < 0 || nx >= lv.W || ny >= lv.H) return true;
+    if (lv.wall[y * lv.W + x].includes('nesw'[d])) return true;
+    if (lv.wall[ny * lv.W + nx].includes('nesw'[(d + 2) % 4])) return true;
+    return false;
+  }
+  // forward, else right, else left, else back
+  function choose(lv, x, y, d) {
+    for (const t of [0, 1, 3, 2]) { const nd = (d + t) % 4; if (!blocked(lv, x, y, nd)) return nd; }
+    return -1;
+  }
+
+  // cells where the player may not place an arrow
+  function forbidden(lv, k) {
+    if (k === lv.rocket || lv.holes.has(k)) return true;
+    return [...lv.mice, ...lv.cats].some(u => u.y * lv.W + u.x === k);
+  }
+
+  function create(lv, arrows) {
+    const units = [];
+    lv.mice.forEach((m, i) => units.push({ id: 'm' + i, type: 'mouse', x: m.x * SUB, y: m.y * SUB, d: m.d, alive: true }));
+    lv.cats.forEach((c, i) => units.push({ id: 'c' + i, type: 'cat', x: c.x * SUB, y: c.y * SUB, d: c.d, alive: true }));
+    units.forEach(u => { u.px = u.x; u.py = u.y; });
+    const arr = new Map();
+    for (const [k, d] of arrows) arr.set(k, { d, hp: 2 });
+    return { lv, t: 0, units, arrows: arr, rescued: 0, total: lv.mice.length,
+      status: 'run', reason: '', visited: new Set(), events: [] };
+  }
+
+  function fail(s, reason) { if (s.status === 'run') { s.status = 'fail'; s.reason = reason; } }
+
+  function step(s) {
+    if (s.status !== 'run') return;
+    const lv = s.lv; s.events = [];
+    for (const u of s.units) {
+      u.px = u.x; u.py = u.y;
+      if (!u.alive) continue;
+      if (u.x % SUB === 0 && u.y % SUB === 0) {
+        const cx = u.x / SUB, cy = u.y / SUB, k = cy * lv.W + cx;
+        s.visited.add(k);
+        if (lv.holes.has(k)) {
+          u.alive = false; s.events.push({ type: 'fall', u });
+          if (u.type === 'mouse') fail(s, 'ネズミが穴に落ちてしまった');
+          continue;
+        }
+        if (k === lv.rocket) {
+          u.alive = false;
+          if (u.type === 'mouse') { s.rescued++; s.events.push({ type: 'rescue', u }); }
+          else { s.events.push({ type: 'catrocket', u }); fail(s, 'ネコがロケットに乗りこんだ'); }
+          continue;
+        }
+        const a = s.arrows.get(k);
+        if (a) {
+          if (u.type === 'cat' && a.d === (u.d + 2) % 4) {
+            a.hp--; s.events.push({ type: 'hit', k });
+            if (a.hp <= 0) { s.arrows.delete(k); s.events.push({ type: 'break', k }); }
+          }
+          u.d = a.d;
+        }
+        u.d = choose(lv, cx, cy, u.d);
+      }
+      if (u.d >= 0) { u.x += DX[u.d] * SPEED[u.type]; u.y += DY[u.d] * SPEED[u.type]; }
+    }
+    for (const c of s.units) {
+      if (!c.alive || c.type !== 'cat') continue;
+      for (const m of s.units) {
+        if (!m.alive || m.type !== 'mouse') continue;
+        if (Math.abs(c.x - m.x) < SUB / 2 && Math.abs(c.y - m.y) < SUB / 2) {
+          m.alive = false; s.events.push({ type: 'eat', u: m, c }); fail(s, 'ネズミがネコにつかまった');
+        }
+      }
+    }
+    s.t++;
+    if (s.status === 'run' && s.rescued === s.total) s.status = 'win';
+    if (s.status === 'run' && s.t > LIMIT) fail(s, 'ネズミがロケットにたどり着けない');
+  }
+
+  function run(lv, arrows) {
+    const s = create(lv, arrows);
+    while (s.status === 'run') step(s);
+    return s;
+  }
+
+  // Complete search: an arrow only matters on a cell some unit actually visits.
+  function solve(lv, inv, maxSol = 50) {
+    const sols = [], seen = new Set();
+    const rec = (arrows, inv) => {
+      const key = [...arrows].sort((a, b) => a[0] - b[0]).map(a => a.join(':')).join(',');
+      if (seen.has(key)) return; seen.add(key);
+      if (sols.length >= maxSol) return;
+      const s = run(lv, arrows);
+      if (s.status === 'win') { sols.push(new Map(arrows)); return; }
+      if (inv.every(n => n === 0)) return;
+      for (const k of s.visited) {
+        if (arrows.has(k) || forbidden(lv, k)) continue;
+        for (let d = 0; d < 4; d++) {
+          if (!inv[d]) continue;
+          arrows.set(k, d); inv[d]--;
+          rec(arrows, inv);
+          arrows.delete(k); inv[d]++;
+        }
+      }
+    };
+    rec(new Map(), inv.slice());
+    return sols;
+  }
+
+  return { SUB, DX, DY, parse, blocked, forbidden, create, step, run, solve };
+})();
+
+
+</script>
+<script>
+const LEVELS = [
+  { name: 'はじめの一歩', inv: [0, 0, 1, 0], tip: '↓の矢印を1つ置いて、ネズミをロケットへ。',
+    rows: [
+      '.........',
+      '.e.......',
+      '.........',
+      '.........',
+      '.........',
+      '.........',
+      '.....R...',
+      '.........',
+      '.........'] },
+  { name: 'まがりかど', inv: [0, 1, 1, 0], tip: '矢印を2つ使って角を曲がろう。',
+    walls: ['7,5:n', '6,6:w', '0,6:e', '1,6:e'],
+    rows: [
+      '.........',
+      '.e.......',
+      '.........',
+      '.........',
+      '.........',
+      '.........',
+      '.......R.',
+      '.........',
+      '.........'] },
+  { name: 'ネコ注意', inv: [0, 0, 1, 0], tip: 'ネコはネズミより遅い。ぶつかる前に曲がろう。',
+    rows: [
+      '.........',
+      '.e.....W.',
+      '.........',
+      '.........',
+      '....R....',
+      '.........',
+      '.........',
+      '.........',
+      '.........'] },
+  { name: 'あなぼこ', inv: [0, 1, 1, 0], tip: '穴に落ちたらおしまい。',
+    rows: [
+      '.........',
+      '.e...O...',
+      '.........',
+      '.........',
+      '.........',
+      '....O....',
+      '.........',
+      '......R..',
+      '.........'] },
+  { name: 'はね返せ', inv: [0, 0, 0, 1], tip: 'ネコが正面から矢印にぶつかると向きが変わる。2回で矢印はこわれる。',
+    rows: [
+      'e........',
+      '.........',
+      '.........',
+      '.........',
+      'E.......R',
+      '.........',
+      '.........',
+      '.........',
+      '.........'] },
+  { name: 'ふたごのネズミ', inv: [1, 1, 0, 0], tip: '2匹とも救出しよう。ネコをロケットに近づけないで。',
+    rows: [
+      'e........',
+      '.........',
+      '.........',
+      '.........',
+      '....R...W',
+      '.........',
+      '.........',
+      '.........',
+      '........w'] },
+  { name: 'おしろ', inv: [1, 1, 0, 1], tip: 'ロケットの入口はひとつだけ。ネコより先に入ろう。',
+    walls: ['3,3:nw', '4,3:n', '5,3:ne', '3,4:w', '5,4:e', '3,5:sw', '5,5:es'],
+    rows: [
+      'e.......S',
+      '.........',
+      '.........',
+      '.........',
+      '....R....',
+      '.........',
+      '.........',
+      '.........',
+      'O.......w'] },
+  { name: '総力戦', inv: [1, 1, 1, 1], tip: '3匹とネコ2匹。4方向の矢印をすべて使いこなそう。',
+    walls: ['1,1:es', '7,1:sw', '1,7:ne', '7,7:nw', '4,3:n', '4,5:s'],
+    rows: [
+      'e...O...S',
+      '.........',
+      '.........',
+      'n........',
+      '....R....',
+      '........s',
+      '.........',
+      '.........',
+      'N...O...w'] },
+  { name: 'ネコの横道', inv: [2,  0,  0,  1], tip: '2匹を順番にロケットへ。ネコのいる列に注意。',
+    walls: ['2,6:e', '6,6:w', '3,5:s', '5,5:s', '3,3:s', '5,3:s', '1,3:s', '7,3:s'],
+    rows: [
+      '.........',
+      '.........',
+      '.........',
+      's........',
+      '.........',
+      'O......Sw',
+      '......R..',
+      '.........',
+      '.........'] },
+  { name: '三匹の行進', inv: [0,  1,  2,  0], tip: '3匹のネズミ。1本の矢印を何匹でも使える。',
+    walls: ['2,7:s', '6,7:s', '3,6:w', '5,6:e'],
+    rows: [
+      '.........',
+      '.........',
+      '...s..e.N',
+      '.........',
+      '.........',
+      '........O',
+      '......R..',
+      '.n.......',
+      '.........'] },
+  { name: 'ひとつだけの道', inv: [1,  2,  0,  0], tip: '答えはひとつ。かべの形をよく見よう。',
+    walls: ['3,4:s', '5,4:s', '2,5:w', '6,5:e', '1,6:s', '7,6:s', '3,6:e', '5,6:w', '2,3:w', '6,3:e'],
+    rows: [
+      '.........',
+      '.w.......',
+      '.........',
+      '....s....',
+      '.........',
+      '....O....',
+      '...R....N',
+      '.........',
+      '.........'] },
+  { name: '見張りネコ', inv: [0,  1,  1,  1], tip: 'ネコが上の列を歩き回っている。',
+    walls: ['1,6:w', '7,6:e', '1,6:s', '7,6:s', '3,3:s', '5,3:s', '2,4:w', '6,4:e', '1,5:e', '7,5:w'],
+    rows: [
+      '.E.......',
+      '.........',
+      's........',
+      '.........',
+      '........e',
+      '.OR......',
+      '.........',
+      '.........',
+      '......O..'] },
+  { name: '三方向', inv: [1,  0,  1,  1], tip: '↑↓← の3本で3匹をみちびこう。',
+    walls: ['1,6:s', '7,6:s', '3,6:e', '5,6:w', '2,3:w', '6,3:e', '2,1:w', '6,1:e', '3,2:s', '5,2:s'],
+    rows: [
+      '.........',
+      '.........',
+      '.........',
+      '....s....',
+      '......s..',
+      '....O....',
+      '..R.....n',
+      '.........',
+      '........S'] },
+  { name: 'ふたりの見張り', inv: [2,  0,  2,  0], tip: 'ネコが2匹。上向きと下向きを2本ずつ。',
+    walls: ['3,5:w', '5,5:e', '1,7:e', '7,7:w', '1,4:s', '7,4:s', '1,3:e', '7,3:w'],
+    rows: [
+      '.........',
+      '.........',
+      '..O......',
+      '.........',
+      '.........',
+      '........S',
+      's...R....',
+      '.........',
+      '..S....e.'] },
+  { name: '四つの矢印', inv: [1,  1,  1,  1], tip: '4方向を1本ずつ。ネコの動きを先読みしよう。',
+    walls: ['2,7:w', '6,7:e', '3,1:w', '5,1:e', '1,5:w', '7,5:e'],
+    rows: [
+      '......E..',
+      '.........',
+      '..w...n..',
+      '.........',
+      '....R....',
+      '.........',
+      '.O.......',
+      '......e..',
+      '....W....'] },
+  { name: '最終便', inv: [1,  1,  2,  0], tip: '最後のステージ。答えはたったひとつ。',
+    walls: ['3,6:w', '5,6:e', '1,3:s', '7,3:s', '3,3:s', '5,3:s', '3,5:s', '5,5:s'],
+    rows: [
+      '.........',
+      '....O....',
+      '........E',
+      '......e..',
+      '.....R...',
+      '.........',
+      '.........',
+      '...e.....',
+      '....S....'] },
+];
+</script>
+<script>
+(() => {
+  const C = 48, NS = 'http://www.w3.org/2000/svg', TICK = 55;
+  const ROT = [-90, 0, 90, 180];
+  const DNAME = ['↑', '→', '↓', '←'];
+  const $ = s => document.querySelector(s);
+  const L = { tiles: $('#gTiles'), things: $('#gThings'), arrows: $('#gArrows'), ghost: $('#gGhost'),
+    walls: $('#gWalls'), units: $('#gUnits'), rocket: $('#gRocket'), fx: $('#gFx') };
+  const board = $('#board');
+
+  // ---------- artwork (all drawn facing east, centred on 0,0) ----------
+  const INK = '#2a2140';
+  const ART = {
+    mouse: `<g class="wig">
+      <path d="M-12 0 C-20 0 -19 9 -28 8" fill="none" stroke="#f08aa0" stroke-width="2.8" stroke-linecap="round"/>
+      <circle cx="3" cy="-9" r="5.8" fill="#ffd3dd" stroke="${INK}" stroke-width="2"/>
+      <circle cx="3" cy="9" r="5.8" fill="#ffd3dd" stroke="${INK}" stroke-width="2"/>
+      <ellipse cx="-3" cy="0" rx="12.5" ry="9.5" fill="#fff6e8" stroke="${INK}" stroke-width="2"/>
+      <ellipse cx="9" cy="0" rx="8.5" ry="7" fill="#fff6e8" stroke="${INK}" stroke-width="2"/>
+      <circle cx="17" cy="0" r="2.4" fill="#f07a92"/>
+      <circle cx="11.5" cy="-3" r="1.7" fill="${INK}"/><circle cx="11.5" cy="3" r="1.7" fill="${INK}"/>
+    </g>`,
+    cat: `<g class="wig">
+      <path d="M-15 0 C-25 0 -22 -13 -31 -13" fill="none" stroke="${INK}" stroke-width="7" stroke-linecap="round"/>
+      <path d="M-15 0 C-25 0 -22 -13 -31 -13" fill="none" stroke="#5b5687" stroke-width="3.6" stroke-linecap="round"/>
+      <ellipse cx="-5" cy="0" rx="14.5" ry="11.5" fill="#5b5687" stroke="${INK}" stroke-width="2"/>
+      <path d="M-9 -6 Q-6 0 -9 6 M-3 -9 Q0 0 -3 9" fill="none" stroke="#45416e" stroke-width="2.4" stroke-linecap="round"/>
+      <path d="M6 -6 L3 -18 L14 -10 Z M6 6 L3 18 L14 10 Z" fill="#5b5687" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>
+      <circle cx="10" cy="0" r="10.5" fill="#5b5687" stroke="${INK}" stroke-width="2"/>
+      <ellipse cx="14" cy="-4.2" rx="2.8" ry="3.2" fill="#ffd23f"/><ellipse cx="14.7" cy="-4.2" rx="1" ry="2.5" fill="#15122a"/>
+      <ellipse cx="14" cy="4.2" rx="2.8" ry="3.2" fill="#ffd23f"/><ellipse cx="14.7" cy="4.2" rx="1" ry="2.5" fill="#15122a"/>
+      <path d="M19.4 -1.8 L21.6 0 L19.4 1.8 Z" fill="#ff8fab"/>
+      <path d="M18 -2.6 L28 -7 M18 2.6 L28 7 M18.5 0 L28.5 0" stroke="#e6e2ff" stroke-width="1.1" stroke-linecap="round"/>
+    </g>`,
+    rocket: `<g class="rocket-body">
+      <g class="flame"><path d="M-6.5 14 Q0 34 6.5 14 Z" fill="#ffb703"/><path d="M-3.4 14 Q0 25 3.4 14 Z" fill="#fff3b0"/></g>
+      <path d="M-7.5 4 L-15 16 L-7.5 13.5 Z M7.5 4 L15 16 L7.5 13.5 Z" fill="#c2364a" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M0 -21 C9.5 -13 9.5 4 8 14.5 L-8 14.5 C-9.5 4 -9.5 -13 0 -21 Z" fill="#ff5a4e" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M0 -21 C3.6 -18 5.6 -14.5 6.6 -11.5 L-6.6 -11.5 C-5.6 -14.5 -3.6 -18 0 -21 Z" fill="#fff6e8" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>
+      <circle cx="0" cy="-2" r="4.6" fill="#bfe9ff" stroke="${INK}" stroke-width="2"/>
+      <circle cx="-1.4" cy="-3.4" r="1.3" fill="#ffffff"/>
+      <path d="M-0.5 14.5 L-0.5 8" stroke="${INK}" stroke-width="1.6"/>
+    </g>`,
+    hole: `<circle r="17.5" fill="#6d5a45"/><circle r="15.5" fill="#1a1428"/><ellipse cx="0" cy="3" rx="12" ry="11" fill="#07050f"/>`,
+    arrow: `<path class="apoly" d="M-13 -5 L1 -5 L1 -12.5 L15 0 L1 12.5 L1 5 L-13 5 Z" fill="#ff8a1f" stroke="${INK}" stroke-width="2.4" stroke-linejoin="round"/>`,
+  };
+  const chipArrow = `<svg viewBox="-17 -17 34 34" aria-hidden="true"><path d="M-13 -5 L1 -5 L1 -12.5 L15 0 L1 12.5 L1 5 L-13 5 Z" fill="#ff8a1f" stroke="${INK}" stroke-width="2.4" stroke-linejoin="round"/></svg>`;
+
+  const mk = (tag, attrs = {}, parent, html) => {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (html) e.innerHTML = html;
+    if (parent) parent.appendChild(e);
+    return e;
+  };
+  const center = v => v * C + C / 2;
+
+  $('#brandRocket').innerHTML = ART.rocket;
+
+  // ---------- state ----------
+  let li = 0, lv, placed = new Map(), inv, sel = 0, mode = 'edit', sim = null, speed = 1;
+  let unitEls = new Map(), rocketWrap = null, raf = 0, last = 0, acc = 0, msgTimer = 0;
+  const hintCache = {};
+  let progress = 0;
+  try { progress = Math.min(LEVELS.length, parseInt(localStorage.getItem('mouse-rocket-progress') || '0', 10) || 0); } catch (e) {}
+
+  // ---------- drawing ----------
+  function drawStatic() {
+    L.tiles.innerHTML = ''; L.things.innerHTML = ''; L.walls.innerHTML = ''; L.rocket.innerHTML = '';
+    for (let y = 0; y < lv.H; y++) for (let x = 0; x < lv.W; x++) {
+      mk('rect', { x: x * C, y: y * C, width: C, height: C, class: (x + y) % 2 ? 'tile-b' : 'tile-a' }, L.tiles);
+    }
+    for (const k of lv.holes) {
+      mk('g', { transform: `translate(${center(k % lv.W)} ${center((k / lv.W) | 0)})` }, L.things, ART.hole);
+    }
+    const rx = center(lv.rocket % lv.W), ry = center((lv.rocket / lv.W) | 0);
+    mk('circle', { cx: rx, cy: ry, r: 21, class: 'pad' }, L.things);
+    rocketWrap = mk('g', { transform: `translate(${rx} ${ry})` }, L.rocket, ART.rocket);
+    lv.wall.forEach((sides, k) => {
+      if (!sides) return;
+      const x = (k % lv.W) * C, y = ((k / lv.W) | 0) * C;
+      const seg = { n: [x, y, x + C, y], s: [x, y + C, x + C, y + C], w: [x, y, x, y + C], e: [x + C, y, x + C, y + C] };
+      for (const s of sides) { const [x1, y1, x2, y2] = seg[s]; mk('line', { x1, y1, x2, y2, class: 'wall' }, L.walls); }
+    });
+    mk('rect', { x: 0, y: 0, width: lv.W * C, height: lv.H * C, rx: 6, class: 'rim' }, L.walls);
+  }
+
+  function placeEl(el, x, y, d) { el.setAttribute('transform', `translate(${x.toFixed(2)} ${y.toFixed(2)}) rotate(${ROT[d]})`); }
+
+  function resetUnits() {
+    L.units.innerHTML = ''; unitEls.clear();
+    const add = (id, type, u) => {
+      const el = mk('g', { class: 'u-' + type }, L.units, ART[type]);
+      el._d = u.d; placeEl(el, center(u.x), center(u.y), u.d);
+      unitEls.set(id, el);
+    };
+    lv.mice.forEach((m, i) => add('m' + i, 'mouse', m));
+    lv.cats.forEach((c, i) => add('c' + i, 'cat', c));
+  }
+
+  function drawArrows() {
+    L.arrows.innerHTML = '';
+    const src = sim ? [...sim.arrows].map(([k, a]) => [k, a.d, a.hp]) : [...placed].map(([k, d]) => [k, d, 2]);
+    for (const [k, d, hp] of src) {
+      const g = mk('g', { transform: `translate(${center(k % lv.W)} ${center((k / lv.W) | 0)})` }, L.arrows);
+      mk('rect', { x: -21, y: -21, width: 42, height: 42, rx: 10, class: 'atile' }, g);
+      const inner = mk('g', { class: hp < 2 ? 'cracked' : '' }, g);
+      mk('g', { transform: `rotate(${ROT[d]})` }, inner, ART.arrow + (hp < 2 ? '<path class="crack" d="M-4 -5 L-1 -1 L-5 2 L-2 5"/>' : ''));
+    }
+  }
+
+  function clearGhost() { L.ghost.innerHTML = ''; }
+
+  // ---------- UI ----------
+  function setTip(text, warn = false, sticky = false) {
+    const t = $('#tip'); t.textContent = text; t.classList.toggle('warn', warn);
+    clearTimeout(msgTimer);
+    if (!sticky && warn) msgTimer = setTimeout(() => setTip(lv.tip), 1800);
+  }
+
+  function renderTray() {
+    const tray = $('#tray'); tray.innerHTML = '';
+    for (let d = 0; d < 4; d++) {
+      const b = document.createElement('button');
+      b.className = 'chip' + (d === sel && mode === 'edit' && inv[d] > 0 ? ' sel' : '');
+      b.id = 'chip' + d;
+      b.disabled = mode !== 'edit' || inv[d] === 0;
+      b.setAttribute('aria-label', `${DNAME[d]}の矢印 残り${inv[d]}`);
+      b.innerHTML = chipArrow.replace('aria-hidden="true">', `aria-hidden="true" style="transform:rotate(${ROT[d]}deg)">`) + `<span class="n">${inv[d]}</span>`;
+      b.onclick = () => { sel = d; renderTray(); };
+      tray.appendChild(b);
+    }
+  }
+
+  function renderDots() {
+    const nav = $('#dots'); nav.innerHTML = '';
+    LEVELS.forEach((def, i) => {
+      const b = document.createElement('button');
+      b.className = 'dot' + (i < progress ? ' cleared' : '') + (i === li ? ' current' : '');
+      b.textContent = i + 1;
+      b.disabled = i > progress;
+      b.setAttribute('aria-label', `ステージ${i + 1} ${def.name}`);
+      b.onclick = () => loadLevel(i);
+      nav.appendChild(b);
+    });
+  }
+
+  function updateUI() {
+    $('#stageNo').textContent = `STAGE ${li + 1} / ${LEVELS.length}`;
+    $('#stageName').textContent = lv.name;
+    $('#rescued').textContent = `${sim ? sim.rescued : 0} / ${lv.mice.length}`;
+    const go = $('#btnGo');
+    go.textContent = mode === 'run' ? 'ストップ' : mode === 'done' ? 'やり直す' : 'スタート';
+    go.classList.toggle('stop', mode !== 'edit');
+    $('#btnClear').disabled = mode !== 'edit' || placed.size === 0;
+    $('#btnHint').disabled = mode !== 'edit';
+    $('#btnSpeed').textContent = '×' + speed;
+    board.classList.toggle('running', mode === 'run');
+    renderTray(); renderDots();
+  }
+
+  function pickSel() { if (!inv[sel]) { const d = inv.findIndex(n => n > 0); if (d >= 0) sel = d; } }
+
+  // ---------- editing ----------
+  function cellAt(e) {
+    const r = board.getBoundingClientRect();
+    const ux = (e.clientX - r.left) / r.width * 444 - 6, uy = (e.clientY - r.top) / r.height * 444 - 6;
+    const x = Math.floor(ux / C), y = Math.floor(uy / C);
+    if (x < 0 || y < 0 || x >= lv.W || y >= lv.H) return null;
+    return y * lv.W + x;
+  }
+
+  function setArrow(k, d) {
+    if (MR.forbidden(lv, k)) { setTip('そのマスには置けません', true); return; }
+    const old = placed.get(k);
+    if (old === d) return;
+    if (old !== undefined) inv[old]++;
+    if (inv[d] <= 0) {
+      if (old !== undefined) inv[old]--;
+      setTip(`${DNAME[d]} の矢印はもう残っていません`, true); return;
+    }
+    inv[d]--; placed.set(k, d);
+    afterEdit();
+  }
+  function removeArrow(k) { inv[placed.get(k)]++; placed.delete(k); afterEdit(); }
+  function afterEdit() { pickSel(); clearGhost(); drawArrows(); updateUI(); setTip(lv.tip); }
+
+  let down = null;
+  board.addEventListener('pointerdown', e => {
+    if (mode !== 'edit') return;
+    const k = cellAt(e); if (k === null) return;
+    down = { k, x: e.clientX, y: e.clientY };
+    try { board.setPointerCapture(e.pointerId); } catch (_) {}
+    e.preventDefault();
+  });
+  board.addEventListener('pointerup', e => {
+    if (!down) return;
+    const { k, x, y } = down; down = null;
+    const dx = e.clientX - x, dy = e.clientY - y;
+    if (Math.hypot(dx, dy) > 14) {
+      setArrow(k, Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 1 : 3) : (dy > 0 ? 2 : 0));
+    } else if (placed.has(k)) removeArrow(k);
+    else if (inv[sel] > 0) setArrow(k, sel);
+    else setTip('置ける矢印が残っていません', true);
+  });
+  board.addEventListener('pointercancel', () => { down = null; });
+
+  // ---------- running ----------
+  function start() {
+    mode = 'run'; sim = MR.create(lv, placed); clearGhost(); L.fx.innerHTML = '';
+    setTip('発進準備中… ネズミをロケットへ！');
+    last = performance.now(); acc = 0;
+    updateUI(); drawArrows();
+    raf = requestAnimationFrame(frame);
+  }
+  function stopLoop() { cancelAnimationFrame(raf); raf = 0; }
+  function toEdit() {
+    stopLoop(); mode = 'edit'; sim = null; hideOverlay(); L.fx.innerHTML = '';
+    drawStatic(); resetUnits(); drawArrows(); updateUI(); setTip(lv.tip);
+  }
+
+  function inner(el) { return el.firstElementChild; }
+  function fxAt(x, y, cls, r = 20) { mk('circle', { cx: x, cy: y, r, class: cls }, L.fx); }
+
+  function handle(ev) {
+    const rb = rocketWrap && rocketWrap.firstElementChild;
+    if (ev.type === 'rescue') {
+      inner(unitEls.get(ev.u.id)).classList.add('fx-rescue');
+      rb.classList.remove('bump'); void rb.getBBox(); rb.classList.add('bump');
+      $('#rescued').textContent = `${sim.rescued} / ${lv.mice.length}`;
+    } else if (ev.type === 'fall') {
+      inner(unitEls.get(ev.u.id)).classList.add('fx-fall');
+    } else if (ev.type === 'eat') {
+      inner(unitEls.get(ev.u.id)).classList.add('fx-eaten');
+      inner(unitEls.get(ev.c.id)).classList.add('fx-chomp');
+    } else if (ev.type === 'catrocket') {
+      inner(unitEls.get(ev.u.id)).classList.add('fx-rescue');
+      rb.classList.add('shake');
+    } else if (ev.type === 'break') {
+      fxAt(center(ev.k % lv.W), center((ev.k / lv.W) | 0), 'burst', 10);
+    }
+    return ev.type === 'hit' || ev.type === 'break';
+  }
+
+  function renderUnits(a) {
+    for (const u of sim.units) {
+      const el = unitEls.get(u.id);
+      const x = (u.px + (u.x - u.px) * a) / MR.SUB * C + C / 2;
+      const y = (u.py + (u.y - u.py) * a) / MR.SUB * C + C / 2;
+      if (u.d >= 0) el._d = u.d;
+      placeEl(el, x, y, el._d);
+    }
+  }
+
+  function frame(ts) {
+    const dt = Math.min(120, ts - last); last = ts; acc += dt * speed;
+    let dirty = false;
+    while (acc >= TICK && sim.status === 'run') {
+      MR.step(sim); acc -= TICK;
+      for (const ev of sim.events) dirty = handle(ev) || dirty;
+    }
+    if (dirty) drawArrows();
+    renderUnits(sim.status === 'run' ? acc / TICK : 1);
+    if (sim.status === 'run') { raf = requestAnimationFrame(frame); return; }
+    finish();
+  }
+
+  function finish() {
+    stopLoop(); mode = 'done'; updateUI();
+    if (sim.status === 'win') {
+      const cleared = li + 1;
+      if (cleared > progress) { progress = cleared; try { localStorage.setItem('mouse-rocket-progress', String(progress)); } catch (e) {} }
+      renderDots();
+      setTip('全員乗りこんだ！ 発射！');
+      rocketWrap.classList.add('launch');
+      setTimeout(() => {
+        if (mode !== 'done') return;
+        const lastStage = li === LEVELS.length - 1;
+        showOverlay('win', lastStage ? 'ALL CLEAR!' : 'CLEAR!',
+          lastStage ? '全ステージ制覇！ ネズミたちは宇宙へ旅立った。' : `${lv.mice.length}匹とも無事に発射！`,
+          lastStage
+            ? [['もう一度遊ぶ', '', () => toEdit()], ['ステージ1へ', 'alt', () => loadLevel(0)]]
+            : [['もう一度', '', () => toEdit()], ['つぎへ ▶', 'alt', () => loadLevel(li + 1)]]);
+      }, 1500);
+    } else {
+      const bad = sim.units.find(u => u.type === 'mouse' && !u.alive && sim.reason.includes('ネズミが')) ||
+                  sim.units.find(u => u.type === 'cat' && !u.alive) || sim.units.find(u => u.type === 'mouse' && u.alive);
+      if (bad) fxAt(bad.x / MR.SUB * C + C / 2, bad.y / MR.SUB * C + C / 2, 'pulse', 22);
+      setTip(sim.reason, true, true);
+      setTimeout(() => {
+        if (mode !== 'done') return;
+        showOverlay('lose', 'しっぱい…', sim.reason, [['矢印を直す', 'alt', () => toEdit()]]);
+      }, 900);
+    }
+  }
+
+  function showOverlay(kind, title, text, btns) {
+    const ov = $('#overlay'); ov.className = 'overlay ' + kind;
+    $('#ovTitle').textContent = title; $('#ovText').textContent = text;
+    const box = $('#ovBtns'); box.innerHTML = '';
+    btns.forEach(([label, cls, fn], i) => {
+      const b = document.createElement('button'); b.className = 'btn ' + cls; b.id = 'ov' + i;
+      b.textContent = label; b.onclick = fn; box.appendChild(b);
+    });
+    ov.hidden = false;
+    box.lastChild && box.lastChild.focus({ preventScroll: true });
+  }
+  function hideOverlay() { $('#overlay').hidden = true; }
+
+  // ---------- hint (uses the same solver that verified every stage) ----------
+  function hint() {
+    if (mode !== 'edit') return;
+    setTip('考え中…');
+    setTimeout(() => {
+      const sols = hintCache[li] || (hintCache[li] = MR.solve(lv, lv.inv, 40));
+      if (!sols.length) { setTip('ヒントが見つかりませんでした', true); return; }
+      let best = sols[0], bestScore = -1;
+      for (const s of sols) {
+        let sc = 0; for (const [k, d] of s) if (placed.get(k) === d) sc++;
+        if (sc > bestScore) { bestScore = sc; best = s; }
+      }
+      const missing = [...best].find(([k, d]) => placed.get(k) !== d);
+      if (!missing) { setTip('その配置でいけるはず。スタート！'); return; }
+      const wrong = [...placed].filter(([k, d]) => best.get(k) !== d).length;
+      const [k, d] = missing;
+      clearGhost();
+      const g = mk('g', { transform: `translate(${center(k % lv.W)} ${center((k / lv.W) | 0)})`, class: 'ghost' }, L.ghost);
+      mk('rect', { x: -21, y: -21, width: 42, height: 42, rx: 10, class: 'atile' }, g);
+      mk('g', { transform: `rotate(${ROT[d]})` }, g, ART.arrow);
+      setTip(`光っているマスに ${DNAME[d]} を置いてみよう` + (wrong ? `（ほかに${wrong}個、置き直しが必要）` : ''));
+    }, 30);
+  }
+
+  // ---------- buttons ----------
+  $('#btnGo').onclick = () => { if (mode === 'edit') start(); else toEdit(); };
+  $('#btnClear').onclick = () => {
+    if (mode !== 'edit') return;
+    for (const [, d] of placed) inv[d]++;
+    placed.clear(); afterEdit();
+  };
+  $('#btnHint').onclick = hint;
+  $('#btnSpeed').onclick = () => { speed = speed === 1 ? 3 : 1; updateUI(); };
+
+  function loadLevel(i) {
+    stopLoop(); li = i; lv = MR.parse(LEVELS[i]);
+    placed = new Map(); inv = lv.inv.slice(); sel = 0; mode = 'edit'; sim = null;
+    pickSel(); hideOverlay(); clearGhost(); L.fx.innerHTML = '';
+    drawStatic(); resetUnits(); drawArrows(); updateUI(); setTip(lv.tip);
+  }
+
+  loadLevel(Math.min(progress, LEVELS.length - 1));
+})();
+</script>
+
+</body></html>

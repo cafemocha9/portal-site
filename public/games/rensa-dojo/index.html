@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>連鎖道場 — ぷよぷよの連鎖を論理で学ぶ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f2ec; --ink:#1c1f26; --sub:#646a76; --line:#e2ddd3; --card:#fffdf9;
+  --board:#1d2433; --board2:#232b3d; --accent:#3a6fe2; --good:#1f9d5c; --ng:#d6453d; --warn:#c98a00;
+  --cs:clamp(26px, 7.4vw, 38px);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Zen Kaku Gothic New",system-ui,sans-serif;line-height:1.75;-webkit-font-smoothing:antialiased}
+header{max-width:1040px;margin:0 auto;padding:28px 20px 8px;display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+h1{margin:0;font-size:28px;font-weight:900;letter-spacing:.04em}
+h1 span{display:inline-flex;gap:3px;margin-right:10px;vertical-align:-2px}
+h1 i{width:16px;height:16px;border-radius:50%;display:inline-block}
+.sub{margin:2px 0 0;color:var(--sub);font-size:13px}
+nav{display:flex;gap:4px;background:#e9e4da;padding:4px;border-radius:12px}
+.tab{border:0;background:transparent;font:inherit;font-weight:700;font-size:14px;padding:8px 16px;border-radius:9px;cursor:pointer;color:var(--sub)}
+.tab.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px #0001}
+main{max-width:1040px;margin:0 auto;padding:12px 20px 60px}
+h2{font-size:20px;margin:18px 0 6px}
+p{margin:.4em 0}
+.lead{color:var(--sub);font-size:14px;margin-bottom:16px}
+
+/* board */
+.board,.piece{display:grid;grid-template-columns:repeat(6,var(--cs));gap:0;background:var(--board);border-radius:10px;padding:4px;width:max-content}
+.board{grid-template-rows:repeat(var(--rows),var(--cs))}
+.piece{background:transparent;grid-template-rows:repeat(2,var(--cs));padding:0 4px}
+.cell{width:var(--cs);height:var(--cs);position:relative;display:grid;place-items:center;border-right:1px solid #ffffff08;border-bottom:1px solid #ffffff08}
+.board .cell:nth-child(12n+1),.board .cell:nth-child(12n+2),.board .cell:nth-child(12n+3),.board .cell:nth-child(12n+4),.board .cell:nth-child(12n+5),.board .cell:nth-child(12n+6){background:#ffffff03}
+.cell.hidden-row{background:#00000030 !important;opacity:.55}
+.cell.death::after{content:"×";position:absolute;color:#ff6b6b55;font-weight:900;font-size:calc(var(--cs)*.7);line-height:1}
+.puyo{width:86%;height:86%;border-radius:50%;background:radial-gradient(circle at 34% 30%,#ffffffb0 0 12%,transparent 13%),radial-gradient(circle at 50% 60%,var(--c) 55%,color-mix(in srgb,var(--c) 70%,#000) 100%);box-shadow:inset 0 -2px 4px #0003;position:relative;z-index:1}
+.puyo.axis{outline:2px solid #fff9;outline-offset:1px}
+.puyo.ghost{opacity:.3;box-shadow:none}
+.puyo.ghost.fire{opacity:.55;outline:2px dashed #fff;outline-offset:1px;animation:blink 1.1s infinite}
+.puyo.pop{animation:pop .42s ease-in forwards}
+@keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.15);filter:brightness(1.6)}100%{transform:scale(.2);opacity:0}}
+@keyframes blink{50%{opacity:.25}}
+.tpl{position:absolute;inset:0;display:grid;place-items:center;color:#ffffff50;font-weight:900;font-size:calc(var(--cs)*.42);border:1px dashed #ffffff30;border-radius:6px;margin:3px}
+.cell.tpl-ok::before,.cell.tpl-ng::before{content:"";position:absolute;inset:2px;border-radius:50%;border:2px solid var(--good);z-index:2}
+.cell.tpl-ng::before{border-color:#ff5a52}
+.boardwrap{position:relative;width:max-content}
+.chainpop{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);color:#fff;text-align:center;pointer-events:none;opacity:0;z-index:5;text-shadow:0 2px 8px #000a;font-weight:900;font-size:20px;white-space:nowrap}
+.chainpop b{font-size:44px;margin-right:2px}
+.chainpop small{display:block;font-size:13px;font-weight:700}
+.chainpop.show{animation:cp 1.3s ease-out forwards}
+@keyframes cp{0%{opacity:0;transform:translate(-50%,-30%) scale(.8)}15%{opacity:1;transform:translate(-50%,-50%) scale(1.05)}75%{opacity:1}100%{opacity:0;transform:translate(-50%,-62%)}}
+
+/* learn */
+.progress{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--sub);margin:4px 0 18px}
+.pbar{flex:1;max-width:280px;height:6px;background:#e5dfd3;border-radius:6px;overflow:hidden}
+.pbar div{height:100%;background:var(--good);width:0;transition:width .3s}
+.lesson{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px 24px;margin-bottom:16px;display:grid;grid-template-columns:1fr auto;gap:8px 28px}
+.lesson .body{min-width:0}
+.lesson h3{margin:0 0 6px;font-size:18px;display:flex;align-items:baseline;gap:10px}
+.lesson h3 .no{font-size:12px;color:var(--accent);font-weight:900;letter-spacing:.08em}
+.lesson .body p,.lesson .body li{font-size:14.5px}
+.lesson ul,.lesson ol{padding-left:1.3em;margin:.4em 0}
+.lesson .why{background:#f3efe6;border-left:3px solid var(--accent);padding:8px 12px;border-radius:0 8px 8px 0;margin:10px 0;font-size:14px}
+.lesson .why b{color:var(--accent)}
+.diagram{display:flex;flex-direction:column;align-items:center;gap:8px}
+.diagram .board{--cs:30px}
+.cap{font-size:12px;color:var(--sub);text-align:center;max-width:200px}
+.check{font-size:13px;color:var(--sub);display:flex;align-items:center;gap:6px;margin-top:10px;cursor:pointer;width:max-content}
+.check input{accent-color:var(--good);width:16px;height:16px}
+table.tbl{border-collapse:collapse;font-size:13px;margin:8px 0}
+.tbl td,.tbl th{border:1px solid var(--line);padding:3px 10px;text-align:center}
+.tbl th{background:#f0ebe1;font-weight:700}
+
+/* buttons */
+.btn{font:inherit;font-size:14px;font-weight:700;border:1px solid var(--line);background:var(--card);border-radius:10px;padding:8px 14px;cursor:pointer;color:var(--ink);touch-action:manipulation}
+.btn:hover{border-color:#cfc7b8}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.big{font-size:18px;padding:10px 0;min-width:0}
+.np:empty{display:none}
+.pad{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px;width:calc(var(--cs)*6 + 8px)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+/* play layout */
+.play{display:grid;grid-template-columns:auto auto 1fr;gap:20px;align-items:start}
+.side{display:flex;flex-direction:column;gap:6px;align-items:center;padding-top:calc(var(--cs)*2)}
+.side .lbl{font-size:11px;color:var(--sub);font-weight:700;letter-spacing:.1em}
+.next{display:flex;flex-direction:column;gap:10px}
+.np{display:flex;flex-direction:column;background:var(--board);border-radius:8px;padding:3px;width:calc(var(--cs)*.8 + 6px)}
+.np .puyo{width:calc(var(--cs)*.8);height:calc(var(--cs)*.8)}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px;min-width:0}
+.panel h4{margin:0 0 6px;font-size:13px;color:var(--sub);letter-spacing:.06em}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.stat{background:#f6f2ea;border-radius:10px;padding:8px 10px}
+.stat div{font-size:11px;color:var(--sub)}
+.stat b{font-size:20px}
+#pot{font-size:16px;margin-bottom:12px}
+#pot b{font-size:30px;color:var(--accent)}
+.tips{list-style:none;padding:0;margin:0 0 14px;display:flex;flex-direction:column;gap:6px}
+.tips li{font-size:13.5px;padding:8px 12px;border-radius:8px;background:#f3efe6}
+.tips li.warn{background:#fdf0d8;color:#7a5300}
+.tips li.good{background:#e1f4e8;color:#13633a}
+.tips li.tplinfo{background:#e6edfc;color:#23439a}
+label.f{font-size:13px;color:var(--sub);display:flex;flex-direction:column;gap:3px}
+select{font:inherit;font-size:14px;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:#fff}
+.keys{font-size:12px;color:var(--sub);margin-top:12px}
+kbd{font-family:inherit;background:#eee8dc;border-radius:4px;padding:0 5px;font-size:11px;border:1px solid #d9d1c2}
+
+/* nazo */
+#pzlist{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.pz{font:inherit;text-align:left;display:flex;align-items:center;gap:10px;border:1px solid var(--line);background:#fff;border-radius:10px;padding:7px 10px;cursor:pointer;font-size:14px}
+.pz span{width:24px;height:24px;border-radius:50%;background:#efe9de;display:grid;place-items:center;font-size:12px;font-weight:900;flex:none}
+.pz em{margin-left:auto;font-style:normal;font-size:12px;color:var(--sub)}
+.pz.done span{background:var(--good);color:#fff}
+.pz.on{border-color:var(--accent);box-shadow:0 0 0 2px #3a6fe233}
+.pz.rnd span{background:var(--ink);color:#fff}
+#nazogoal{font-size:18px;font-weight:900;margin:2px 0 10px}
+.msg{font-size:14px;padding:0;border-radius:8px;min-height:1em}
+.msg.good,.msg.ng,.msg.info{padding:9px 12px}
+.msg.good{background:#e1f4e8;color:#13633a;font-weight:700}
+.msg.ng{background:#fde6e4;color:#9b2a22}
+.msg.info{background:#e6edfc;color:#23439a}
+
+@media (max-width:820px){
+  .play{grid-template-columns:auto auto;gap:12px}
+  .panel{grid-column:1 / -1}
+  .lesson{grid-template-columns:1fr}
+  .stats{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:420px){ .side{padding-top:calc(var(--cs)*2)} header{padding-top:18px} }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1><span><i style="background:#e8484f"></i><i style="background:#2bae66"></i><i style="background:#3a6fe2"></i><i style="background:#f0be2a"></i></span>連鎖道場</h1>
+    <p class="sub">ぷよぷよの連鎖を「なぜそう積むのか」から学ぶ練習アプリ</p>
+  </div>
+  <nav>
+    <button class="tab" data-tab="learn">学ぶ</button>
+    <button class="tab" data-tab="toko">とこぷよ</button>
+    <button class="tab" data-tab="nazo">なぞぷよ</button>
+  </nav>
+</header>
+<main>
+<!-- ================= 学ぶ ================= -->
+<section id="learn">
+  <h2>学習ステップ</h2>
+  <p class="lead">上から順に読み、図の「▶ 連鎖を見る」で動きを確認 → 対応する「なぞぷよ」を解く → 「とこぷよ」で形を再現、の順で進めると定着します。</p>
+  <div class="progress">理解したレッスン <b id="progress">0 / 6</b><div class="pbar"><div id="progressbar"></div></div></div>
+
+  <article class="lesson" data-id="l1">
+    <div class="body">
+      <h3><span class="no">STEP 1</span>連鎖のしくみと、なぜ連鎖を狙うのか</h3>
+      <p>同じ色が<b>上下左右に4つ以上</b>つながると消えます（斜めはつながりません）。消えた後、上にあったぷよが落ちて新しく4つそろうと<b>2連鎖</b>になります。</p>
+      <div class="why"><b>なぜ連鎖なのか：</b>得点は「消した数 × 10 × ボーナス」で、ボーナスの大部分は連鎖数で決まります。対戦では得点に応じておじゃまぷよが送られるので、<b>同じ数を消しても、連鎖にした方が圧倒的に強い</b>のです。</div>
+      <table class="tbl"><tr><th>連鎖</th><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td></tr><tr><th>連鎖ボーナス</th><td>0</td><td>8</td><td>16</td><td>32</td><td>64</td><td>96</td><td>128</td></tr></table>
+      <p>結論：<b>「すぐ消す」のではなく「消さずに溜めて、最後に一気に発火する」</b>のが基本戦略です。</p>
+      <label class="check"><input type="checkbox">理解した</label>
+    </div>
+    <div class="diagram" data-d="basic"><div class="boardwrap"><div class="board"></div><div class="chainpop"></div></div><button class="btn pri" data-play>▶ 連鎖を見る</button><div class="cap">点線のぷよを置くと発火。赤が消え、緑が落ちて2連鎖。</div></div>
+  </article>
+
+  <article class="lesson" data-id="l2">
+    <div class="body">
+      <h3><span class="no">STEP 2</span>階段積み — 最も理解しやすい連鎖の形</h3>
+      <p>各列に<b>「縦3つ」</b>を置き、その<b>右下に同じ色を1つ</b>置く形を、階段状に並べます。</p>
+      <ol><li>左の色が消える</li><li>右隣の列の縦3つが1段落ちる</li><li>落ちた先の右下の1つと合わせて4つ → 次が消える</li></ol>
+      <div class="why"><b>論理：</b>「消える → 1段落ちる → 4つになる」が列ごとに繰り返されるので、<b>形を見ればそのまま連鎖数が数えられます</b>。最初に覚える形として最適です。</div>
+      <p><b>弱点：</b>同じ色を縦に3つ必要とするため、来るぷよ（ツモ）の色が合わないと置き場所に困ります。</p>
+      <label class="check"><input type="checkbox">理解した</label>
+    </div>
+    <div class="diagram" data-d="stairs"><div class="boardwrap"><div class="board"></div><div class="chainpop"></div></div><button class="btn pri" data-play>▶ 連鎖を見る</button><div class="cap">1列目に赤を置くと、赤→緑→青→黄の4連鎖。</div></div>
+  </article>
+
+  <article class="lesson" data-id="l3">
+    <div class="body">
+      <h3><span class="no">STEP 3</span>挟み込み — ツモに融通が利く形</h3>
+      <p>消える色の<b>上に乗っている色</b>が落ちて、<b>左右にある同じ色に挟まれて</b>4つになる形です。</p>
+      <div class="why"><b>論理：</b>階段は「縦3つ」を要求しますが、挟み込みは横方向のつながりを使うので、<b>ばらばらの位置にある同色を後からつなげられます</b>。つまり、ツモの色の偏りに強くなります。</div>
+      <p>実戦の連鎖は「階段」「挟み込み」などの部品を組み合わせて作られます。「どのぷよが、どこに落ちて、何とつながるか」を1つずつ追う習慣をつけましょう。</p>
+      <label class="check"><input type="checkbox">理解した</label>
+    </div>
+    <div class="diagram" data-d="sandwich"><div class="boardwrap"><div class="board"></div><div class="chainpop"></div></div><button class="btn pri" data-play>▶ 連鎖を見る</button><div class="cap">赤が消えた穴に緑が落ち、左右の緑とつながる。</div></div>
+  </article>
+
+  <article class="lesson" data-id="l4">
+    <div class="body">
+      <h3><span class="no">STEP 4</span>GTR — 左端に作る定番の土台</h3>
+      <p>左の3列に作る決まった形の土台です。<b>1色目（黄）を2列目の3段目に置くと発火</b>し、1列目の上の赤が落ちて、右側の赤とつながります。</p>
+      <ul>
+        <li><b>土台：</b>左下の黄3つと、それを囲む赤</li>
+        <li><b>折り返し：</b>3列目の赤の上に乗せた青が、赤が消えたあと落ちて、4列目の青とつながる</li>
+      </ul>
+      <div class="why"><b>なぜ強いのか：</b>形が決まっているので、ツモが来たときに<b>「この色はここ」と置き場所を即決できます</b>。また左端で土台が完結するため、<b>右側へ連鎖を伸ばしていく</b>設計がしやすいのです。</div>
+      <p>このデモは3連鎖の最小形です。実戦では、この右側へ連鎖を足していきます。「とこぷよ」でGTRのガイドを表示して練習できます。</p>
+      <label class="check"><input type="checkbox">理解した</label>
+    </div>
+    <div class="diagram" data-d="gtr"><div class="boardwrap"><div class="board"></div><div class="chainpop"></div></div><button class="btn pri" data-play>▶ 連鎖を見る</button><div class="cap">2列目に黄を置くと、黄→赤→青の3連鎖。</div></div>
+  </article>
+
+  <article class="lesson" data-id="l5">
+    <div class="body">
+      <h3><span class="no">STEP 5</span>発火点と連鎖尾 — 「組む順番」の論理</h3>
+      <p>連鎖は<b>最初に消える場所（発火点）を最後まで空けておく</b>必要があります。発火点を先に埋めると、意図しないタイミングで小さく消えてしまいます。</p>
+      <ol>
+        <li><b>連鎖の後ろ（最後に消える側）から作る</b>：後ろの部品は先に置いても勝手に消えません</li>
+        <li><b>発火点は最後</b>：必要な色が来たときにだけ置く</li>
+        <li><b>連鎖尾を伸ばす</b>：連鎖の最後尾にさらに部品を足すと、発火点を動かさずに連鎖数を増やせます</li>
+      </ol>
+      <div class="why"><b>判断基準：</b>「今置いたぷよで、発火点がふさがれないか？」を毎手確認しましょう。とこぷよの<b>「潜在連鎖」</b>表示は、あと1個で何連鎖が起きるかを常に計算しています。</div>
+      <label class="check"><input type="checkbox">理解した</label>
+    </div>
+  </article>
+
+  <article class="lesson" data-id="l6">
+    <div class="body">
+      <h3><span class="no">STEP 6</span>実戦で崩れないための原則</h3>
+      <ol>
+        <li><b>3列目を低く保つ</b>：左から3列目の12段目（×印）が埋まると負けです。</li>
+        <li><b>色ごとに置き場所を決める</b>：迷う時間と、色の混ざりが減ります。</li>
+        <li><b>使えないぷよは「捨て場」へ</b>：右端など連鎖に関係しない場所を決めておきます。</li>
+        <li><b>高さをそろえる</b>：極端に高い列があると、置ける場所が限られ形が崩れます。</li>
+        <li><b>ちぎりを減らす</b>：横向きで高さの違う列に置くと分かれて落ちます（ちぎり）。対戦では時間のロスになります。</li>
+      </ol>
+      <div class="why"><b>練習メニューの目安：</b>① なぞぷよ全問クリア → ② とこぷよで階段の4連鎖を安定 → ③ GTRガイドで土台を再現 → ④ 潜在連鎖5以上を作ってから発火、の順に段階を上げましょう。</div>
+      <label class="check"><input type="checkbox">理解した</label>
+    </div>
+  </article>
+</section>
+
+<!-- ================= とこぷよ ================= -->
+<section id="toko" hidden>
+  <h2>とこぷよ（ひとり練習）</h2>
+  <p class="lead">時間制限なし。「戻す」で何度でもやり直せます。潜在連鎖を増やすように積んでみましょう。</p>
+  <div class="play">
+    <div>
+      <div class="piece"></div>
+      <div class="boardwrap"><div class="board"></div><div class="chainpop"></div></div>
+      <div class="pad">
+        <button class="btn big" data-act="left">◀</button>
+        <button class="btn big" data-act="ccw">⟲</button>
+        <button class="btn big pri" data-act="drop">▼</button>
+        <button class="btn big" data-act="cw">⟳</button>
+        <button class="btn big" data-act="right">▶</button>
+      </div>
+      <div class="row" style="margin-top:8px"><button class="btn" data-act="undo">↶ 戻す</button><button class="btn" data-act="reset">リセット</button></div>
+    </div>
+    <div class="side"><div class="lbl">NEXT</div><div class="next"></div></div>
+    <div class="panel">
+      <div class="stats">
+        <div class="stat"><div>置いた数</div><b id="st-pairs">0</b></div>
+        <div class="stat"><div>直近の連鎖</div><b id="st-last">0</b></div>
+        <div class="stat"><div>合計スコア</div><b id="st-score">0</b></div>
+        <div class="stat"><div>最高連鎖（記録）</div><b id="st-max">0</b></div>
+      </div>
+      <h4>潜在連鎖（あと1個で起こせる最大連鎖）</h4>
+      <div id="pot"></div>
+      <button class="btn" data-act="fire" style="margin-bottom:12px">発火点を表示</button>
+      <h4>アドバイス</h4>
+      <ul class="tips" id="tips"></ul>
+      <div class="row">
+        <label class="f">ガイド表示<select id="tplsel"><option value="">なし</option><option value="stairs">階段積み</option><option value="gtr">GTR</option></select></label>
+        <label class="f">色数<select id="ncolors"><option value="3">3色（入門）</option><option value="4" selected>4色（標準）</option></select></label>
+        <label class="f">連鎖速度<select id="speed"><option value="0.6">ゆっくり</option><option value="1" selected>ふつう</option><option value="2">はやい</option></select></label>
+      </div>
+      <div class="keys">キー操作：<kbd>←</kbd><kbd>→</kbd> 移動　<kbd>↑</kbd>/<kbd>X</kbd> 右回転　<kbd>Z</kbd> 左回転　<kbd>↓</kbd>/<kbd>Space</kbd> 落とす　<kbd>U</kbd> 戻す</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= なぞぷよ ================= -->
+<section id="nazo" hidden>
+  <h2>なぞぷよ（連鎖の詰め問題）</h2>
+  <p class="lead">決められた手数で目標の連鎖を作ります。「どこに落ちて、何とつながるか」を頭の中で再生してから置きましょう。</p>
+  <div class="play">
+    <div>
+      <div class="piece"></div>
+      <div class="boardwrap"><div class="board"></div><div class="chainpop"></div></div>
+      <div class="pad">
+        <button class="btn big" data-act="left">◀</button>
+        <button class="btn big" data-act="ccw">⟲</button>
+        <button class="btn big pri" data-act="drop">▼</button>
+        <button class="btn big" data-act="cw">⟳</button>
+        <button class="btn big" data-act="right">▶</button>
+      </div>
+      <div class="row" style="margin-top:8px"><button class="btn" data-act="undo">↶ 戻す</button><button class="btn" data-act="retry">やり直し</button></div>
+    </div>
+    <div class="side"><div class="lbl">NEXT</div><div class="next"></div></div>
+    <div class="panel">
+      <h4 id="nazotitle"></h4>
+      <div id="nazogoal"></div>
+      <div class="row" style="margin-bottom:10px"><button class="btn" data-act="hint">ヒント</button><button class="btn" data-act="answer">解答を見る</button></div>
+      <div id="nazomsg" class="msg"></div>
+      <h4 style="margin-top:16px">問題一覧</h4>
+      <div id="pzlist"></div>
+    </div>
+  </div>
+</section>
+</main>
+<script>
+// ===== 連鎖エンジン =====
+const W = 6, H = 13, VIS = 12;
+const CMAP = { R: 0, G: 1, B: 2, Y: 3, P: 4 };
+const CP = [0, 8, 16, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448, 480, 512];
+const CB = [0, 0, 3, 6, 12, 24];
+function gb(n) { return n <= 4 ? 0 : n >= 11 ? 10 : n - 3; }
+
+function emptyBoard() { return Array.from({ length: H }, () => Array(W).fill(-1)); }
+function cloneB(b) { return b.map(r => r.slice()); }
+function colH(b, x) { let y = 0; while (y < H && b[y][x] >= 0) y++; return y; }
+function dropOne(b, x, c) { const y = colH(b, x); if (y >= H) return -1; b[y][x] = c; return y; }
+
+// rows: 上→下の文字列配列。最終行が y=0
+function parseRows(rows) {
+  const b = emptyBoard();
+  const n = rows.length;
+  rows.forEach((s, i) => {
+    const y = n - 1 - i;
+    for (let x = 0; x < W; x++) { const ch = s[x]; if (ch in CMAP) b[y][x] = CMAP[ch]; }
+  });
+  return b;
+}
+
+// rot: 0=子が上 1=子が右 2=子が下 3=子が左
+function pairCols(x, rot) { return rot === 1 ? [x, x + 1] : rot === 3 ? [x, x - 1] : [x, x]; }
+function placePair(b, x, rot, a, c) {
+  const [ax, cx] = pairCols(x, rot);
+  if (ax < 0 || ax >= W || cx < 0 || cx >= W) return null;
+  if (rot === 0 || rot === 2) {
+    if (colH(b, ax) + 2 > H) return null;
+    const first = rot === 0 ? a : c, second = rot === 0 ? c : a;
+    const y1 = dropOne(b, ax, first), y2 = dropOne(b, ax, second);
+    return [{ x: ax, y: y1, c: first }, { x: ax, y: y2, c: second }];
+  }
+  if (colH(b, ax) >= H || colH(b, cx) >= H) return null;
+  const y1 = dropOne(b, ax, a), y2 = dropOne(b, cx, c);
+  return [{ x: ax, y: y1, c: a }, { x: cx, y: y2, c: c }];
+}
+function allMoves() {
+  const m = [];
+  for (let x = 0; x < W; x++) { m.push([x, 0]); m.push([x, 2]); }
+  for (let x = 0; x < W - 1; x++) m.push([x, 1]);
+  for (let x = 1; x < W; x++) m.push([x, 3]);
+  return m;
+}
+const MOVES = allMoves();
+
+function findGroups(b) {
+  const seen = Array.from({ length: H }, () => Array(W).fill(false));
+  const groups = [];
+  for (let y = 0; y < VIS; y++) for (let x = 0; x < W; x++) {
+    if (seen[y][x] || b[y][x] < 0) continue;
+    const c = b[y][x], st = [[x, y]], g = [];
+    seen[y][x] = true;
+    while (st.length) {
+      const [cx, cy] = st.pop(); g.push([cx, cy]);
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = cx + dx, ny = cy + dy;
+        if (nx < 0 || nx >= W || ny < 0 || ny >= VIS || seen[ny][nx] || b[ny][nx] !== c) continue;
+        seen[ny][nx] = true; st.push([nx, ny]);
+      }
+    }
+    groups.push({ c, cells: g });
+  }
+  return groups;
+}
+function popGroups(b) { return findGroups(b).filter(g => g.cells.length >= 4); }
+function gravity(b) {
+  for (let x = 0; x < W; x++) {
+    const col = [];
+    for (let y = 0; y < H; y++) if (b[y][x] >= 0) col.push(b[y][x]);
+    for (let y = 0; y < H; y++) b[y][x] = y < col.length ? col[y] : -1;
+  }
+}
+function stepScore(chainNo, groups) {
+  const n = groups.reduce((s, g) => s + g.cells.length, 0);
+  const colors = new Set(groups.map(g => g.c)).size;
+  let bonus = CP[Math.min(chainNo - 1, CP.length - 1)] + CB[colors] + groups.reduce((s, g) => s + gb(g.cells.length), 0);
+  if (bonus === 0) bonus = 1;
+  return 10 * n * bonus;
+}
+// 盤面を破壊的に解決
+function simulate(b) {
+  let chains = 0, score = 0, g;
+  while ((g = popGroups(b)).length) {
+    chains++; score += stepScore(chains, g);
+    for (const gr of g) for (const [x, y] of gr.cells) b[y][x] = -1;
+    gravity(b);
+  }
+  return { chains, score };
+}
+function isDead(b) { return b[VIS - 1][2] >= 0; }
+
+// 1個置いたときの最大連鎖（潜在連鎖）
+function potential(b, ncolors) {
+  let best = { chains: 0, score: 0, x: -1, c: -1, y: -1 };
+  for (let x = 0; x < W; x++) for (let c = 0; c < ncolors; c++) {
+    const t = cloneB(b); const y = dropOne(t, x, c);
+    if (y < 0 || y >= VIS) continue;
+    const r = simulate(t);
+    if (r.chains > best.chains || (r.chains === best.chains && r.score > best.score)) best = { ...r, x, c, y };
+  }
+  return best;
+}
+
+// なぞぷよ：pairs を順に置き、いずれかの時点で goal 連鎖以上になれば成功
+function solve(b, pairs, goal) {
+  function dfs(board, i) {
+    if (i >= pairs.length) return null;
+    const [a, c] = pairs[i];
+    for (const [x, rot] of MOVES) {
+      const t = cloneB(board);
+      if (!placePair(t, x, rot, a, c)) continue;
+      const r = simulate(t);
+      if (isDead(t)) continue;
+      if (r.chains >= goal) return [[x, rot]];
+      const rest = dfs(t, i + 1);
+      if (rest) return [[x, rot], ...rest];
+    }
+    return null;
+  }
+  return dfs(cloneB(b), 0);
+}
+function maxChain(b, pairs) {
+  let best = 0;
+  function dfs(board, i) {
+    if (i >= pairs.length) return;
+    const [a, c] = pairs[i];
+    for (const [x, rot] of MOVES) {
+      const t = cloneB(board);
+      if (!placePair(t, x, rot, a, c)) continue;
+      const r = simulate(t);
+      if (r.chains > best) best = r.chains;
+      dfs(t, i + 1);
+    }
+  }
+  dfs(cloneB(b), 0);
+  return best;
+}
+
+// ランダムなぞぷよ生成：連鎖が起きないように積んだ盤面＋2手で最大連鎖を狙う
+function randInt(n) { return Math.floor(Math.random() * n); }
+function genPuzzle(ncolors) {
+  let best = null;
+  for (let tries = 0; tries < 80; tries++) {
+    const b = emptyBoard();
+    const n = 8 + randInt(5);
+    for (let k = 0; k < n; k++) {
+      const a = randInt(ncolors), c = randInt(ncolors);
+      for (let t = 0; t < 10; t++) {
+        const [x, rot] = MOVES[randInt(MOVES.length)];
+        const tb = cloneB(b);
+        if (!placePair(tb, x, rot, a, c)) continue;
+        if (popGroups(tb).length) continue;
+        let ok = true;
+        for (let cx = 0; cx < W; cx++) if (colH(tb, cx) > (cx === 2 ? 7 : 9)) ok = false;
+        if (!ok) continue;
+        for (let y = 0; y < H; y++) b[y] = tb[y];
+        break;
+      }
+    }
+    const pairs = [[randInt(ncolors), randInt(ncolors)], [randInt(ncolors), randInt(ncolors)]];
+    const m = maxChain(b, pairs);
+    if (!best || m > best.goal) best = { board: b, pairs, goal: m };
+    if (m >= 3) break;
+  }
+  return best;
+}
+
+if (typeof module !== 'undefined') module.exports = { W, H, VIS, CMAP, parseRows, cloneB, colH, dropOne, placePair, simulate, potential, solve, maxChain, genPuzzle, emptyBoard, isDead, popGroups };
+
+// ===== 教材データ =====
+const DIAGRAMS = {
+  basic: { rows: ['.G....', 'GR....', 'GR....', 'GR....'], trigger: [[2, 'R']], expect: 2 },
+  stairs: { rows: ['.GB...', '.GB...', 'RGB...', 'RRG...'], trigger: [[0, 'R']], expect: 4 },
+  sandwich: { rows: ['.G....', 'GRG...', 'GRR...'], trigger: [[3, 'R']], expect: 2 },
+  gtr: { rows: ['..B...', 'R.B...', 'YYRB..', 'YRRB..'], trigger: [[1, 'Y']], expect: 3 },
+};
+const TEMPLATES = {
+  stairs: { name: '階段積み（4連鎖）', rows: ['.bcd..', '.bcd..', '*bcd..', 'aabcd.'] },
+  gtr: { name: 'GTR＋折り返し', rows: ['..c...', 'b*c...', 'aabc..', 'abbc..'] },
+};
+const PUZZLES = [
+  { title: '4つで消える', goal: 1, rows: ['R.....', 'R.....'], pairs: ['RR'], tip: '縦に置けば同じ列に4つ並びます。' },
+  { title: 'はじめての2連鎖', goal: 2, rows: ['.G....', 'GR....', 'GR....', 'GR....'], pairs: ['RY'], tip: '赤が消えると、上の緑が落ちます。どこへ落ちるか考えましょう。' },
+  { title: '挟み込み', goal: 2, rows: ['.G....', 'GRG...', 'GRR...'], pairs: ['RB'], tip: '赤が消えた穴に緑が落ち、左右の緑に挟まれます。' },
+  { title: '階段の発火', goal: 4, rows: ['.GBY..', '.GBY..', '.GBY..', 'RRGBY.'], pairs: ['RR'], tip: '1列目の赤が足りません。縦置きで補いましょう。' },
+  { title: 'GTRの発火点', goal: 3, rows: ['..B...', 'R.B...', 'YYRB..', 'YRRB..'], pairs: ['YB'], tip: 'GTRの発火点は2列目の3段目です。' },
+  { title: '2手で3連鎖', goal: 3, rows: ['.GB...', '.GB...', 'RGB...', 'RRG...'], pairs: ['BY', 'RY'], tip: '先に連鎖の途中（青）を完成させ、最後に発火させます。発火を先にしてはいけません。' },
+  { title: '2手で4連鎖', goal: 4, rows: ['.GBY..', '.GBY..', '.GBY..', 'RRGB..'], pairs: ['YG', 'RR'], tip: '連鎖の最後尾（連鎖尾）を先に作り、発火は最後。' },
+];
+if (typeof module !== 'undefined') module.exports = { DIAGRAMS, TEMPLATES, PUZZLES };
+
+// ===== UI =====
+const COLORS = ['#e8484f', '#2bae66', '#3a6fe2', '#f0be2a', '#9a5ee6'];
+const CNAME = ['赤', '緑', '青', '黄', '紫'];
+const $ = s => document.querySelector(s);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function store(k, v) {
+  try {
+    if (v === undefined) return JSON.parse(localStorage.getItem('rensa_' + k));
+    localStorage.setItem('rensa_' + k, JSON.stringify(v));
+  } catch (e) { return null; }
+}
+const toPair = s => [CMAP[s[0]], CMAP[s[1]]];
+
+function renderBoard(el, b, o = {}) {
+  const rows = o.rows || H;
+  const ghost = new Map((o.ghost || []).map(g => [g.x + ',' + g.y, g]));
+  const flash = o.flash || new Set();
+  el.style.setProperty('--rows', rows);
+  let h = '';
+  for (let y = rows - 1; y >= 0; y--) for (let x = 0; x < W; x++) {
+    const k = x + ',' + y, c = b[y][x];
+    let cls = 'cell';
+    if (rows === H && y === VIS) cls += ' hidden-row';
+    if (rows === H && x === 2 && y === VIS - 1) cls += ' death';
+    let inner = '';
+    if (c >= 0) inner = `<span class="puyo${flash.has(k) ? ' pop' : ''}" style="--c:${COLORS[c]}"></span>`;
+    else if (ghost.has(k)) { const g = ghost.get(k); inner = `<span class="puyo ghost${g.fire ? ' fire' : ''}" style="--c:${COLORS[g.c]}"></span>`; }
+    if (o.tpl) {
+      const t = o.tpl.get(k);
+      if (t) {
+        if (c < 0 && !ghost.has(k)) inner += `<span class="tpl">${t.l === '*' ? '★' : t.l.toUpperCase()}</span>`;
+        else if (c >= 0 && t.l !== '*') cls += t.ok ? ' tpl-ok' : ' tpl-ng';
+      }
+    }
+    h += `<div class="${cls}">${inner}</div>`;
+  }
+  el.innerHTML = h;
+}
+
+// 連鎖アニメーション
+async function animateResolve(b, draw, onStep, speed = 1) {
+  let chains = 0, score = 0, g;
+  while ((g = popGroups(b)).length) {
+    chains++;
+    const s = stepScore(chains, g); score += s;
+    const flash = new Set(); g.forEach(gr => gr.cells.forEach(([x, y]) => flash.add(x + ',' + y)));
+    draw(flash);
+    onStep && onStep(chains, score);
+    await sleep(420 / speed);
+    for (const gr of g) for (const [x, y] of gr.cells) b[y][x] = -1;
+    gravity(b);
+    draw(new Set());
+    await sleep(260 / speed);
+  }
+  return { chains, score };
+}
+
+// テンプレ一致度
+function perms(arr, k) {
+  if (k === 0) return [[]];
+  const out = [];
+  arr.forEach((v, i) => perms(arr.filter((_, j) => j !== i), k - 1).forEach(p => out.push([v, ...p])));
+  return out;
+}
+function tplMatch(b, tpl, ncolors) {
+  const n = tpl.rows.length, cells = [];
+  tpl.rows.forEach((s, i) => { for (let x = 0; x < W; x++) if (s[x] !== '.') cells.push({ x, y: n - 1 - i, l: s[x] }); });
+  const letters = [...new Set(cells.map(c => c.l).filter(l => l !== '*'))].sort();
+  let best = null;
+  for (const p of perms([...Array(ncolors).keys()], letters.length)) {
+    const m = {}; letters.forEach((l, i) => m[l] = p[i]);
+    let ok = 0;
+    cells.forEach(c => { if (c.l !== '*' && b[c.y][c.x] === m[c.l]) ok++; });
+    if (!best || ok > best.ok) best = { ok, m };
+  }
+  const map = new Map();
+  cells.forEach(c => map.set(c.x + ',' + c.y, { l: c.l, ok: c.l !== '*' && b[c.y][c.x] === best.m[c.l] }));
+  return { ok: best.ok, total: cells.filter(c => c.l !== '*').length, map };
+}
+
+// ===== 操作プレイヤー =====
+let active = null;
+class Player {
+  constructor(root, opts) {
+    this.root = root; this.opts = opts;
+    this.el = {
+      board: root.querySelector('.board'), piece: root.querySelector('.piece'),
+      next: root.querySelector('.next'), chain: root.querySelector('.chainpop'),
+    };
+    root.querySelectorAll('[data-act]').forEach(btn => btn.addEventListener('click', () => this.act(btn.dataset.act)));
+    root.addEventListener('pointerdown', () => { active = this; });
+  }
+  load(board, queue, infinite) {
+    this.board = cloneB(board); this.queue = queue.slice(); this.qi = 0; this.infinite = infinite;
+    this.piece = { x: 2, rot: 0 }; this.hist = []; this.busy = false; this.extraGhost = null;
+    this.fill(); this.render();
+  }
+  fill() { if (this.infinite) while (this.queue.length < this.qi + 3) { const n = this.opts.ncolors(); this.queue.push([randInt(n), randInt(n)]); } }
+  cur() { return this.queue[this.qi] || null; }
+  act(a) {
+    if (a === 'left') this.move(-1); else if (a === 'right') this.move(1);
+    else if (a === 'cw') this.rotate(1); else if (a === 'ccw') this.rotate(-1);
+    else if (a === 'drop') this.drop(); else if (a === 'undo') this.undo();
+    else if (this.opts.onAct) this.opts.onAct(a, this);
+  }
+  valid(x, rot) { const [ax, cx] = pairCols(x, rot); return ax >= 0 && ax < W && cx >= 0 && cx < W; }
+  move(dx) { if (this.busy || !this.cur()) return; const nx = this.piece.x + dx; if (this.valid(nx, this.piece.rot)) { this.piece.x = nx; this.render(); } }
+  rotate(d) {
+    if (this.busy || !this.cur()) return;
+    const r = (this.piece.rot + d + 4) % 4; let x = this.piece.x;
+    if (!this.valid(x, r)) x += r === 1 ? -1 : 1;
+    if (this.valid(x, r)) { this.piece = { x, rot: r }; this.render(); }
+  }
+  undo() {
+    if (this.busy || !this.hist.length) return;
+    const h = this.hist.pop(); this.board = h.board; this.qi = h.qi; this.piece = { x: 2, rot: 0 };
+    this.opts.onUndo && this.opts.onUndo(this); this.render();
+  }
+  async drop(move) {
+    const p = this.cur(); if (this.busy || !p) return;
+    if (move) this.piece = { x: move[0], rot: move[1] };
+    const t = cloneB(this.board);
+    if (!placePair(t, this.piece.x, this.piece.rot, p[0], p[1])) { this.flashMsg('置けません'); return; }
+    this.hist.push({ board: cloneB(this.board), qi: this.qi });
+    this.board = t; this.qi++; this.fill(); this.busy = true; this.extraGhost = null;
+    this.piece = { x: 2, rot: 0 };
+    this.render(true);
+    await sleep(120);
+    const res = await animateResolve(this.board, f => this.renderBoardOnly(f), (c, s) => this.showChain(c, s), this.opts.speed ? this.opts.speed() : 1);
+    this.busy = false;
+    this.opts.onResolve && this.opts.onResolve(res, this);
+    this.render();
+  }
+  showChain(c, s) {
+    const el = this.el.chain; el.innerHTML = `<b>${c}</b>連鎖<small>${s.toLocaleString()}点</small>`;
+    el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+  }
+  flashMsg(m) { const el = this.el.chain; el.innerHTML = `<small>${m}</small>`; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); }
+  ghost() {
+    const p = this.cur(); if (!p || this.busy) return [];
+    const t = cloneB(this.board); return placePair(t, this.piece.x, this.piece.rot, p[0], p[1]) || [];
+  }
+  renderBoardOnly(flash) {
+    const o = { flash, ghost: this.busy ? [] : [...this.ghost(), ...(this.extraGhost || [])] };
+    if (this.opts.tpl) { const t = this.opts.tpl(); if (t) o.tpl = tplMatch(this.board, t, this.opts.ncolors()).map; }
+    renderBoard(this.el.board, this.board, o);
+  }
+  render(skipInfo) {
+    this.renderBoardOnly(new Set());
+    // 操作中のペア
+    const p = this.cur(); let h = '';
+    const cells = {};
+    if (p && !this.busy) {
+      const { x, rot } = this.piece, [ax, cx] = pairCols(x, rot);
+      if (rot === 0) { cells[ax + ',1'] = [p[0], 1]; cells[cx + ',0'] = [p[1], 0]; }
+      else if (rot === 2) { cells[ax + ',0'] = [p[0], 1]; cells[cx + ',1'] = [p[1], 0]; }
+      else { cells[ax + ',1'] = [p[0], 1]; cells[cx + ',1'] = [p[1], 0]; }
+    }
+    for (let r = 0; r < 2; r++) for (let x = 0; x < W; x++) {
+      const c = cells[x + ',' + r];
+      h += `<div class="cell">${c ? `<span class="puyo${c[1] ? ' axis' : ''}" style="--c:${COLORS[c[0]]}"></span>` : ''}</div>`;
+    }
+    this.el.piece.innerHTML = h;
+    // ネクスト
+    if (this.el.next) {
+      let n = '';
+      for (let i = 1; i <= 2; i++) {
+        const q = this.queue[this.qi + i];
+        n += `<div class="np">${q ? `<span class="puyo" style="--c:${COLORS[q[1]]}"></span><span class="puyo" style="--c:${COLORS[q[0]]}"></span>` : ''}</div>`;
+      }
+      this.el.next.innerHTML = n;
+    }
+    if (!skipInfo && this.opts.onRender) this.opts.onRender(this);
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (!active || e.target.tagName === 'SELECT') return;
+  const map = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'cw', x: 'cw', X: 'cw', z: 'ccw', Z: 'ccw', ArrowDown: 'drop', ' ': 'drop', Backspace: 'undo', u: 'undo' };
+  const a = map[e.key]; if (!a) return;
+  e.preventDefault(); active.act(a);
+});
+
+// ===== タブ =====
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.tab === name));
+  document.querySelectorAll('main > section').forEach(s => s.hidden = s.id !== name);
+  if (name === 'toko') active = toko; else if (name === 'nazo') active = nazo; else active = null;
+  if (location.hash !== '#' + name) history.replaceState(null, '', '#' + name);
+}
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => showTab(t.dataset.tab)));
+
+// ===== 学ぶ =====
+const done = store('done') || {};
+document.querySelectorAll('.lesson').forEach(card => {
+  const id = card.dataset.id;
+  const cb = card.querySelector('.check input');
+  if (cb) { cb.checked = !!done[id]; cb.addEventListener('change', () => { done[id] = cb.checked; store('done', done); updateProgress(); }); }
+  const dg = card.querySelector('.diagram'); if (!dg) return;
+  const d = DIAGRAMS[dg.dataset.d];
+  const el = dg.querySelector('.board'), lab = dg.querySelector('.chainpop');
+  const rows = Math.max(d.rows.length + 2, 6);
+  const reset = () => {
+    const b = parseRows(d.rows), t = cloneB(b), gh = [];
+    d.trigger.forEach(([x, c]) => { const y = dropOne(t, x, CMAP[c]); gh.push({ x, y, c: CMAP[c], fire: true }); });
+    renderBoard(el, b, { rows, ghost: gh });
+    lab.classList.remove('show');
+  };
+  let playing = false;
+  dg.querySelector('[data-play]').addEventListener('click', async () => {
+    if (playing) return; playing = true;
+    const b = parseRows(d.rows);
+    d.trigger.forEach(([x, c]) => dropOne(b, x, CMAP[c]));
+    renderBoard(el, b, { rows }); await sleep(350);
+    await animateResolve(b, f => renderBoard(el, b, { rows, flash: f }), (c, s) => {
+      lab.innerHTML = `<b>${c}</b>連鎖<small>${s.toLocaleString()}点</small>`; lab.classList.remove('show'); void lab.offsetWidth; lab.classList.add('show');
+    }, 0.8);
+    await sleep(900); playing = false; reset();
+  });
+  reset();
+});
+function updateProgress() {
+  const all = document.querySelectorAll('.lesson .check input').length;
+  const n = Object.values(done).filter(Boolean).length;
+  $('#progress').textContent = `${Math.min(n, all)} / ${all}`;
+  $('#progressbar').style.width = (Math.min(n, all) / all * 100) + '%';
+}
+updateProgress();
+
+// ===== とこぷよ =====
+const rec = store('rec') || { maxChain: 0, maxScore: 0 };
+let stats = { pairs: 0, score: 0, last: 0 };
+const tokoOpts = {
+  ncolors: () => +$('#ncolors').value,
+  tpl: () => TEMPLATES[$('#tplsel').value] || null,
+  speed: () => +$('#speed').value,
+  onResolve(res, p) {
+    stats.pairs++;
+    if (res.chains) {
+      stats.score += res.score; stats.last = res.chains;
+      if (res.chains > rec.maxChain) rec.maxChain = res.chains;
+      if (res.score > rec.maxScore) rec.maxScore = res.score;
+      store('rec', rec);
+    }
+    if (isDead(p.board)) p.flashMsg('窒息（3列目が12段目に到達）');
+  },
+  onUndo() { stats.pairs = Math.max(0, stats.pairs - 1); },
+  onAct(a, p) {
+    if (a === 'reset') { stats = { pairs: 0, score: 0, last: 0 }; p.load(emptyBoard(), [], true); }
+    if (a === 'fire') { const pt = potential(p.board, this.ncolors()); p.extraGhost = pt.chains ? [{ x: pt.x, y: pt.y, c: pt.c, fire: true }] : null; p.render(); }
+  },
+  onRender(p) {
+    $('#st-pairs').textContent = stats.pairs;
+    $('#st-last').textContent = stats.last;
+    $('#st-score').textContent = stats.score.toLocaleString();
+    $('#st-max').textContent = rec.maxChain;
+    // 分析
+    const pt = potential(p.board, this.ncolors());
+    const h3 = colH(p.board, 2);
+    let tips = [];
+    $('#pot').innerHTML = pt.chains
+      ? `<b>${pt.chains}</b>連鎖 <small>（${pt.x + 1}列目に${CNAME[pt.c]}を1個置くと発火）</small>`
+      : `<small>まだ発火できる連鎖はありません</small>`;
+    if (h3 >= 9) tips.push(['warn', `3列目が${h3}段。12段目に達すると負けです。3列目は低く保ちましょう。`]);
+    const hs = [...Array(W).keys()].map(x => colH(p.board, x));
+    if (Math.max(...hs) - Math.min(...hs) >= 7) tips.push(['info', '列の高さの差が大きくなっています。低い列から埋めると連鎖の形が崩れにくくなります。']);
+    const groups = findGroups(p.board).filter(g => g.cells.length === 1).length;
+    const filled = hs.reduce((a, b) => a + b, 0);
+    if (filled >= 16 && groups / Math.max(1, filled) > 0.35) tips.push(['info', '孤立したぷよが多めです。同じ色を隣接させて「3つ組」を作ることを意識しましょう。']);
+    if (pt.chains >= 5) tips.push(['good', `${pt.chains}連鎖が組めています。発火点をふさがないように、連鎖尾を伸ばすか発火しましょう。`]);
+    const t = this.tpl();
+    if (t) { const m = tplMatch(p.board, t, this.ncolors()); tips.unshift(['tplinfo', `${t.name} の一致度：<b>${m.ok} / ${m.total}</b>（緑枠=一致、赤枠=色ちがい、★=発火点）`]); }
+    $('#tips').innerHTML = tips.map(([k, s]) => `<li class="${k}">${s}</li>`).join('') || '<li class="info">自由に積んでみましょう。上の「潜在連鎖」が増えるように置くのが上達の近道です。</li>';
+  },
+};
+const toko = new Player($('#toko .play'), tokoOpts);
+toko.load(emptyBoard(), [], true);
+['#ncolors', '#tplsel', '#speed'].forEach(s => $(s).addEventListener('change', () => { if (s === '#ncolors') { stats = { pairs: 0, score: 0, last: 0 }; toko.load(emptyBoard(), [], true); } else toko.render(); }));
+
+// ===== なぞぷよ =====
+const cleared = store('cleared') || {};
+let curPz = null, solved = false, peeked = false;
+const nazoOpts = {
+  ncolors: () => 4,
+  onResolve(res, p) {
+    if (solved) return;
+    if (res.chains >= curPz.goal) { solved = true; setNazoMsg(`クリア！ ${res.chains}連鎖（${res.score.toLocaleString()}点）` + (peeked ? '（解答再生）' : ''), 'good'); if (curPz.id != null && !peeked) { cleared[curPz.id] = true; store('cleared', cleared); buildPzList(); } }
+    else if (!p.cur()) setNazoMsg(res.chains ? `${res.chains}連鎖。目標の${curPz.goal}連鎖に届きませんでした。「戻す」で考え直しましょう。` : `目標の${curPz.goal}連鎖に届きませんでした。「戻す」で考え直しましょう。`, 'ng');
+  },
+  onUndo() { solved = false; setNazoMsg(''); },
+  onAct(a, p) {
+    if (a === 'retry') loadPz(curPz);
+    if (a === 'hint') {
+      const sol = solve(p.board, p.queue.slice(p.qi), curPz.goal);
+      if (!sol) { setNazoMsg('この盤面からは解けません。「戻す」か「やり直し」をしてください。', 'ng'); return; }
+      p.piece = { x: sol[0][0], rot: sol[0][1] }; p.render();
+      setNazoMsg('ヒント：今の位置・向きが正解の1手目です（落とすのはあなた）。' + (curPz.tip ? '<br>' + curPz.tip : ''), 'info');
+    }
+    if (a === 'answer') {
+      loadPz(curPz); peeked = true;
+      const sol = solve(p.board, p.queue, curPz.goal); if (!sol) return;
+      (async () => { for (const m of sol) { p.piece = { x: m[0], rot: m[1] }; p.render(); await sleep(600); await p.drop(m); } })();
+    }
+  },
+};
+const nazo = new Player($('#nazo .play'), nazoOpts);
+function setNazoMsg(s, k) { const el = $('#nazomsg'); el.innerHTML = s; el.className = 'msg ' + (k || ''); }
+function loadPz(pz) {
+  curPz = pz; solved = false; peeked = false;
+  nazo.load(pz.board, pz.pairs, false);
+  $('#nazotitle').textContent = pz.title;
+  $('#nazogoal').textContent = `${pz.pairs.length}手以内に ${pz.goal}連鎖 させよ`;
+  setNazoMsg('');
+  document.querySelectorAll('.pz').forEach(b => b.classList.toggle('on', +b.dataset.i === pz.id));
+}
+function buildPzList() {
+  $('#pzlist').innerHTML = PUZZLES.map((p, i) => `<button class="pz${cleared[i] ? ' done' : ''}${curPz && curPz.id === i ? ' on' : ''}" data-i="${i}"><span>${i + 1}</span>${p.title}<em>${p.goal}連鎖</em></button>`).join('')
+    + `<button class="pz rnd" data-i="r"><span>∞</span>ランダム問題<em>最大連鎖</em></button>`;
+  document.querySelectorAll('.pz').forEach(b => b.addEventListener('click', () => {
+    if (b.dataset.i === 'r') {
+      const g = genPuzzle(4);
+      loadPz({ id: null, title: 'ランダム問題', goal: g.goal, board: g.board, pairs: g.pairs, tip: '' });
+      setNazoMsg(`この盤面で2手から作れる最大連鎖は <b>${g.goal}連鎖</b> です。見つけられますか？`, 'info');
+    } else {
+      const p = PUZZLES[+b.dataset.i];
+      loadPz({ id: +b.dataset.i, title: p.title, goal: p.goal, board: parseRows(p.rows), pairs: p.pairs.map(toPair), tip: p.tip });
+    }
+  }));
+}
+buildPzList();
+{ const p = PUZZLES[0]; loadPz({ id: 0, title: p.title, goal: p.goal, board: parseRows(p.rows), pairs: p.pairs.map(toPair), tip: p.tip }); }
+
+showTab(['learn', 'toko', 'nazo'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'learn');
+window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if (['learn', 'toko', 'nazo'].includes(h)) showTab(h); });
+
+</script>
+</body>
+</html>
