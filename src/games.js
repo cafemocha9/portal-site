@@ -16,6 +16,7 @@ import {
   Disc3,
   Flag,
   Ghost,
+  GraduationCap,
   Grid3x3,
   Music,
   Orbit,
@@ -44,6 +45,7 @@ export const genres = [
   { id: 'strategy', label: 'さくせん', icon: Shield },
   { id: 'puzzle', label: 'パズル', icon: Brain },
   { id: 'board', label: 'ボードゲーム', icon: ChessKnight },
+  { id: 'learn', label: '学習', icon: GraduationCap },
   { id: 'relax', label: 'のんびり・みんなで', icon: Sprout },
   { id: 'music', label: 'おと', icon: Music },
 ]
@@ -86,11 +88,11 @@ export const games = [
   // --- パズル ---
   { id: 'mouse-rocket', genre: 'puzzle', title: 'Mouse Rocket', icon: Rat, color: 'bg-amber-200', iconColor: 'text-amber-900', type: 'html' },
   { id: 'futatsu-no-kage', genre: 'puzzle', title: 'ふたつの影', icon: Rotate3d, color: 'bg-indigo-300', iconColor: 'text-indigo-900', type: 'html' },
-  { id: 'rensa-dojo', genre: 'puzzle', title: '連鎖道場', icon: Blocks, color: 'bg-red-200', iconColor: 'text-red-900', type: 'html' },
+  { id: 'rensa-dojo', genre: 'learn', title: '連鎖道場', icon: Blocks, color: 'bg-red-200', iconColor: 'text-red-900', type: 'html' },
   { id: 'color-match', genre: 'puzzle', title: 'いろ あて', icon: Palette, color: 'bg-sky-300', iconColor: 'text-sky-800', type: 'html' },
 
   // --- ボードゲーム ---
-  { id: 'chess-dojo', genre: 'board', title: 'チェス作戦道場', icon: ChessKnight, color: 'bg-stone-300', iconColor: 'text-stone-800', type: 'html' },
+  { id: 'chess-dojo', genre: 'learn', title: 'チェス作戦道場', icon: ChessKnight, color: 'bg-stone-300', iconColor: 'text-stone-800', type: 'html' },
   { id: 'chess', genre: 'board', title: 'チェス', icon: Crown, color: 'bg-yellow-200', iconColor: 'text-yellow-900', type: 'react', component: lazy(() => import('./games/chess/Game.jsx')) },
   { id: 'chess2', genre: 'board', title: 'チェス2', icon: Crown, color: 'bg-amber-200', iconColor: 'text-amber-900', type: 'react', component: lazy(() => import('./games/chess2/Game.jsx')) },
   { id: 'line-protocol', genre: 'board', title: '五目並べ', icon: Grid3x3, color: 'bg-teal-300', iconColor: 'text-teal-900', type: 'react', component: lazy(() => import('./games/line-protocol/Game.jsx')) },
