@@ -15,6 +15,7 @@ import {
   Dices,
   Disc3,
   Flag,
+  Footprints,
   Ghost,
   GraduationCap,
   Grid3x3,
@@ -32,6 +33,7 @@ import {
   Swords,
   Trophy,
   TreePalm,
+  Volleyball,
   Zap,
 } from 'lucide-react'
 
@@ -72,12 +74,15 @@ export const games = [
   { id: 'kido', genre: 'action', title: '軌道 -KIDO-', icon: Rocket, color: 'bg-cyan-300', iconColor: 'text-cyan-900', type: 'html' },
   { id: 'zanzo', genre: 'action', title: '残像 -ZANZO-', icon: Ghost, color: 'bg-slate-300', iconColor: 'text-slate-800', type: 'html' },
   { id: 'singularity', genre: 'action', title: '特異点', icon: Atom, color: 'bg-blue-300', iconColor: 'text-blue-900', type: 'html' },
+  { id: 'houkago-dodge', genre: 'action', title: '放課後ドッジ', icon: Volleyball, color: 'bg-orange-300', iconColor: 'text-orange-900', type: 'html' },
   { id: 'balloon', genre: 'action', title: 'ふうせん わり', icon: Balloon, color: 'bg-rose-200', iconColor: 'text-rose-700', type: 'react', component: lazy(() => import('./games/balloon/Balloon.jsx')) },
 
   // --- ぼうけん・つくる ---
   { id: 'craftbox', genre: 'adventure', title: 'CraftBox', icon: Pickaxe, color: 'bg-green-300', iconColor: 'text-green-900', type: 'html' },
   { id: 'pokapoka-island', genre: 'adventure', title: 'ぽかぽか島ぐらし', icon: TreePalm, color: 'bg-emerald-300', iconColor: 'text-emerald-900', type: 'html' },
   { id: 'mystery-dungeon', genre: 'adventure', title: '不思議の迷宮', icon: Dices, color: 'bg-lime-300', iconColor: 'text-lime-900', type: 'react', component: lazy(() => import('./games/mystery-dungeon/Game.jsx')) },
+
+  { id: 'eighth-passage', genre: 'adventure', title: '第八通路', icon: Footprints, color: 'bg-yellow-200', iconColor: 'text-yellow-900', type: 'html' },
 
   // --- さくせん ---
   { id: 'animal-defense', genre: 'strategy', title: 'どうぶつディフェンス', icon: PawPrint, color: 'bg-orange-200', iconColor: 'text-orange-900', type: 'html' },

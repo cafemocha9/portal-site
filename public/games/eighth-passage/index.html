@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#101211">
+<title>第八通路 — 異変探索</title><meta name="description" content="その違和感を、見逃さない。地下通路の異変を見極め、8回連続で正しい道を選ぶ3D探索ゲーム。">
+<link rel="icon" href="favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main id="app">
+<canvas id="world" aria-label="地下通路の3Dゲーム画面"></canvas><div class="vignette"></div><div class="grain"></div>
+<header id="topbar"><a class="brand" href="./" aria-label="タイトルへ"><span class="brand-mark">8</span><span>第八通路<small>THE EIGHTH PASSAGE</small></span></a><div class="header-right"><span class="location">地下連絡通路 <b>B2</b></span><button id="sound" class="icon-button" aria-label="音を切り替え" title="音を切り替え"><span id="sound-icon">◖))</span><span id="sound-label">SOUND ON</span></button><button id="pause-button" class="icon-button hidden" aria-label="一時停止">Ⅱ <span>PAUSE</span></button></div></header>
+<section id="title-screen" class="screen">
+<div class="title-content"><p class="eyebrow"><span></span> ANOMALY OBSERVATION / 08</p><h1>第八<span>通路</span><i>THE EIGHTH PASSAGE</i></h1><p class="tagline">その違和感を、見逃さない。</p>
+<div class="rules"><div><span>01</span><p>異変があれば、<strong>引き返す。</strong></p></div><div><span>02</span><p>異変がなければ、<strong>そのまま進む。</strong></p></div><div><span>03</span><p><strong>8回連続の正解</strong>で、地上へ。</p></div></div>
+<button id="start" class="primary"><span>通路に入る</span><small>ENTER</small></button><p class="start-note">最初の通路は正常です。黒い人影の姿も覚えてください。</p>
+</div><div class="scene-label"><span>監視区域</span><p>地下 2 階<br>出口まで、あと八つ。</p><div class="scene-line"></div><small>OBSERVATION REQUIRED</small></div>
+<footer class="title-footer"><span>W A S D <em>移動</em><span class="divider"></span> マウス <em>視点</em><span class="divider"></span> SHIFT <em>走る</em></span><span>28種の異変 <b>·</b> ヘッドホン推奨</span></footer>
+</section>
+<section id="hud" class="hidden" aria-label="ゲーム情報"><div class="progress-panel"><span id="stage">0</span><div><p id="stage-label">基準の通路</p><div class="progress-dots" id="progress-dots"></div></div><small>/ 8</small></div><div id="objective"><span class="yellow-line"></span><p id="objective-text">この通路に異変はありません。景色を覚えて進んでください。</p></div><div id="crosshair"></div><div class="bottom-hud"><div><span class="status-square"></span><span id="mode-label">OBSERVE YOUR SURROUNDINGS</span></div><span class="desktop-hint">WASD 移動 <b>·</b> マウス / ← → 視点 <b>·</b> SHIFT 走る <b>·</b> ESC 停止</span><div class="movement-buttons"><button id="auto-walk" class="small-button">歩く <kbd>E</kbd></button><button id="turn" class="small-button">振り返る <kbd>Q</kbd></button></div></div><div id="walk-hint" class="hidden">画面をクリックして視点を操作 <span>またはドラッグ / 矢印キー</span></div><div id="toast" role="status" aria-live="polite"></div>
+<div id="touch-controls"><div id="joystick"><div id="stick"></div></div><span class="touch-look">右側をドラッグして見回す</span><button id="touch-run" aria-label="走る">走る</button></div></section>
+<section id="pause-screen" class="modal hidden" aria-label="一時停止"><div class="modal-card"><p class="eyebrow">TAKE A BREATH</p><h2>一時停止</h2><p class="muted">立ち止まっても、通路は逃げない。</p><div class="pause-rules"><p>異変があれば引き返す。なければ進む。</p><p>判断を間違えると、0に戻ります。</p><p>最初の通路は、正常な状態の見本です。</p></div><label class="slider-label">視点の感度<input id="sensitivity" type="range" min="0.4" max="2" step="0.1" value="1"></label><label class="slider-label">画面の明るさ<input id="brightness" type="range" min="0.7" max="1.5" step="0.1" value="1"></label><button id="resume" class="primary">探索を続ける</button><button id="restart" class="secondary">最初からやり直す</button><p class="controls-note">WASD / ↑↓ 移動 · ←→ 視点 · Q 振り返る<br>SHIFT 走る · ESC 一時停止</p></div></section>
+<section id="transition" class="hidden" aria-live="polite"><div><p id="transition-kicker">PASSAGE</p><h2 id="transition-number">01</h2><p id="transition-text"></p><small id="transition-detail"></small></div></section>
+<section id="ending" class="screen hidden"><div class="ending-card"><p class="eyebrow">YOU FOUND THE WAY OUT</p><div class="exit-symbol">8</div><h2>地上へ。</h2><p>振り返ると、あの通路はもうなかった。</p><div class="stats"><div><strong id="time-stat">00:00</strong><span>探索時間</span></div><div><strong id="mistake-stat">0</strong><span>間違えた回数</span></div><div><strong id="found-stat">0</strong><span>見つけた異変</span></div></div><button id="again" class="primary">もう一度、通路へ</button><button id="catalog-button" class="secondary">遭遇した異変を見る</button><div id="catalog" class="hidden"></div></div></section>
+<div id="loading"><span>8</span><p>通路を準備しています</p></div><div id="error-screen" class="modal hidden"><div class="modal-card"><h2>通路を表示できません</h2><p>3D描画に対応したブラウザで、もう一度開いてください。</p><button class="primary" onclick="location.reload()">再読み込み</button></div></div>
+</main><script type="module" src="game.js"></script>
+</body></html>
