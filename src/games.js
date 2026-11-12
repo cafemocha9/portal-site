@@ -62,6 +62,7 @@ export const games = [
   { id: 'rensa-dojo', title: '連鎖道場', icon: Blocks, color: 'bg-red-200', iconColor: 'text-red-900', type: 'html' },
   { id: 'chess-dojo', title: 'チェス作戦道場', icon: ChessKnight, color: 'bg-stone-300', iconColor: 'text-stone-800', type: 'html' },
   { id: 'chess', title: 'チェス', icon: Crown, color: 'bg-yellow-200', iconColor: 'text-yellow-900', type: 'react', component: lazy(() => import('./games/chess/Game.jsx')) },
+  { id: 'chess2', title: 'チェス2', icon: Crown, color: 'bg-amber-200', iconColor: 'text-amber-900', type: 'react', component: lazy(() => import('./games/chess2/Game.jsx')) },
   { id: 'line-protocol', title: '五目並べ', icon: Grid3x3, color: 'bg-teal-300', iconColor: 'text-teal-900', type: 'react', component: lazy(() => import('./games/line-protocol/Game.jsx')) },
 
   // --- のんびり・ことば ---
