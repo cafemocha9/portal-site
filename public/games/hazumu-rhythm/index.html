@@ -741,7 +741,7 @@ function crispClap(t, v = 1, dest = sfxBus) {
 }
 GAMES.push({
   id: 'omoteura', fxY: 345, title: 'オモテ・ウラ てびょうし', desc: '「ウラ！」で、手びょうしを半拍ずらす', cls: 'c4', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 12H8"></path><path d="M16 12h-2"></path><path d="M22 12h-2"></path><path d="M4 12H2"></path><path d="M7.298 20.288A1 1 0 008 22h8a1 1 0 00.703-1.712l-3.991-3.99a1 1 0 00-1.424-.001z"></path><path d="M7.298 3.712A1 1 0 018 2h8a1 1 0 01.703 1.712l-3.991 3.99a1 1 0 01-1.424.001z"></path></svg>', bpm: 104,
-  howto: '<b>オモテ</b> のときは、ドン・ドンの <b>拍の上</b> でパン！<br><b>ウラ</b> のときは、拍と拍の <b>あいだ</b> でパン！<br>オウムが「オモテ」「ウラ」と言ったら、<b>つぎの小節から</b> 切りかえよう。',
+  howto: '<b>オモテ</b> のときは、ドン・ドンの <b>拍の上</b> でパン！<br><b>ウラ</b> のときは、拍と拍の <b>あいだ</b> でパン！<br>オウムの「オ・モ・テ」「ウ・ラ」は、<b>つぎのリズムで</b> 言うよ。<br>手びょうしは止めずに、<b>つぎの小節から</b> 切りかえよう。',
   comments: ['ステージは 大もりあがり！', 'いい手びょうし！', 'オモテとウラ、ドンの音を よくきこう'],
   build(mode) {
     const c = new Chart(this.bpm); c.spb = 60 / this.bpm;
@@ -758,33 +758,50 @@ GAMES.push({
     const intro = 2, total = intro + bars.length + 1;
     c.signs = [{ beat: -999, mode: 'O' }];
     const prog = [[45, [57, 60, 64, 67]], [50, [57, 60, 62, 66]], [41, [57, 60, 64, 65]], [40, [56, 59, 62, 64]]];
+    // 合図の声は「つぎのリズム」で言う：オモテは拍の上（2・2.5・3拍目）、ウラは拍のあいだ（2.5・3.5拍目）
     const say = (b, word) => {
-      const syl = word === 'O' ? [[0, 300, 'o', 0.13], [0.5, 270, 'o', 0.13], [1, 340, 'e', 0.22]] : [[0, 270, 'u', 0.2], [1, 350, 'a', 0.26]];
-      syl.forEach(([d, f, v, dur]) => c.cue(b + d, 'call', (t) => I.voice(t, f, dur, VOW[v], 0.9, 1.22, sfxBus, 0.01), null));
-      c.labels.push({ beat: b, text: word === 'O' ? 'オモテ！' : 'ウラ！' });
-      c.signs.push({ beat: b, mode: word });
+      const syl = word === 'O'
+        ? [[2, 300, 'o', 0.12], [2.5, 280, 'o', 0.12], [3, 340, 'e', 0.2]]
+        : [[2.5, 280, 'u', 0.16], [3.5, 360, 'a', 0.22]];
+      syl.forEach(([d, f, v, dur]) => c.cue(b + d, 'call', (t) => I.voice(t, f, dur, VOW[v], 0.95, 1.22, sfxBus, 0.01), null));
+      c.labels.push({ beat: b + syl[0][0], text: word === 'O' ? 'オモテ！' : 'ウラ！' });
+      c.signs.push({ beat: b + syl[0][0], mode: word });
+    };
+    const tightKick = (t, v) => {
+      const o = osc('sine', 130, t, 0.25); o.frequency.exponentialRampToValueAtTime(48, t + 0.09);
+      const gg = gainNode(musicBus); env(gg.gain, t, 0.002, 0.2, 0.9 * v); o.connect(gg);
+      const k = osc('triangle', 1100, t, 0.02); const kg = gainNode(musicBus); env(kg.gain, t, 0.001, 0.012, 0.2 * v); k.connect(kg);
     };
     for (let bar = 0; bar < total; bar++) {
       const b = bar * 4, [root, ch] = prog[bar % 4], last = bar === total - 1;
-      if (last) { c.at(b, (t) => { I.kick(t); I.hat(t, 1, true); I.pad(t, [45, 52, 57, 60, 64, 69], c.spb * 4, 1.4, 2200); I.bass(t, 33, c.spb * 3); crispClap(t, 0.8, musicBus); }); continue; }
-      // 四つ打ち：オモテの拍がはっきり聞こえるように
-      [0, 1, 2, 3].forEach((x) => c.at(b + x, (t) => I.kick(t, x === 0 ? 1 : 0.85)));
-      if (bar >= 1) [1, 3].forEach((x) => c.at(b + x, (t) => I.snare(t, 0.55)));
-      for (let x = 0; x < 4; x += 0.25) c.at(b + x, (t) => I.hat(t, x % 1 === 0.5 ? 0.9 : 0.35, x % 1 === 0.5 && bar % 2 === 1 && x === 3.5));
+      if (last) { c.at(b, (t) => { tightKick(t, 1); I.hat(t, 1, true); I.pad(t, [45, 52, 57, 60, 64, 69], c.spb * 4, 1.4, 2200); I.bass(t, 33, c.spb * 3); crispClap(t, 0.8, musicBus); }); continue; }
+      const i = bar - intro, m = bars[i] || 'O', next = bars[i + 1];
+      // ノリを小節ごとに変える
+      //  オモテ：スネアと鍵盤を拍の上に置き、「ドン・パン」でまっすぐ
+      //  ウラ　：オープンハイハット「チッ」と鍵盤を拍のあいだに置き、ディスコの裏ノリ
+      [0, 1, 2, 3].forEach((x) => c.at(b + x, (t) => tightKick(t, x === 0 ? 1 : 0.85)));
+      if (m === 'O') {
+        if (bar >= 1) [1, 3].forEach((x) => c.at(b + x, (t) => I.snare(t, 0.7)));
+        for (let x = 0; x < 4; x += 0.5) c.at(b + x, (t) => I.hat(t, x % 1 ? 0.3 : 0.75));
+        if (bar >= 1) [0, 2].forEach((x) => c.at(b + x, (t) => I.epiano(t, ch.map((n) => n + 12), 0.28, 0.85)));
+      } else {
+        [1, 3].forEach((x) => c.at(b + x, (t) => I.snare(t, 0.35)));
+        for (let x = 0.5; x < 4; x += 1) c.at(b + x, (t) => I.hat(t, 1.25, true));
+        [0.5, 1.5, 2.5, 3.5].forEach((x) => c.at(b + x, (t) => I.epiano(t, ch.map((n) => n + 12), 0.16, 0.9)));
+      }
       if (bar >= 1) {
         [[0, 0, 0.35], [0.75, 0, 0.2], [1.5, 12, 0.25], [2, 7, 0.35], [2.75, 10, 0.2], [3.5, 12, 0.3]].forEach(([x, o, d]) => c.at(b + x, (t) => I.bass(t, root + o, d * c.spb * 2, 0.95)));
-        c.at(b, (t) => I.pad(t, ch, c.spb * 4, 0.7, 1200));
-        [0.5, 2.5].forEach((x) => c.at(b + x, (t) => I.epiano(t, ch.map((m) => m + 12), 0.2, 0.8)));
+        c.at(b, (t) => I.pad(t, ch, c.spb * 4, 0.55, 1100));
       }
-      const i = bar - intro, m = bars[i], next = bars[i + 1];
-      if (bar === intro - 1) say(b + 2, 'O');
-      if (i < 0 || !m) continue;
-      const switching = next && next !== m;
+      if (bar === intro - 1) say(b, 'O');
+      if (i < 0 || !bars[i]) continue;
+      // 手びょうしは止めずに続ける。ウラ→オモテだけ、最後の「ウラ」を休んで次の拍へつなぐ
+      const toO = next === 'O' && m === 'U';
       (m === 'O' ? [0, 1, 2, 3] : [0.5, 1.5, 2.5, 3.5]).forEach((x) => {
-        if (switching && x >= 2) return;
-        c.target(b + x, m); c.cue(b + x, 'cpu', (t) => crispClap(t, 0.22, musicBus)); c.labels.push({ beat: b + x, text: 'パン', hit: true });
+        if (toO && x === 3.5) return;
+        c.target(b + x, m); c.cue(b + x, 'cpu', (t) => crispClap(t, 0.2, musicBus)); c.labels.push({ beat: b + x, text: 'パン', hit: true });
       });
-      if (switching) say(b + 2, next);
+      if (next && next !== m) say(b, next);
     }
     c.endBeat = (total - 1) * 4 + 3;
     return c.done();
@@ -965,7 +982,9 @@ function tap(evTime) {
   if (best && Math.abs(bd) <= NEAR) {
     const a = Math.abs(bd), q = a <= PERFECT ? 'perfect' : a <= GOOD ? 'good' : 'miss';
     best.res = q; best.hitAt = now; best.hitBeat = (now - S.t0) / S.spb; best.diff = bd;
-    S.game.onHit(best, q, playAt);
+    let at = playAt;
+    if (q !== 'miss') { const sched = beatTime(best.beat); if (sched > at && sched - at < 0.15) at = sched; }
+    S.game.onHit(best, q, at);
     addFx(q, bd, now);
     if (q === 'miss') loseLife(now); else { S.hits++; S.combo++; S.maxCombo = Math.max(S.maxCombo, S.combo); }
     if (q === 'perfect') setMood('happy', now, 0.5); else if (q === 'miss') setMood('oops', now, 0.6);
