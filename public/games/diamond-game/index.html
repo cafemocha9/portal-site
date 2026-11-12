@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>ダイヤモンドゲーム</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  /* Apple HIG light palette */
+  :root{
+    --bg:#f2f2f7;          /* systemGroupedBackground */
+    --surface:#ffffff;     /* card / secondary */
+    --surface2:#fbfbfd;
+    --label:#1c1c1e;       /* primary label */
+    --label2:#3c3c43;      /* secondary */
+    --muted:#8e8e93;       /* systemGray */
+    --muted2:#aeaeb2;      /* systemGray2 */
+    --hair:#e5e5ea;        /* separator */
+    --hair2:#d1d1d6;
+    --tint:#0a84ff;        /* systemBlue (accent) */
+    --tint-soft:#e6f1ff;
+    --fill:#78788014;      /* tertiary fill */
+    --shadow:0 1px 2px rgba(0,0,0,.04), 0 8px 24px -12px rgba(0,0,0,.12);
+    --shadow-lift:0 2px 6px rgba(0,0,0,.06), 0 18px 40px -16px rgba(0,0,0,.22);
+    font-synthesis:none;
+  }
+  html,body{height:100%;}
+  body{
+    background:var(--bg);
+    color:var(--label);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Helvetica Neue","Hiragino Sans","Hiragino Kaku Gothic ProN",system-ui,sans-serif;
+    overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+  #root{min-height:100%;display:flex;flex-direction:column;align-items:center;}
+  .wrap{width:100%;max-width:600px;padding:max(16px,env(safe-area-inset-top)) 16px 40px;display:flex;flex-direction:column;align-items:center;}
+
+  .masthead{text-align:center;margin:10px 0 18px;}
+  .masthead .kicker{
+    letter-spacing:.02em;font-size:13px;font-weight:600;color:var(--muted);
+  }
+  .masthead h1{
+    font-weight:700;font-size:34px;line-height:1.05;margin-top:2px;letter-spacing:-.02em;
+    color:var(--label);
+  }
+  .masthead .sub{font-size:15px;color:var(--muted);margin-top:6px;letter-spacing:-.01em;}
+
+  /* setup card */
+  .card{
+    width:100%;background:var(--surface);
+    border:0.5px solid var(--hair);border-radius:20px;padding:22px;
+    box-shadow:var(--shadow);
+  }
+  .card h2{font-weight:700;font-size:22px;letter-spacing:-.02em;margin-bottom:6px;}
+  .card .hint{font-size:14px;color:var(--muted);margin-bottom:14px;line-height:1.5;letter-spacing:-.01em;}
+  .seg-label{font-size:13px;font-weight:600;color:var(--label2);margin:20px 0 9px;letter-spacing:-.01em;}
+
+  /* iOS-style segmented control */
+  .seg{
+    display:flex;gap:4px;background:var(--fill);padding:4px;border-radius:13px;
+  }
+  .opt{
+    flex:1;min-width:0;padding:9px 8px;border-radius:9px;cursor:pointer;
+    border:none;background:transparent;
+    text-align:center;font-size:15px;font-weight:500;color:var(--label);
+    transition:background .2s,box-shadow .2s,transform .1s;user-select:none;letter-spacing:-.01em;
+  }
+  .opt small{display:block;font-size:11px;color:var(--muted);margin-top:1px;font-weight:400;}
+  .opt:active{transform:scale(.97);}
+  .opt.on{
+    background:var(--surface);
+    box-shadow:0 1px 3px rgba(0,0,0,.08),0 3px 8px -3px rgba(0,0,0,.12);
+  }
+  .opt.on small{color:var(--label2);}
+  /* roster chips (non-segmented) */
+  .seg.chips{background:transparent;padding:0;gap:8px;}
+  .chip{
+    flex:1;padding:11px 8px;border-radius:13px;text-align:center;
+    border:0.5px solid var(--hair);background:var(--surface2);
+  }
+  .chip .nm{font-size:15px;font-weight:600;letter-spacing:-.01em;}
+  .chip small{display:block;font-size:11px;color:var(--muted);margin-top:1px;}
+
+  .start-btn{
+    margin-top:24px;width:100%;padding:15px;border:none;border-radius:14px;cursor:pointer;
+    font-weight:600;font-size:17px;letter-spacing:-.01em;color:#fff;
+    background:var(--tint);
+    transition:transform .1s,filter .15s;
+    -webkit-font-smoothing:antialiased;
+  }
+  .start-btn:active{transform:scale(.985);filter:brightness(.95);}
+
+  /* board */
+  .board-stage{position:relative;width:100%;margin-top:4px;}
+  svg{display:block;width:100%;height:auto;overflow:visible;}
+  .peg{cursor:pointer;transition:transform .14s cubic-bezier(.34,1.56,.5,1);}
+
+  /* hud */
+  .hud{width:100%;display:flex;gap:8px;margin:14px 0 4px;}
+  .pcard{
+    flex:1;border:0.5px solid var(--hair);border-radius:16px;padding:11px 8px;
+    background:var(--surface);text-align:center;position:relative;overflow:hidden;
+    transition:box-shadow .25s,border-color .25s,transform .15s;
+    box-shadow:0 1px 2px rgba(0,0,0,.03);
+  }
+  .pcard.active{
+    border-color:transparent;
+    box-shadow:0 0 0 2px var(--ac,#0a84ff), var(--shadow);
+    transform:translateY(-1px);
+  }
+  .pcard .dot{width:11px;height:11px;border-radius:50%;margin:0 auto 7px;}
+  .pcard .nm{font-size:13px;font-weight:600;letter-spacing:-.01em;}
+  .pcard .pr{font-size:12px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums;}
+  .pcard .bar{height:5px;border-radius:3px;background:var(--fill);margin-top:8px;overflow:hidden;}
+  .pcard .bar i{display:block;height:100%;border-radius:3px;transition:width .5s cubic-bezier(.3,1,.4,1);}
+  .pcard.active::after{
+    content:'';position:absolute;top:9px;right:9px;width:6px;height:6px;border-radius:50%;
+    background:var(--ac,#0a84ff);
+  }
+
+  .statusbar{
+    width:100%;text-align:center;font-size:15px;color:var(--label2);
+    min-height:22px;margin:10px 0;letter-spacing:-.01em;font-weight:500;
+  }
+  .statusbar .tag{font-weight:700;}
+  .controls{display:flex;gap:10px;width:100%;margin-top:6px;}
+  .btn{
+    flex:1;padding:13px;border-radius:13px;cursor:pointer;font-size:16px;font-weight:600;
+    border:none;background:var(--fill);color:var(--tint);transition:background .15s,transform .1s;
+    letter-spacing:-.01em;
+  }
+  .btn:active:not(:disabled){transform:scale(.98);background:#78788022;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+  .btn.ghost{flex:0 0 auto;padding:13px 18px;color:var(--label2);}
+
+  /* win overlay */
+  .overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,.28);backdrop-filter:blur(20px) saturate(180%);
+    -webkit-backdrop-filter:blur(20px) saturate(180%);
+    display:flex;align-items:center;justify-content:center;z-index:50;padding:24px;
+    animation:fade .35s ease;
+  }
+  @keyframes fade{from{opacity:0;}to{opacity:1;}}
+  @keyframes pop{from{opacity:0;transform:scale(.92);}to{opacity:1;transform:scale(1);}}
+  .winbox{
+    background:var(--surface);border:none;
+    border-radius:26px;padding:32px 28px;text-align:center;max-width:330px;width:100%;
+    box-shadow:0 30px 80px -20px rgba(0,0,0,.4);
+    animation:pop .4s cubic-bezier(.34,1.56,.5,1);
+  }
+  .winbox .gem{font-size:52px;margin-bottom:8px;line-height:1;}
+  .winbox h2{font-size:26px;font-weight:700;letter-spacing:-.02em;margin-bottom:6px;}
+  .winbox p{color:var(--muted);font-size:14px;margin-bottom:22px;letter-spacing:-.01em;line-height:1.45;}
+  @media (max-width:430px){
+    .masthead h1{font-size:30px;}
+    .pcard .nm{font-size:12px;}
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const {
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+  useRef
+} = React;
+const KEY = (x, y, z) => x + "," + y + "," + z;
+// ---- Board: standard 121-hole six-pointed star (regular by construction) ----
+// TRI[name]  = the 10-hole triangle point (rows 1,2,3,4).
+// ARMS[name] = the 15-hole camp = triangle + the 5 holes of the centre-hexagon edge in
+//              front of it, so the 5-hole row is the front line (Japanese 15-piece rule).
+// Territory rule blocks only foreign TRIANGLES; the shared edge holes stay open
+// (Wikipedia: 陣地入り口と白マスの辺が重複する部分はその限りではない).
+const BOARD = new Map();
+const TRI = { N: [], S: [], NE: [], NW: [], SE: [], SW: [] };
+const ARMS = { N: [], S: [], NE: [], NW: [], SE: [], SW: [] };
+const TRI_OF = new Map();
+const CAMP_SETS = {};
+(function buildBoard() {
+  const A = 4;
+  const up = [], dn = [];
+  for (let x = -2 * A; x <= 2 * A; x++) for (let y = -2 * A; y <= 2 * A; y++) {
+    const z = -x - y;
+    if (x <= A && y <= A && z <= A) up.push({ x, y, z });
+    if (x >= -A && y >= -A && z >= -A) dn.push({ x, y, z });
+  }
+  const upS = new Set(up.map(c => KEY(c.x, c.y, c.z))), dnS = new Set(dn.map(c => KEY(c.x, c.y, c.z)));
+  [...up, ...dn].forEach(c => BOARD.set(KEY(c.x, c.y, c.z), { x: c.x, y: c.y, z: c.z }));
+  for (const [k, c] of BOARD) {
+    if (upS.has(k) && dnS.has(k)) continue; // centre hexagon
+    const ax = Math.abs(c.x), ay = Math.abs(c.y), az = Math.abs(c.z), mx = Math.max(ax, ay, az);
+    const nm = mx === az ? (c.z < 0 ? "N" : "S") : mx === ay ? (c.y < 0 ? "SE" : "NW") : (c.x < 0 ? "SW" : "NE");
+    TRI[nm].push(c);
+    TRI_OF.set(k, nm);
+  }
+  const D6 = [[1,-1,0],[1,0,-1],[0,1,-1],[-1,1,0],[-1,0,1],[0,-1,1]];
+  for (const nm of Object.keys(TRI)) {
+    const camp = new Map();
+    for (const c of TRI[nm]) {
+      camp.set(KEY(c.x, c.y, c.z), c);
+      for (const [dx, dy, dz] of D6) {
+        const k = KEY(c.x + dx, c.y + dy, c.z + dz);
+        if (upS.has(k) && dnS.has(k)) camp.set(k, BOARD.get(k)); // edge hole in front
+      }
+    }
+    ARMS[nm] = [...camp.values()];
+    CAMP_SETS[nm] = new Set(camp.keys());
+  }
+})();
+// triangle the cell belongs to (null for the centre hexagon) — used for the territory rule
+const armOf = c => TRI_OF.get(KEY(c.x, c.y, c.z)) || null;
+// is the cell inside the 15-hole camp `name`?
+const inCamp = (c, name) => !!(name && CAMP_SETS[name] && CAMP_SETS[name].has(KEY(c.x, c.y, c.z)));
+const onBoard = c => BOARD.has(KEY(c.x, c.y, c.z));
+const DIRS = [{
+  x: 1,
+  y: -1,
+  z: 0
+}, {
+  x: 1,
+  y: 0,
+  z: -1
+}, {
+  x: 0,
+  y: 1,
+  z: -1
+}, {
+  x: -1,
+  y: 1,
+  z: 0
+}, {
+  x: -1,
+  y: 0,
+  z: 1
+}, {
+  x: 0,
+  y: -1,
+  z: 1
+}];
+const add = (a, b) => ({
+  x: a.x + b.x,
+  y: a.y + b.y,
+  z: a.z + b.z
+});
+const sc = (d, n) => ({
+  x: d.x * n,
+  y: d.y * n,
+  z: d.z * n
+});
+const HEX = 24;
+function toPixel(c) {
+  const q = c.x,
+    r = c.z;
+  return {
+    px: HEX * Math.sqrt(3) * (q + r / 2),
+    py: HEX * 1.5 * r
+  };
+}
+let _minX = 1e9,
+  _maxX = -1e9,
+  _minY = 1e9,
+  _maxY = -1e9;
+for (const c of BOARD.values()) {
+  const {
+    px,
+    py
+  } = toPixel(c);
+  _minX = Math.min(_minX, px);
+  _maxX = Math.max(_maxX, px);
+  _minY = Math.min(_minY, py);
+  _maxY = Math.max(_maxY, py);
+}
+const PAD = 70;
+const VBW = _maxX - _minX + PAD * 2,
+  VBH = _maxY - _minY + PAD * 2;
+const ox = -_minX + PAD,
+  oy = -_minY + PAD;
+const screenOf = c => {
+  const {
+    px,
+    py
+  } = toPixel(c);
+  return {
+    sx: px + ox,
+    sy: py + oy
+  };
+};
+const COLORS = {
+  green: {
+    name: "グリーン",
+    base: "#34c759",
+    hi: "#5ee07d",
+    dark: "#248a3d",
+    ring: "#1f7a35"
+  },
+  red: {
+    name: "レッド",
+    base: "#ff3b30",
+    hi: "#ff6961",
+    dark: "#c41e16",
+    ring: "#b51811"
+  },
+  yellow: {
+    name: "イエロー",
+    base: "#ffb700",
+    hi: "#ffce45",
+    dark: "#cc8e00",
+    ring: "#a87600"
+  }
+};
+const OPP = {
+  N: "S",
+  S: "N",
+  NE: "SW",
+  SW: "NE",
+  NW: "SE",
+  SE: "NW"
+};
+function buildSeats(numHumansPlusCpu, mode) {}
+function genMoves(from, occ, kings, homeArm, goalArm, isKing) {
+  const res = new Map();
+  const blocked = new Set(Object.keys(ARMS));
+  blocked.delete(homeArm);
+  blocked.delete(goalArm);
+  const canEnter = c => {
+    const a = armOf(c);
+    return a === null || !blocked.has(a);
+  };
+  for (const d of DIRS) {
+    const t = add(from, d);
+    if (onBoard(t) && !occ.has(KEY(t.x, t.y, t.z)) && canEnter(t)) res.set(KEY(t.x, t.y, t.z), [from, t]);
+  }
+  const visited = new Set([KEY(from.x, from.y, from.z)]);
+  const q = [{
+    cell: from,
+    path: [from]
+  }];
+  while (q.length) {
+    const {
+      cell,
+      path
+    } = q.shift();
+    for (const d of DIRS) {
+      let landing = null;
+      if (!isKing) {
+        const over = add(cell, d),
+          land = add(over, d);
+        if (!onBoard(over) || !onBoard(land)) continue;
+        if (!occ.has(KEY(over.x, over.y, over.z))) continue;
+        if (kings.has(KEY(over.x, over.y, over.z))) continue;
+        if (occ.has(KEY(land.x, land.y, land.z))) continue;
+        landing = land;
+      } else {
+        let i = 1,
+          first = null;
+        while (true) {
+          const c = add(cell, sc(d, i));
+          if (!onBoard(c)) break;
+          if (occ.has(KEY(c.x, c.y, c.z))) {
+            first = c;
+            break;
+          }
+          i++;
+        }
+        if (!first) continue;
+        if (kings.has(KEY(first.x, first.y, first.z))) continue;
+        let j = i,
+          bad = false;
+        while (true) {
+          const c = add(cell, sc(d, j + 1));
+          if (onBoard(c) && occ.has(KEY(c.x, c.y, c.z))) {
+            if (kings.has(KEY(c.x, c.y, c.z))) {
+              bad = true;
+              break;
+            }
+            j++;
+          } else break;
+        }
+        if (bad) continue;
+        const land = add(cell, sc(d, j + 1));
+        if (!onBoard(land) || occ.has(KEY(land.x, land.y, land.z))) continue;
+        landing = land;
+      }
+      if (landing && canEnter(landing)) {
+        const lk = KEY(landing.x, landing.y, landing.z);
+        if (!visited.has(lk)) {
+          visited.add(lk);
+          const np = [...path, landing];
+          res.set(lk, np);
+          q.push({
+            cell: landing,
+            path: np
+          });
+        }
+      }
+    }
+  }
+  res.delete(KEY(from.x, from.y, from.z));
+  return [...res.entries()].map(([k, path]) => ({
+    to: BOARD.get(k),
+    path
+  }));
+}
+function cubeDist(a, b) {
+  return (Math.abs(a.x - b.x) + Math.abs(a.y - b.y) + Math.abs(a.z - b.z)) / 2;
+}
+function goalAnchor(goalArm) {
+  const cells = ARMS[goalArm];
+  let best = cells[0],
+    bd = -1;
+  for (const c of cells) {
+    const d = Math.abs(c.x) + Math.abs(c.y) + Math.abs(c.z);
+    if (d > bd) {
+      bd = d;
+      best = c;
+    }
+  }
+  return best;
+}
+function cpuChoose(seatIdx, seats, occ, kings) {
+  const seat = seats[seatIdx];
+  const anchor = goalAnchor(seat.goal);
+  const mine = [];
+  for (const [k, s] of occ) if (s === seatIdx) {
+    const [x, y, z] = k.split(",").map(Number);
+    mine.push({
+      x,
+      y,
+      z
+    });
+  }
+  let best = null,
+    bestScore = -1e9;
+  for (const p of mine) {
+    const isK = kings.has(KEY(p.x, p.y, p.z));
+    const moves = genMoves(p, occ, kings, seat.home, seat.goal, isK);
+    const dFrom = cubeDist(p, anchor);
+    const inGoalFrom = inCamp(p, seat.goal);
+    for (const m of moves) {
+      const dTo = cubeDist(m.to, anchor);
+      let score = dFrom - dTo;
+      score += (m.path.length - 2) * 0.15;
+      if (inCamp(m.to, seat.goal)) score += 0.6;
+      if (inGoalFrom && !inCamp(m.to, seat.goal)) score -= 3;
+      score += dFrom * 0.04;
+      score += Math.random() * 0.08;
+      if (score > bestScore) {
+        bestScore = score;
+        best = {
+          from: p,
+          move: m
+        };
+      }
+    }
+  }
+  return best;
+}
+function initialState(seats) {
+  const occ = new Map(),
+    kings = new Set();
+  seats.forEach((seat, idx) => {
+    const cells = ARMS[seat.home];
+    let tip = cells[0],
+      bd = -1;
+    for (const c of cells) {
+      const d = Math.abs(c.x) + Math.abs(c.y) + Math.abs(c.z);
+      if (d > bd) {
+        bd = d;
+        tip = c;
+      }
+    }
+    cells.forEach(c => {
+      occ.set(KEY(c.x, c.y, c.z), idx);
+    });
+    kings.add(KEY(tip.x, tip.y, tip.z));
+  });
+  return {
+    occ,
+    kings
+  };
+}
+function hasWon(seatIdx, seat, occ) {
+  const goalCells = ARMS[seat.goal];
+  let count = 0;
+  for (const c of goalCells) if (occ.get(KEY(c.x, c.y, c.z)) === seatIdx) count++;
+  return count === 15;
+}
+function makeSeats(setup) {
+  return setup.map(s => ({
+    color: s.color,
+    home: s.home,
+    goal: OPP[s.home],
+    cpu: s.cpu
+  }));
+}
+function configFor(numTotal, cpuFlags) {
+  let base;
+  if (numTotal === 2) {
+    base = [{
+      color: "green",
+      home: "N"
+    }, {
+      color: "red",
+      home: "S"
+    }];
+  } else {
+    base = [{
+      color: "green",
+      home: "N"
+    }, {
+      color: "red",
+      home: "SE"
+    }, {
+      color: "yellow",
+      home: "SW"
+    }];
+  }
+  return base.map((b, i) => ({
+    ...b,
+    cpu: cpuFlags[i]
+  }));
+}
+const PEG_R = HEX * 0.42;
+const HOLE_R = HEX * 0.34;
+function GemDefs() {
+  return React.createElement("defs", null, Object.entries(COLORS).map(([k, c]) => React.createElement("linearGradient", {
+    key: k,
+    id: "peg-" + k,
+    x1: "0",
+    y1: "0",
+    x2: "0",
+    y2: "1"
+  }, React.createElement("stop", {
+    offset: "0%",
+    stopColor: c.hi
+  }), React.createElement("stop", {
+    offset: "55%",
+    stopColor: c.base
+  }), React.createElement("stop", {
+    offset: "100%",
+    stopColor: c.dark
+  }))), React.createElement("filter", {
+    id: "pegshadow",
+    x: "-60%",
+    y: "-60%",
+    width: "220%",
+    height: "220%"
+  }, React.createElement("feDropShadow", {
+    dx: "0",
+    dy: "1.2",
+    stdDeviation: "1.1",
+    floodColor: "#000",
+    floodOpacity: "0.20"
+  })), React.createElement("filter", {
+    id: "plateshadow",
+    x: "-20%",
+    y: "-20%",
+    width: "140%",
+    height: "140%"
+  }, React.createElement("feDropShadow", {
+    dx: "0",
+    dy: "6",
+    stdDeviation: "10",
+    floodColor: "#000",
+    floodOpacity: "0.10"
+  })));
+}
+function FacetPlate({
+  seats
+}) {
+  const tipOf = arm => {
+    const cells = ARMS[arm];
+    let t = cells[0],
+      bd = -1;
+    for (const c of cells) {
+      const d = Math.abs(c.x) + Math.abs(c.y) + Math.abs(c.z);
+      if (d > bd) {
+        bd = d;
+        t = c;
+      }
+    }
+    return t;
+  };
+  const C0 = screenOf({ x: 0, y: 0, z: 0 });
+  const MARGIN = HEX * 1.45; // vertex push = 2 x perpendicular margin for an equilateral triangle
+  const grow = ({ sx, sy }) => {
+    const dx = sx - C0.sx, dy = sy - C0.sy, d = Math.hypot(dx, dy) || 1;
+    return (sx + dx / d * MARGIN) + "," + (sy + dy / d * MARGIN);
+  };
+  const tri1 = ["N", "SE", "SW"].map(a => {
+    return grow(screenOf(tipOf(a)));
+  }).join(" ");
+  const tri2 = ["S", "NE", "NW"].map(a => {
+    return grow(screenOf(tipOf(a)));
+  }).join(" ");
+  return React.createElement("g", null, React.createElement("g", {
+    filter: "url(#plateshadow)"
+  }, React.createElement("polygon", {
+    points: tri1,
+    fill: "#ffffff",
+    stroke: "#ececf1",
+    strokeWidth: "1",
+    strokeLinejoin: "round"
+  }), React.createElement("polygon", {
+    points: tri2,
+    fill: "#ffffff",
+    stroke: "#ececf1",
+    strokeWidth: "1",
+    strokeLinejoin: "round"
+  })));
+}
+function App() {
+  const [screen, setScreen] = useState("setup");
+  const [players, setPlayers] = useState(2);
+  const [cpuCount, setCpuCount] = useState(1);
+  const [seats, setSeats] = useState(null);
+  const [occ, setOcc] = useState(null);
+  const [kings, setKings] = useState(null);
+  const [turn, setTurn] = useState(0);
+  const [selected, setSelected] = useState(null);
+  const [moves, setMoves] = useState([]);
+  const [winner, setWinner] = useState(null);
+  const [status, setStatus] = useState("");
+  const [lastPath, setLastPath] = useState(null);
+  const [thinking, setThinking] = useState(false);
+  const animRef = useRef(null);
+  function beginGame() {
+    let cfg;
+    if (players === 1) {
+      const total = 1 + cpuCount;
+      const flags = [false];
+      for (let i = 0; i < cpuCount; i++) flags.push(true);
+      cfg = configFor(total, flags);
+    } else {
+      cfg = configFor(players, new Array(players).fill(false));
+    }
+    const s = makeSeats(cfg);
+    const {
+      occ,
+      kings
+    } = initialState(s);
+    setSeats(s);
+    setOcc(occ);
+    setKings(kings);
+    setTurn(0);
+    setSelected(null);
+    setMoves([]);
+    setWinner(null);
+    setLastPath(null);
+    setStatus("");
+    setScreen("play");
+  }
+  const curSeat = seats ? seats[turn] : null;
+  const curColor = curSeat ? COLORS[curSeat.color] : null;
+  const isCpuTurn = curSeat ? curSeat.cpu : false;
+  function onPegClick(cell) {
+    if (!curSeat || isCpuTurn || winner) return;
+    const k = KEY(cell.x, cell.y, cell.z);
+    if (occ.get(k) !== turn) return;
+    if (selected && selected.x === cell.x && selected.y === cell.y && selected.z === cell.z) {
+      setSelected(null);
+      setMoves([]);
+      return;
+    }
+    const isK = kings.has(k);
+    const ms = genMoves(cell, occ, kings, curSeat.home, curSeat.goal, isK);
+    setSelected(cell);
+    setMoves(ms);
+  }
+  function applyMove(from, move, seatIdx) {
+    const fk = KEY(from.x, from.y, from.z);
+    const tk = KEY(move.to.x, move.to.y, move.to.z);
+    const nocc = new Map(occ);
+    nocc.delete(fk);
+    nocc.set(tk, seatIdx);
+    const nkings = new Set(kings);
+    if (nkings.has(fk)) {
+      nkings.delete(fk);
+      nkings.add(tk);
+    }
+    setOcc(nocc);
+    setKings(nkings);
+    setLastPath(move.path);
+    setSelected(null);
+    setMoves([]);
+    const seat = seats[seatIdx];
+    if (hasWon(seatIdx, seat, nocc)) {
+      setWinner(seatIdx);
+      return;
+    }
+    setTurn((seatIdx + 1) % seats.length);
+  }
+  function onHoleClick(cell) {
+    if (!selected || isCpuTurn || winner) return;
+    const m = moves.find(mm => mm.to.x === cell.x && mm.to.y === cell.y && mm.to.z === cell.z);
+    if (!m) return;
+    applyMove(selected, m, turn);
+  }
+  useEffect(() => {
+    if (!seats || winner) return;
+    if (!seats[turn].cpu) return;
+    setThinking(true);
+    const t = setTimeout(() => {
+      const choice = cpuChoose(turn, seats, occ, kings);
+      if (choice) {
+        applyMove(choice.from, choice.move, turn);
+      } else {
+        setTurn((turn + 1) % seats.length);
+      }
+      setThinking(false);
+    }, 620);
+    return () => clearTimeout(t);
+  }, [turn, seats, winner]);
+  useEffect(() => {
+    if (!curSeat) return;
+    if (winner !== null) return;
+    if (isCpuTurn) setStatus(`${curColor.name} (CPU) が思考中…`);else if (selected) setStatus(`移動先を選んでください`);else setStatus(`${curColor.name} の手番 — 駒を選んでください`);
+  }, [turn, selected, isCpuTurn, winner, curSeat]);
+  const progress = useMemo(() => {
+    if (!seats || !occ) return [];
+    return seats.map((s, i) => {
+      let c = 0;
+      for (const cell of ARMS[s.goal]) if (occ.get(KEY(cell.x, cell.y, cell.z)) === i) c++;
+      return c;
+    });
+  }, [seats, occ]);
+  if (screen === "setup") {
+    return React.createElement("div", {
+      className: "wrap"
+    }, React.createElement("div", {
+      className: "masthead"
+    }, React.createElement("div", {
+      className: "kicker"
+    }, "Chinese Checkers"), React.createElement("h1", null, "ダイヤモンドゲーム"), React.createElement("div", {
+      className: "sub"
+    }, "対角の陣地へ、すべての駒を運ぼう。")), React.createElement("div", {
+      className: "card"
+    }, React.createElement("h2", null, "対局を準備する"), React.createElement("p", {
+      className: "hint"
+    }, "王駒1・子駒14の計15駒を、盤の対角にある同色の陣地へ最も早く運んだ者が勝ち。 連続ジャンプを繋げて一気に距離を稼ぎましょう。"), React.createElement("div", {
+      className: "seg-label"
+    }, "人数"), React.createElement("div", {
+      className: "seg"
+    }, [1, 2, 3].map(n => React.createElement("div", {
+      key: n,
+      className: "opt" + (players === n ? " on" : ""),
+      onClick: () => {
+        setPlayers(n);
+        if (n === 1 && cpuCount > 2) setCpuCount(2);
+      }
+    }, n, "人", React.createElement("small", null, n === 1 ? "対コンピュータ" : "対人")))), players === 1 && React.createElement(React.Fragment, null, React.createElement("div", {
+      className: "seg-label"
+    }, "コンピュータの数"), React.createElement("div", {
+      className: "seg"
+    }, [1, 2].map(n => React.createElement("div", {
+      key: n,
+      className: "opt" + (cpuCount === n ? " on" : ""),
+      onClick: () => setCpuCount(n)
+    }, "CPU ", n, "体", React.createElement("small", null, n === 1 ? "1対1" : "3者対局"))))), React.createElement("div", {
+      className: "seg-label"
+    }, "参加プレイヤー"), React.createElement("div", {
+      className: "seg chips"
+    }, (() => {
+      const total = players === 1 ? 1 + cpuCount : players;
+      const cfg = configFor(total, players === 1 ? [false, ...Array(cpuCount).fill(true)] : Array(players).fill(false));
+      return cfg.map((s, i) => React.createElement("div", {
+        key: i,
+        className: "chip"
+      }, React.createElement("div", {
+        className: "nm",
+        style: {
+          color: COLORS[s.color].dark,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 6
+        }
+      }, React.createElement("span", {
+        style: {
+          width: 10,
+          height: 10,
+          borderRadius: "50%",
+          background: COLORS[s.color].base,
+          display: "inline-block"
+        }
+      }), COLORS[s.color].name), React.createElement("small", null, s.cpu ? "CPU" : "あなた")));
+    })()), React.createElement("button", {
+      className: "start-btn",
+      onClick: beginGame
+    }, "対局開始")), React.createElement("div", {
+      style: {
+        marginTop: 18,
+        fontSize: 13,
+        color: "var(--muted)",
+        textAlign: "center",
+        lineHeight: 1.6,
+        letterSpacing: "-.01em"
+      }
+    }, "手番はグリーン → レッド → イエローの順。", React.createElement("br", null), "王駒は一直線上の駒を飛び越え、子駒は王を飛び越せません。"));
+  }
+  const moveTargets = new Set(moves.map(m => KEY(m.to.x, m.to.y, m.to.z)));
+  const lastSet = new Set((lastPath || []).map(c => KEY(c.x, c.y, c.z)));
+  return React.createElement("div", {
+    className: "wrap"
+  }, React.createElement("div", {
+    className: "masthead",
+    style: {
+      margin: "2px 0 8px"
+    }
+  }, React.createElement("div", {
+    className: "kicker"
+  }, "ダイヤモンドゲーム")), React.createElement("div", {
+    className: "hud"
+  }, seats.map((s, i) => {
+    const c = COLORS[s.color];
+    return React.createElement("div", {
+      key: i,
+      className: "pcard" + (i === turn && winner === null ? " active" : ""),
+      style: {
+        "--ac": c.base
+      }
+    }, React.createElement("div", {
+      className: "dot",
+      style: {
+        background: c.base
+      }
+    }), React.createElement("div", {
+      className: "nm"
+    }, c.name, s.cpu ? " · CPU" : ""), React.createElement("div", {
+      className: "pr"
+    }, progress[i], " / 15"), React.createElement("div", {
+      className: "bar"
+    }, React.createElement("i", {
+      style: {
+        width: progress[i] / 15 * 100 + "%",
+        background: c.base
+      }
+    })));
+  })), React.createElement("div", {
+    className: "statusbar"
+  }, winner === null ? React.createElement("span", null, React.createElement("span", {
+    className: "tag"
+  }, curColor.name), isCpuTurn ? " (CPU) 思考中…" : " の手番") : React.createElement("span", {
+    className: "tag"
+  }, "対局終了")), React.createElement("div", {
+    className: "board-stage"
+  }, React.createElement("svg", {
+    viewBox: `0 0 ${VBW} ${VBH}`,
+    role: "img",
+    "aria-label": "ダイヤモンドゲーム盤"
+  }, React.createElement(GemDefs, null), React.createElement(FacetPlate, {
+    seats: seats
+  }), lastPath && lastPath.length > 1 && React.createElement("polyline", {
+    points: lastPath.map(c => {
+      const {
+        sx,
+        sy
+      } = screenOf(c);
+      return sx + "," + sy;
+    }).join(" "),
+    fill: "none",
+    stroke: "#0a84ff",
+    strokeWidth: "2.5",
+    strokeOpacity: "0.35",
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+    strokeDasharray: "1 6"
+  }), [...BOARD.values()].map(c => {
+    const {
+      sx,
+      sy
+    } = screenOf(c);
+    const k = KEY(c.x, c.y, c.z);
+    const arm = armOf(c);
+    const tgt = moveTargets.has(k);
+    const onLast = lastSet.has(k);
+    const armColorKey = goalColorOfCell(seats, c);
+    const tint = armColorKey ? COLORS[armColorKey].base : null;
+    return React.createElement("g", {
+      key: "h" + k
+    }, tint && React.createElement("circle", {
+      cx: sx,
+      cy: sy,
+      r: HOLE_R + 3.5,
+      fill: tint,
+      fillOpacity: "0.22"
+    }), React.createElement("circle", {
+      cx: sx,
+      cy: sy,
+      r: HOLE_R,
+      fill: tint ? tint : "#ececf1",
+      fillOpacity: tint ? 0.32 : 1,
+      stroke: onLast ? "#0a84ff" : tint ? tint : "#dcdce1",
+      strokeOpacity: tint && !onLast ? 0.55 : 1,
+      strokeWidth: onLast ? 1.6 : tint ? 1.4 : 1
+    }), React.createElement("circle", {
+      cx: sx,
+      cy: sy,
+      r: HOLE_R * 0.74,
+      fill: tint ? tint : "#f7f7fa",
+      fillOpacity: tint ? 0.16 : 1
+    }), tgt && React.createElement("circle", {
+      cx: sx,
+      cy: sy,
+      r: HOLE_R * 0.5,
+      fill: "#0a84ff",
+      fillOpacity: "0.18",
+      stroke: "#0a84ff",
+      strokeWidth: "2"
+    }, React.createElement("animate", {
+      attributeName: "r",
+      values: `${HOLE_R * 0.34};${HOLE_R * 0.6};${HOLE_R * 0.34}`,
+      dur: "1.4s",
+      repeatCount: "indefinite"
+    }), React.createElement("animate", {
+      attributeName: "stroke-opacity",
+      values: "0.95;0.45;0.95",
+      dur: "1.4s",
+      repeatCount: "indefinite"
+    })), tgt && React.createElement("circle", {
+      cx: sx,
+      cy: sy,
+      r: HOLE_R + 5,
+      fill: "transparent",
+      style: {
+        cursor: "pointer"
+      },
+      onClick: () => onHoleClick(c)
+    }));
+  }), seats.map((seat, i) => {
+    const cells = ARMS[seat.goal];
+    let tip = cells[0],
+      bd = -1;
+    for (const cc of cells) {
+      const d = Math.abs(cc.x) + Math.abs(cc.y) + Math.abs(cc.z);
+      if (d > bd) {
+        bd = d;
+        tip = cc;
+      }
+    }
+    const {
+      sx,
+      sy
+    } = screenOf(tip);
+    const len = Math.hypot(sx - VBW / 2, sy - VBH / 2) || 1;
+    const ux = (sx - VBW / 2) / len,
+      uy = (sy - VBH / 2) / len;
+    const lx = sx + ux * 50,
+      ly = sy + uy * 50;
+    const col = COLORS[seat.color];
+    return React.createElement("g", {
+      key: "goal" + i,
+      transform: `translate(${lx},${ly})`
+    }, React.createElement("rect", {
+      x: -17,
+      y: -9,
+      width: 34,
+      height: 18,
+      rx: 9,
+      fill: col.base,
+      opacity: "0.92"
+    }), React.createElement("text", {
+      x: 0,
+      y: 1,
+      textAnchor: "middle",
+      dominantBaseline: "middle",
+      fontSize: "9.5",
+      fontWeight: "700",
+      fill: "#ffffff",
+      style: {
+        letterSpacing: "0.04em"
+      }
+    }, "ゴール"));
+  }), [...occ.entries()].map(([k, seatIdx]) => {
+    const c = BOARD.get(k);
+    const {
+      sx,
+      sy
+    } = screenOf(c);
+    const seat = seats[seatIdx];
+    const col = seat.color;
+    const isK = kings.has(k);
+    const isSel = selected && KEY(selected.x, selected.y, selected.z) === k;
+    const mine = seatIdx === turn && !isCpuTurn && winner === null;
+    return React.createElement("g", {
+      key: "p" + k,
+      className: "peg",
+      transform: `translate(${sx},${sy})`,
+      onClick: () => onPegClick(c),
+      style: {
+        cursor: mine ? "pointer" : "default"
+      }
+    }, isSel && React.createElement("circle", {
+      r: PEG_R + 4.5,
+      fill: "none",
+      stroke: "#0a84ff",
+      strokeWidth: "2.5"
+    }, React.createElement("animate", {
+      attributeName: "stroke-opacity",
+      values: "1;0.4;1",
+      dur: "1.1s",
+      repeatCount: "indefinite"
+    })), React.createElement("circle", {
+      r: PEG_R,
+      fill: `url(#peg-${col})`,
+      filter: "url(#pegshadow)"
+    }), React.createElement("ellipse", {
+      cx: 0,
+      cy: -PEG_R * 0.30,
+      rx: PEG_R * 0.62,
+      ry: PEG_R * 0.40,
+      fill: "#ffffff",
+      opacity: "0.22"
+    }), isK && React.createElement(React.Fragment, null, React.createElement("circle", {
+      r: PEG_R * 0.50,
+      fill: "none",
+      stroke: COLORS[col].ring,
+      strokeWidth: "3.4",
+      opacity: "0.55"
+    }), React.createElement("circle", {
+      r: PEG_R * 0.50,
+      fill: "none",
+      stroke: "#ffffff",
+      strokeWidth: "2",
+      opacity: "0.98"
+    }), React.createElement("circle", {
+      r: PEG_R * 0.17,
+      fill: "#ffffff",
+      stroke: COLORS[col].ring,
+      strokeWidth: "0.6"
+    })));
+  }))), React.createElement("div", {
+    className: "controls"
+  }, React.createElement("button", {
+    className: "btn",
+    disabled: !selected,
+    onClick: () => {
+      setSelected(null);
+      setMoves([]);
+    }
+  }, "選択解除"), React.createElement("button", {
+    className: "btn ghost",
+    onClick: () => {
+      setScreen("setup");
+    }
+  }, "新規対局")), winner !== null && React.createElement("div", {
+    className: "overlay"
+  }, React.createElement("div", {
+    className: "winbox"
+  }, React.createElement("div", {
+    className: "gem"
+  }, "🏆"), React.createElement("h2", {
+    style: {
+      color: COLORS[seats[winner].color].dark
+    }
+  }, COLORS[seats[winner].color].name, " の勝利"), React.createElement("p", null, "15個すべての駒を", React.createElement("br", null), "対角の陣地へ運び切りました。"), React.createElement("button", {
+    className: "start-btn",
+    onClick: () => setScreen("setup")
+  }, "もう一局"))));
+}
+function colorOfArm(seats, arm) {
+  if (!seats) return null;
+  for (const s of seats) {
+    if (s.home === arm) return s.color;
+    if (s.goal === arm) return s.color;
+  }
+  return null;
+}
+function goalColorOfCell(seats, c) {
+  if (!seats) return null;
+  for (const s of seats) if (inCamp(c, s.goal)) return s.color;
+  return null;
+}
+function goalColorOfArm(seats, arm) {
+  if (!seats) return null;
+  for (const s of seats) {
+    if (s.goal === arm) return s.color;
+  }
+  return null;
+}
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App, null));
+</script>
+</body>
+</html>
