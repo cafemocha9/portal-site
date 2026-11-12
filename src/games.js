@@ -13,6 +13,7 @@ import {
   Crosshair,
   Crown,
   Dices,
+  Drum,
   Disc3,
   Flag,
   Footprints,
@@ -107,6 +108,7 @@ export const games = [
   { id: 'kotori-niwa', genre: 'relax', title: 'ことりの庭', icon: Bird, color: 'bg-sky-200', iconColor: 'text-sky-900', type: 'html' },
 
   // --- おと ---
+  { id: 'hazumu-rhythm', genre: 'music', title: 'はずむリズム', icon: Drum, color: 'bg-pink-200', iconColor: 'text-pink-900', type: 'html' },
   { id: 'tech-house-loop', genre: 'music', title: 'Tech House Loop', icon: Disc3, color: 'bg-zinc-300', iconColor: 'text-zinc-800', type: 'html' },
 ]
 
