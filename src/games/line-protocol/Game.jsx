@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 
 /* ============================================================
    LINE PROTOCOL — 五目並べ / 航空計器スタイル
-   - 勝利条件 k を選択、盤サイズは N = 3(k−2) で自動決定
+   - 勝利条件 k と盤の広さ（せまい / ふつう / ひろい）を選択
    - 対戦モード: VS AI / 2 PLAYERS
    - 盤の縦伸びバグ修正: grid-template-rows を明示し、
      石のサイズをセル寸法に従属させる(行高を内容が押し広げない)
@@ -19,7 +19,14 @@ const MODES = [
   { k: 6, label: "六連", note: "EXTENDED", desc: "広域の読み合いが要求される" },
 ];
 
-const boardSizeOf = (k) => 3 * (k - 2);
+// 盤の広さ：せまい = 従来の 3(k−2)、ひろい = 五連で正式な 15×15
+const SCALES = [
+  { id: "S", label: "せまい" },
+  { id: "M", label: "ふつう" },
+  { id: "L", label: "ひろい" },
+];
+const SIZES = { 3: { S: 3, M: 5, L: 7 }, 4: { S: 6, M: 9, L: 11 }, 5: { S: 9, M: 13, L: 15 }, 6: { S: 12, M: 15, L: 19 } };
+const boardSizeOf = (k, scale = "L") => SIZES[k][scale];
 
 /* ---------- 勝利判定: 最終着手点から4方向を双方向走査 O(k) ---------- */
 function findWin(board, size, k, idx, player) {
@@ -102,6 +109,7 @@ export default function LineProtocol() {
   const [screen, setScreen] = useState("menu"); // menu | game
   const [opponent, setOpponent] = useState("ai"); // ai | human
   const [k, setK] = useState(5);
+  const [scale, setScale] = useState("L");
   const [board, setBoard] = useState([]);
   const [turn, setTurn] = useState(P1);
   const [winner, setWinner] = useState(0); // 0 | 1 | 2 | 3(draw)
@@ -109,11 +117,11 @@ export default function LineProtocol() {
   const [lastMove, setLastMove] = useState(-1);
   const [thinking, setThinking] = useState(false);
 
-  const size = boardSizeOf(k);
+  const size = boardSizeOf(k, scale);
   const moves = board.filter((v) => v !== 0).length;
 
   const startGame = (kk) => {
-    const n = boardSizeOf(kk);
+    const n = boardSizeOf(kk, scale);
     setK(kk);
     setBoard(Array(n * n).fill(0));
     setTurn(P1);
@@ -195,11 +203,25 @@ export default function LineProtocol() {
               </div>
             </div>
 
+            <div className="prow">
+              <span className="plabel">02 — 盤の広さ</span>
+              <div className="seg" role="radiogroup" aria-label="盤の広さ">
+                {SCALES.map((sc) => (
+                  <button
+                    key={sc.id}
+                    className={`segbtn ${scale === sc.id ? "on" : ""}`}
+                    role="radio" aria-checked={scale === sc.id}
+                    onClick={() => setScale(sc.id)}
+                  >{sc.label}</button>
+                ))}
+              </div>
+            </div>
+
             <div className="prow col">
-              <span className="plabel">02 — 勝利条件 <em>盤サイズは N = 3(k−2) で自動決定</em></span>
+              <span className="plabel">03 — 勝利条件 <em>えらんだ広さで はじまります</em></span>
               <div className="modes">
                 {MODES.map((m) => {
-                  const n = boardSizeOf(m.k);
+                  const n = boardSizeOf(m.k, scale);
                   return (
                     <button key={m.k} className="mode" onClick={() => startGame(m.k)}>
                       <span className="corner tl" /><span className="corner tr" />
@@ -421,7 +443,7 @@ main{width:100%; max-width:920px; padding:32px 20px 56px;}
   display:grid;
   grid-template-columns:repeat(var(--n), 1fr);
   grid-template-rows:repeat(var(--n), 1fr);
-  gap:3px;
+  gap:max(1px, calc(40px / var(--n)));
   background:var(--hair);
   border:1px solid var(--ink);
   padding:3px;
