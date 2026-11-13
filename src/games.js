@@ -9,6 +9,7 @@ import {
   CarFront,
   Castle,
   ChessKnight,
+  CircleDot,
   Compass,
   Crosshair,
   Crown,
@@ -102,6 +103,7 @@ export const games = [
   { id: 'chess-dojo', genre: 'learn', title: 'チェス作戦道場', icon: ChessKnight, color: 'bg-stone-300', iconColor: 'text-stone-800', type: 'html' },
   { id: 'chess', genre: 'board', title: 'チェス', icon: Crown, color: 'bg-yellow-200', iconColor: 'text-yellow-900', type: 'react', component: lazy(() => import('./games/chess/Game.jsx')) },
   { id: 'chess2', genre: 'board', title: 'チェス2', icon: Crown, color: 'bg-amber-200', iconColor: 'text-amber-900', type: 'react', component: lazy(() => import('./games/chess2/Game.jsx')) },
+  { id: 'reversi', genre: 'board', title: 'リバーシ', icon: CircleDot, color: 'bg-emerald-200', iconColor: 'text-emerald-900', type: 'html' },
   { id: 'diamond-game', genre: 'board', title: 'ダイヤモンドゲーム', icon: Diamond, color: 'bg-cyan-200', iconColor: 'text-cyan-900', type: 'html' },
   { id: 'line-protocol', genre: 'board', title: '五目並べ', icon: Grid3x3, color: 'bg-teal-300', iconColor: 'text-teal-900', type: 'react', component: lazy(() => import('./games/line-protocol/Game.jsx')) },
 
