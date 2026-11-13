@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>連鎖道場 — ぷよぷよの連鎖を論理で学ぶ</title>
+<title>連鎖道場 — 落ちものパズルの連鎖を論理で学ぶ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
@@ -135,31 +135,31 @@ kbd{font-family:inherit;background:#eee8dc;border-radius:4px;padding:0 5px;font-
 <header>
   <div>
     <h1><span><i style="background:#e8484f"></i><i style="background:#2bae66"></i><i style="background:#3a6fe2"></i><i style="background:#f0be2a"></i></span>連鎖道場</h1>
-    <p class="sub">ぷよぷよの連鎖を「なぜそう積むのか」から学ぶ練習アプリ</p>
+    <p class="sub">落ちものパズルの連鎖を「なぜそう積むのか」から学ぶ練習アプリ</p>
   </div>
   <nav>
     <button class="tab" data-tab="learn">学ぶ</button>
-    <button class="tab" data-tab="toko">とこぷよ</button>
-    <button class="tab" data-tab="nazo">なぞぷよ</button>
+    <button class="tab" data-tab="toko">とことん練習</button>
+    <button class="tab" data-tab="nazo">連鎖パズル</button>
   </nav>
 </header>
 <main>
 <!-- ================= 学ぶ ================= -->
 <section id="learn">
   <h2>学習ステップ</h2>
-  <p class="lead">上から順に読み、図の「▶ 連鎖を見る」で動きを確認 → 対応する「なぞぷよ」を解く → 「とこぷよ」で形を再現、の順で進めると定着します。</p>
+  <p class="lead">上から順に読み、図の「▶ 連鎖を見る」で動きを確認 → 対応する「連鎖パズル」を解く → 「とことん練習」で形を再現、の順で進めると定着します。</p>
   <div class="progress">理解したレッスン <b id="progress">0 / 6</b><div class="pbar"><div id="progressbar"></div></div></div>
 
   <article class="lesson" data-id="l1">
     <div class="body">
       <h3><span class="no">STEP 1</span>連鎖のしくみと、なぜ連鎖を狙うのか</h3>
-      <p>同じ色が<b>上下左右に4つ以上</b>つながると消えます（斜めはつながりません）。消えた後、上にあったぷよが落ちて新しく4つそろうと<b>2連鎖</b>になります。</p>
-      <div class="why"><b>なぜ連鎖なのか：</b>得点は「消した数 × 10 × ボーナス」で、ボーナスの大部分は連鎖数で決まります。対戦では得点に応じておじゃまぷよが送られるので、<b>同じ数を消しても、連鎖にした方が圧倒的に強い</b>のです。</div>
+      <p>同じ色が<b>上下左右に4つ以上</b>つながると消えます（斜めはつながりません）。消えた後、上にあったつぶが落ちて新しく4つそろうと<b>2連鎖</b>になります。</p>
+      <div class="why"><b>なぜ連鎖なのか：</b>得点は「消した数 × 10 × ボーナス」で、ボーナスの大部分は連鎖数で決まります。対戦では得点に応じておじゃまつぶが送られるので、<b>同じ数を消しても、連鎖にした方が圧倒的に強い</b>のです。</div>
       <table class="tbl"><tr><th>連鎖</th><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td></tr><tr><th>連鎖ボーナス</th><td>0</td><td>8</td><td>16</td><td>32</td><td>64</td><td>96</td><td>128</td></tr></table>
       <p>結論：<b>「すぐ消す」のではなく「消さずに溜めて、最後に一気に発火する」</b>のが基本戦略です。</p>
       <label class="check"><input type="checkbox">理解した</label>
     </div>
-    <div class="diagram" data-d="basic"><div class="boardwrap"><div class="board"></div><div class="chainpop"></div></div><button class="btn pri" data-play>▶ 連鎖を見る</button><div class="cap">点線のぷよを置くと発火。赤が消え、緑が落ちて2連鎖。</div></div>
+    <div class="diagram" data-d="basic"><div class="boardwrap"><div class="board"></div><div class="chainpop"></div></div><button class="btn pri" data-play>▶ 連鎖を見る</button><div class="cap">点線のつぶを置くと発火。赤が消え、緑が落ちて2連鎖。</div></div>
   </article>
 
   <article class="lesson" data-id="l2">
@@ -168,7 +168,7 @@ kbd{font-family:inherit;background:#eee8dc;border-radius:4px;padding:0 5px;font-
       <p>各列に<b>「縦3つ」</b>を置き、その<b>右下に同じ色を1つ</b>置く形を、階段状に並べます。</p>
       <ol><li>左の色が消える</li><li>右隣の列の縦3つが1段落ちる</li><li>落ちた先の右下の1つと合わせて4つ → 次が消える</li></ol>
       <div class="why"><b>論理：</b>「消える → 1段落ちる → 4つになる」が列ごとに繰り返されるので、<b>形を見ればそのまま連鎖数が数えられます</b>。最初に覚える形として最適です。</div>
-      <p><b>弱点：</b>同じ色を縦に3つ必要とするため、来るぷよ（ツモ）の色が合わないと置き場所に困ります。</p>
+      <p><b>弱点：</b>同じ色を縦に3つ必要とするため、来るつぶ（ツモ）の色が合わないと置き場所に困ります。</p>
       <label class="check"><input type="checkbox">理解した</label>
     </div>
     <div class="diagram" data-d="stairs"><div class="boardwrap"><div class="board"></div><div class="chainpop"></div></div><button class="btn pri" data-play>▶ 連鎖を見る</button><div class="cap">1列目に赤を置くと、赤→緑→青→黄の4連鎖。</div></div>
@@ -179,7 +179,7 @@ kbd{font-family:inherit;background:#eee8dc;border-radius:4px;padding:0 5px;font-
       <h3><span class="no">STEP 3</span>挟み込み — ツモに融通が利く形</h3>
       <p>消える色の<b>上に乗っている色</b>が落ちて、<b>左右にある同じ色に挟まれて</b>4つになる形です。</p>
       <div class="why"><b>論理：</b>階段は「縦3つ」を要求しますが、挟み込みは横方向のつながりを使うので、<b>ばらばらの位置にある同色を後からつなげられます</b>。つまり、ツモの色の偏りに強くなります。</div>
-      <p>実戦の連鎖は「階段」「挟み込み」などの部品を組み合わせて作られます。「どのぷよが、どこに落ちて、何とつながるか」を1つずつ追う習慣をつけましょう。</p>
+      <p>実戦の連鎖は「階段」「挟み込み」などの部品を組み合わせて作られます。「どのつぶが、どこに落ちて、何とつながるか」を1つずつ追う習慣をつけましょう。</p>
       <label class="check"><input type="checkbox">理解した</label>
     </div>
     <div class="diagram" data-d="sandwich"><div class="boardwrap"><div class="board"></div><div class="chainpop"></div></div><button class="btn pri" data-play>▶ 連鎖を見る</button><div class="cap">赤が消えた穴に緑が落ち、左右の緑とつながる。</div></div>
@@ -194,7 +194,7 @@ kbd{font-family:inherit;background:#eee8dc;border-radius:4px;padding:0 5px;font-
         <li><b>折り返し：</b>3列目の赤の上に乗せた青が、赤が消えたあと落ちて、4列目の青とつながる</li>
       </ul>
       <div class="why"><b>なぜ強いのか：</b>形が決まっているので、ツモが来たときに<b>「この色はここ」と置き場所を即決できます</b>。また左端で土台が完結するため、<b>右側へ連鎖を伸ばしていく</b>設計がしやすいのです。</div>
-      <p>このデモは3連鎖の最小形です。実戦では、この右側へ連鎖を足していきます。「とこぷよ」でGTRのガイドを表示して練習できます。</p>
+      <p>このデモは3連鎖の最小形です。実戦では、この右側へ連鎖を足していきます。「とことん練習」でGTRのガイドを表示して練習できます。</p>
       <label class="check"><input type="checkbox">理解した</label>
     </div>
     <div class="diagram" data-d="gtr"><div class="boardwrap"><div class="board"></div><div class="chainpop"></div></div><button class="btn pri" data-play>▶ 連鎖を見る</button><div class="cap">2列目に黄を置くと、黄→赤→青の3連鎖。</div></div>
@@ -209,7 +209,7 @@ kbd{font-family:inherit;background:#eee8dc;border-radius:4px;padding:0 5px;font-
         <li><b>発火点は最後</b>：必要な色が来たときにだけ置く</li>
         <li><b>連鎖尾を伸ばす</b>：連鎖の最後尾にさらに部品を足すと、発火点を動かさずに連鎖数を増やせます</li>
       </ol>
-      <div class="why"><b>判断基準：</b>「今置いたぷよで、発火点がふさがれないか？」を毎手確認しましょう。とこぷよの<b>「潜在連鎖」</b>表示は、あと1個で何連鎖が起きるかを常に計算しています。</div>
+      <div class="why"><b>判断基準：</b>「今置いたつぶで、発火点がふさがれないか？」を毎手確認しましょう。とことん練習の<b>「潜在連鎖」</b>表示は、あと1個で何連鎖が起きるかを常に計算しています。</div>
       <label class="check"><input type="checkbox">理解した</label>
     </div>
   </article>
@@ -220,19 +220,19 @@ kbd{font-family:inherit;background:#eee8dc;border-radius:4px;padding:0 5px;font-
       <ol>
         <li><b>3列目を低く保つ</b>：左から3列目の12段目（×印）が埋まると負けです。</li>
         <li><b>色ごとに置き場所を決める</b>：迷う時間と、色の混ざりが減ります。</li>
-        <li><b>使えないぷよは「捨て場」へ</b>：右端など連鎖に関係しない場所を決めておきます。</li>
+        <li><b>使えないつぶは「捨て場」へ</b>：右端など連鎖に関係しない場所を決めておきます。</li>
         <li><b>高さをそろえる</b>：極端に高い列があると、置ける場所が限られ形が崩れます。</li>
         <li><b>ちぎりを減らす</b>：横向きで高さの違う列に置くと分かれて落ちます（ちぎり）。対戦では時間のロスになります。</li>
       </ol>
-      <div class="why"><b>練習メニューの目安：</b>① なぞぷよ全問クリア → ② とこぷよで階段の4連鎖を安定 → ③ GTRガイドで土台を再現 → ④ 潜在連鎖5以上を作ってから発火、の順に段階を上げましょう。</div>
+      <div class="why"><b>練習メニューの目安：</b>① 連鎖パズル全問クリア → ② とことん練習で階段の4連鎖を安定 → ③ GTRガイドで土台を再現 → ④ 潜在連鎖5以上を作ってから発火、の順に段階を上げましょう。</div>
       <label class="check"><input type="checkbox">理解した</label>
     </div>
   </article>
 </section>
 
-<!-- ================= とこぷよ ================= -->
+<!-- ================= とことん練習 ================= -->
 <section id="toko" hidden>
-  <h2>とこぷよ（ひとり練習）</h2>
+  <h2>とことん練習（ひとりで積む）</h2>
   <p class="lead">時間制限なし。「戻す」で何度でもやり直せます。潜在連鎖を増やすように積んでみましょう。</p>
   <div class="play">
     <div>
@@ -270,9 +270,9 @@ kbd{font-family:inherit;background:#eee8dc;border-radius:4px;padding:0 5px;font-
   </div>
 </section>
 
-<!-- ================= なぞぷよ ================= -->
+<!-- ================= 連鎖パズル ================= -->
 <section id="nazo" hidden>
-  <h2>なぞぷよ（連鎖の詰め問題）</h2>
+  <h2>連鎖パズル（詰め問題）</h2>
   <p class="lead">決められた手数で目標の連鎖を作ります。「どこに落ちて、何とつながるか」を頭の中で再生してから置きましょう。</p>
   <div class="play">
     <div>
@@ -405,7 +405,7 @@ function potential(b, ncolors) {
   return best;
 }
 
-// なぞぷよ：pairs を順に置き、いずれかの時点で goal 連鎖以上になれば成功
+// 連鎖パズル：pairs を順に置き、いずれかの時点で goal 連鎖以上になれば成功
 function solve(b, pairs, goal) {
   function dfs(board, i) {
     if (i >= pairs.length) return null;
@@ -440,7 +440,7 @@ function maxChain(b, pairs) {
   return best;
 }
 
-// ランダムなぞぷよ生成：連鎖が起きないように積んだ盤面＋2手で最大連鎖を狙う
+// ランダム連鎖パズル生成：連鎖が起きないように積んだ盤面＋2手で最大連鎖を狙う
 function randInt(n) { return Math.floor(Math.random() * n); }
 function genPuzzle(ncolors) {
   let best = null;
@@ -722,7 +722,7 @@ function updateProgress() {
 }
 updateProgress();
 
-// ===== とこぷよ =====
+// ===== とことん練習 =====
 const rec = store('rec') || { maxChain: 0, maxScore: 0 };
 let stats = { pairs: 0, score: 0, last: 0 };
 const tokoOpts = {
@@ -761,7 +761,7 @@ const tokoOpts = {
     if (Math.max(...hs) - Math.min(...hs) >= 7) tips.push(['info', '列の高さの差が大きくなっています。低い列から埋めると連鎖の形が崩れにくくなります。']);
     const groups = findGroups(p.board).filter(g => g.cells.length === 1).length;
     const filled = hs.reduce((a, b) => a + b, 0);
-    if (filled >= 16 && groups / Math.max(1, filled) > 0.35) tips.push(['info', '孤立したぷよが多めです。同じ色を隣接させて「3つ組」を作ることを意識しましょう。']);
+    if (filled >= 16 && groups / Math.max(1, filled) > 0.35) tips.push(['info', '孤立したつぶが多めです。同じ色を隣接させて「3つ組」を作ることを意識しましょう。']);
     if (pt.chains >= 5) tips.push(['good', `${pt.chains}連鎖が組めています。発火点をふさがないように、連鎖尾を伸ばすか発火しましょう。`]);
     const t = this.tpl();
     if (t) { const m = tplMatch(p.board, t, this.ncolors()); tips.unshift(['tplinfo', `${t.name} の一致度：<b>${m.ok} / ${m.total}</b>（緑枠=一致、赤枠=色ちがい、★=発火点）`]); }
@@ -772,7 +772,7 @@ const toko = new Player($('#toko .play'), tokoOpts);
 toko.load(emptyBoard(), [], true);
 ['#ncolors', '#tplsel', '#speed'].forEach(s => $(s).addEventListener('change', () => { if (s === '#ncolors') { stats = { pairs: 0, score: 0, last: 0 }; toko.load(emptyBoard(), [], true); } else toko.render(); }));
 
-// ===== なぞぷよ =====
+// ===== 連鎖パズル =====
 const cleared = store('cleared') || {};
 let curPz = null, solved = false, peeked = false;
 const nazoOpts = {
