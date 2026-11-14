@@ -9,6 +9,7 @@ import {
   CarFront,
   Castle,
   ChessKnight,
+  Coffee,
   CircleDot,
   Compass,
   Crosshair,
@@ -55,7 +56,7 @@ export const genres = [
   { id: 'manage', label: 'けいえい', icon: Store },
   { id: 'puzzle', label: 'パズル', icon: Brain },
   { id: 'board', label: 'ボードゲーム', icon: ChessKnight },
-  { id: 'learn', label: '学習', icon: GraduationCap },
+  { id: 'learn', label: 'がくしゅう', icon: GraduationCap },
   { id: 'relax', label: 'のんびり・みんなで', icon: Sprout },
   { id: 'music', label: 'おと', icon: Music },
 ]
@@ -100,6 +101,7 @@ export const games = [
   { id: 'breach', genre: 'strategy', title: 'BREACH', icon: Swords, color: 'bg-rose-300', iconColor: 'text-rose-900', type: 'react', component: lazy(() => import('./games/breach/Game.jsx')) },
 
   // --- けいえい ---
+  { id: 'roastery', genre: 'manage', title: '焙煎所経営シミュレーター', icon: Coffee, color: 'bg-amber-200', iconColor: 'text-amber-900', type: 'html' },
   { id: 'supermarket', genre: 'manage', title: 'スーパーマーケット経営記', icon: Store, color: 'bg-orange-100', iconColor: 'text-orange-800', type: 'html' },
 
   // --- パズル ---

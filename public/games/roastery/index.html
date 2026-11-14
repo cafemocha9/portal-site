@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>焙煎所経営シミュレーター</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=DM+Mono:wght@400;500&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* 設計: 生豆の灰緑の紙面に、コーヒーチェリーの赤を一点。進行は「焙煎度の色」で表す。1カラムの帳簿＋下部ドック */
+:root{
+  --bg:#E9EDE5; --surface:#F7F9F4; --sunk:#DDE3D8; --ink:#18231F; --muted:#586660; --line:#C9D1C6;
+  --accent:#BF3327; --accent-ink:#FFF7F5; --sage:#5F8369; --roast:#6A4125;
+  --good:#23744F; --warn:#9A6410; --bad:#B3261E; --info:#3B6278;
+  --display:"Dela Gothic One","Zen Kaku Gothic New",sans-serif;
+  --body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",sans-serif;
+  --mono:"DM Mono",ui-monospace,Menlo,monospace;
+  --r0:#8FA387; --r1:#C9B46A; --r2:#B8823F; --r3:#8A5528; --r4:#5A3418; --r5:#2E1A0E;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#111715; --surface:#1A2320; --sunk:#0C110F; --ink:#E6ECE4; --muted:#98A69D; --line:#2D3934;
+    --accent:#F0705F; --accent-ink:#200907; --sage:#8FB79B; --roast:#C9925F;
+    --good:#62C99B; --warn:#E3B152; --bad:#F38B80; --info:#86B7D1; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#111715; --surface:#1A2320; --sunk:#0C110F; --ink:#E6ECE4; --muted:#98A69D; --line:#2D3934;
+  --accent:#F0705F; --accent-ink:#200907; --sage:#8FB79B; --roast:#C9925F;
+  --good:#62C99B; --warn:#E3B152; --bad:#F38B80; --info:#86B7D1; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.6;-webkit-text-size-adjust:100%}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#app{max-width:760px;margin:0 auto;padding:0 16px 190px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+h1,h2,h3{margin:0;text-wrap:balance}
+h2{font-family:var(--display);font-weight:400;font-size:19px;letter-spacing:.02em}
+h3{font-size:14px;font-weight:700}
+p{margin:0}
+.muted{color:var(--muted)} .small{font-size:12.5px}
+
+/* ヘッダー */
+.top{position:sticky;top:0;z-index:20;background:var(--bg);padding:10px 0 8px;border-bottom:1px solid var(--line)}
+.top-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand{font-family:var(--display);font-size:15px;letter-spacing:.06em}
+.brand b{color:var(--accent);font-weight:400}
+.when{font-size:13px;color:var(--muted)}
+.stats{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:10px;margin-top:8px}
+.stat{min-width:0}
+.stat .k{font-size:11px;color:var(--muted);letter-spacing:.05em}
+.stat .v{font-family:var(--mono);font-size:18px;font-weight:500;line-height:1.2}
+.meter{height:5px;background:var(--sunk);border-radius:3px;overflow:hidden;margin-top:3px}
+.meter i{display:block;height:100%;background:var(--sage);border-radius:3px;transition:width .8s cubic-bezier(.2,.8,.2,1)}
+.meter.rep i{background:var(--roast)}
+.beans{display:flex;gap:3px;margin-top:9px;align-items:center}
+.bean{flex:1;max-width:22px;height:11px;border-radius:50%;background:var(--sunk);position:relative;transition:background .6s}
+.bean::after{content:"";position:absolute;left:50%;top:15%;bottom:15%;width:1px;background:rgba(0,0,0,.28);transform:rotate(14deg)}
+.bean.now{box-shadow:0 0 0 2px var(--bg),0 0 0 3.5px var(--accent);animation:pulse 1.6s ease-in-out infinite}
+.bean.fy{margin-right:6px}
+@keyframes pulse{50%{box-shadow:0 0 0 2px var(--bg),0 0 0 5px var(--accent)}}
+
+/* 汎用 */
+main{display:flex;flex-direction:column;gap:14px;padding-top:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media (max-width:420px){.grid3{gap:6px}.grid3 .tile{padding:8px 7px}.grid3 .tile .v{font-size:14.5px}}
+.tile{background:var(--sunk);border-radius:8px;padding:9px 10px;min-width:0}
+.tile .k{font-size:11px;color:var(--muted)} .tile .v{font-family:var(--mono);font-size:17px;font-weight:500}
+.tile .d{font-size:11.5px;font-family:var(--mono)}
+.pos{color:var(--good)} .neg{color:var(--bad)}
+.pill{display:inline-block;font-size:11px;font-weight:700;padding:1px 8px;border-radius:99px;border:1px solid currentColor;white-space:nowrap}
+.news{border-left:4px solid var(--info);background:var(--surface);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:3px;animation:slidein .5s both}
+.news.good{border-color:var(--good)} .news.bad{border-color:var(--bad)} .news.warn{border-color:var(--warn)}
+.news.good .pill{color:var(--good)} .news.bad .pill{color:var(--bad)} .news.warn .pill{color:var(--warn)} .news .pill{color:var(--info)}
+.news h3{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+@keyframes slidein{from{transform:translateY(8px);opacity:.3}to{transform:none;opacity:1}}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:5px 6px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left;white-space:normal}
+th{font-weight:500;color:var(--muted);font-size:11.5px}
+td{font-family:var(--mono);font-variant-numeric:tabular-nums} td:first-child{font-family:var(--body)}
+tr.total td{font-weight:700;border-top:2px solid var(--ink);border-bottom:0}
+.scroll{overflow-x:auto}
+
+/* 操作 */
+.ctl{display:flex;flex-direction:column;gap:4px}
+.ctl-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.ctl-h label{font-size:13px;font-weight:500}
+.ctl-h output{font-family:var(--mono);font-weight:500;font-size:15px}
+.ctl-r{display:flex;align-items:center;gap:8px}
+.stp{width:36px;height:36px;flex:none;border-radius:8px;border:1px solid var(--line);background:var(--bg);font-size:18px;line-height:1}
+.stp:active{background:var(--sunk)}
+input[type=range]{flex:1;min-width:0;height:36px;accent-color:var(--accent);margin:0}
+.hint{font-size:12px;color:var(--muted)}
+.live{font-size:13px;background:var(--sunk);border-radius:8px;padding:9px 10px;display:flex;flex-direction:column;gap:4px}
+.live .row{font-size:13px} .live b{font-family:var(--mono);font-weight:500}
+.btn{border:1px solid var(--ink);background:transparent;border-radius:8px;padding:9px 14px;font-weight:700;font-size:14px}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.on{background:var(--ink);color:var(--bg)}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.wide{width:100%}
+.swatch{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.gauge{height:14px;background:var(--sunk);border-radius:7px;overflow:hidden;position:relative}
+.gauge i{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,var(--r0),var(--r1) 30%,var(--r2) 55%,var(--r3) 80%,var(--r4));border-radius:7px;transition:width .5s cubic-bezier(.2,.8,.2,1)}
+.sw{display:flex;align-items:center;gap:8px;font-size:13px}
+.sw input{width:20px;height:20px;accent-color:var(--accent)}
+
+/* 焙煎所の絵 */
+.scene{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.scene svg{display:block;width:100%;height:auto}
+.spin{animation:spin var(--spd,4s) linear infinite}
+.spin.rev{animation-direction:reverse;animation-duration:calc(var(--spd,4s)*1.6)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.flame{animation:flick .35s ease-in-out infinite alternate;transform-origin:center bottom;transform-box:fill-box}
+.flame.f2{animation-duration:.27s} .flame.f3{animation-duration:.42s}
+@keyframes flick{from{transform:scaleY(.7)}to{transform:scaleY(1.15)}}
+.puff{animation:puff 3.2s ease-out infinite;opacity:0}
+.puff.p2{animation-delay:1.05s} .puff.p3{animation-delay:2.1s}
+@keyframes puff{0%{transform:translate(0,0) scale(.5);opacity:0}15%{opacity:.55}100%{transform:translate(14px,-30px) scale(1.9);opacity:0}}
+.drop{animation:drop 1.4s linear infinite}
+.drop.d2{animation-delay:.45s} .drop.d3{animation-delay:.9s}
+@keyframes drop{0%{transform:translate(0,0);opacity:0}15%{opacity:1}100%{transform:translate(34px,22px);opacity:0}}
+.walker{animation:walk 9s linear infinite}
+.walker.w2{animation-delay:-4.5s}
+@keyframes walk{0%{transform:translateX(0);opacity:0}8%{opacity:1}45%{transform:translateX(-52px);opacity:1}55%{transform:translateX(-52px);opacity:1}92%{opacity:1}100%{transform:translateX(0);opacity:0}}
+
+/* ドック */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--line);padding:8px 16px calc(8px + env(safe-area-inset-bottom,0px))}
+.dock-in{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:7px}
+.fore{display:flex;gap:12px;font-size:12px;color:var(--muted);flex-wrap:wrap;align-items:baseline}
+.fore b{font-family:var(--mono);font-weight:500;color:var(--ink);font-size:13px}
+.fore b.neg{color:var(--bad)} .fore b.pos{color:var(--good)}
+.tabs{display:grid;grid-template-columns:repeat(6,1fr);gap:2px}
+.tab{border:0;background:transparent;padding:8px 0 6px;font-size:13px;font-weight:500;color:var(--muted);border-top:3px solid transparent;border-radius:0}
+.tab.on{color:var(--ink);border-top-color:var(--accent);font-weight:700}
+
+/* オーバーレイ */
+.ov{position:fixed;inset:0;z-index:50;background:color-mix(in srgb,var(--bg) 88%,transparent);display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(3px)}
+.sheet{background:var(--surface);border:1px solid var(--line);border-bottom:0;border-radius:16px 16px 0 0;width:100%;max-width:760px;max-height:92%;overflow-y:auto;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:14px;animation:rise .45s cubic-bezier(.2,.8,.2,1) both}
+.sheet>*{flex-shrink:0}
+@keyframes rise{from{transform:translateY(40px);opacity:.2}to{transform:none;opacity:1}}
+.roasting{align-items:center}
+.roasting .box{width:min(92%,420px);display:flex;flex-direction:column;gap:10px;text-align:center}
+.curve{stroke-dasharray:420;stroke-dashoffset:420;animation:draw 1.6s cubic-bezier(.4,0,.3,1) forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.crack{opacity:0;animation:show .3s 1.15s forwards}
+@keyframes show{to{opacity:1}}
+.wipe{transform-origin:left center;transform-box:fill-box;animation:wipe 1.6s linear forwards}
+@keyframes wipe{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.big3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.big3 .tile .v{font-size:19px}
+@media (max-width:380px){.big3 .tile .v{font-size:16px}}
+.bar{display:grid;grid-template-columns:52px 1fr 64px;gap:8px;align-items:center;font-size:12.5px}
+.bar .t{height:12px;background:var(--sunk);border-radius:6px;overflow:hidden}
+.bar .t i{display:block;height:100%;border-radius:6px;width:0;transition:width .9s cubic-bezier(.2,.8,.2,1)}
+.bar .n{text-align:right;font-family:var(--mono)}
+.adv{display:flex;flex-direction:column;gap:7px}
+.adv li{list-style:none;border-left:3px solid var(--line);padding-left:10px;font-size:13.5px}
+.adv li.bad{border-color:var(--bad)} .adv li.good{border-color:var(--good)} .adv li.warn{border-color:var(--warn)}
+ul{margin:0;padding:0}
+
+/* 開始・終了 */
+.hero-t{font-family:var(--display);font-size:clamp(30px,9vw,46px);line-height:1.15;letter-spacing:.02em}
+.hero-t em{font-style:normal;color:var(--accent)}
+.lv{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.lv .btn{padding:12px 6px;display:flex;flex-direction:column;gap:2px;align-items:center}
+.lv .btn span{font-size:11.5px;font-weight:400;color:var(--muted)}
+.stamp{font-family:var(--display);font-size:96px;line-height:1;color:var(--accent);border:6px solid var(--accent);border-radius:16px;width:140px;height:140px;display:grid;place-items:center;transform:rotate(-8deg);animation:stamp .6s cubic-bezier(.3,1.6,.5,1) both}
+@keyframes stamp{from{transform:rotate(-8deg) scale(2.4);opacity:0}to{transform:rotate(-8deg) scale(1);opacity:1}}
+.rain{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:60}
+.rain i{position:absolute;top:-20px;width:10px;height:14px;border-radius:50%;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(540deg)}}
+dl{margin:0;display:flex;flex-direction:column;gap:10px}
+dt{font-weight:700;font-size:14px} dd{margin:2px 0 0;font-size:13px;color:var(--muted)}
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01s!important;animation-iteration-count:1!important;transition-duration:.01s!important}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top" id="top"></header>
+  <main id="view"></main>
+</div>
+<div class="dock" id="dock" hidden></div>
+<div id="ovroot"></div>
+<script>
+/* ===== ENGINE (DOM非依存) ===== */
+const GR = [
+  {k:'blend', name:'ハウスブレンド', tag:'プレミアム・82点', diff:2,  base:82, ref:800,  kR:1.6,  kE:2.0, shR:0.55, shE:0.45, wh:0.75, min:500,  max:1400, col:'#B8823F'},
+  {k:'so',    name:'シングルオリジン', tag:'単一農園・86点', diff:5,  base:86, ref:1150, kR:1.25, kE:1.5, shR:0.33, shE:0.40, wh:0.25, min:700,  max:2000, col:'#8A5528'},
+  {k:'micro', name:'マイクロロット', tag:'希少品・90点',   diff:14, base:90, ref:1900, kR:0.95, kE:1.1, shR:0.12, shE:0.15, wh:0,    min:1100, max:3600, col:'#C2362B'}
+];
+const INV = [
+  {k:'r5',   name:'5kg焙煎機',     cost:3800000, life:60, desc:'焙煎能力 +1,000kg/月。ガス代も下がる'},
+  {k:'r15',  name:'15kg焙煎機',    cost:9800000, life:60, desc:'焙煎能力 +3,000kg/月。卸の拡大向け'},
+  {k:'ec',   name:'ECサイト構築',   cost:600000,  life:36, desc:'全国へ通販。月額3万円＋販売手数料'},
+  {k:'reno', name:'店舗改装',       cost:1500000, life:60, desc:'試飲カウンター新設。店頭の商圏 +30%'}
+];
+const DIFF = {
+  easy:  {name:'ゼミ入門', cash:4500000, vol:0.7, ev:0.35, limit:15000000},
+  normal:{name:'標準',     cash:3000000, vol:1.0, ev:0.45, limit:10000000},
+  hard:  {name:'上級',     cash:2200000, vol:1.4, ev:0.60, limit:8000000}
+};
+const MONTHS = 24;
+const SEASON = [0.95,0.95,0.90,0.85,0.85,0.95,1.05,1.15,1.35,1.05,1.10,1.00]; // 4月始まり
+const FIX = {rent:220000, util:50000, owner:250000, wage:280000, ecfee:30000, other:30000};
+
+function rnd(s){ s.seed=(s.seed+0x6D2B79F5)|0; let t=Math.imul(s.seed^(s.seed>>>15),1|s.seed); t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; }
+function gauss(s){ return Math.sqrt(-2*Math.log(rnd(s)+1e-12))*Math.cos(2*Math.PI*rnd(s)); }
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function eff(s,key){ return s.effects.reduce((a,e)=>e.key===key?a*e.mult:a,1); }
+function calMonth(m){ return ((m-1+3)%12)+1; }           // ゲーム月→暦月
+function monthLabel(m){ return (Math.ceil(m/12))+'年目 '+calMonth(m)+'月'; }
+
+function newGame(diff, seed){
+  const D=DIFF[diff];
+  const s={diff, seed:seed|0, m:1, cash:D.cash, loan:0, eloan:0, ar:0, A:12, R:45, skill:1, staff:0, accounts:1,
+    mkt:6.5, fx:150, mktHist:[], green:{}, carry:{}, equip:{r1:true,r5:false,r15:false,ec:false,reno:false},
+    assets:[{name:'1kg焙煎機', cost:1200000, life:60, left:60}], fyProfit:0, effects:[], pending:0, news:[], hist:[],
+    over:null, flags:{}, tot:{lost:0,waste:0,interest:0,tax:0}};
+  for(const g of GR){ s.green[g.k]={kg:0,cost:0}; s.carry[g.k]={kg:0,cost:0}; }
+  for(let i=0;i<6;i++){ stepMarket(s); }
+  s.news=[{t:'開業おめでとうございます', b:'1kg焙煎機と小さな店舗からのスタートです。友人のカフェ1軒が最初の卸先になってくれました。', tone:'good'}];
+  return s;
+}
+function stepMarket(s){
+  const v=DIFF[s.diff].vol;
+  s.mkt=clamp(s.mkt+0.12*(6.5-s.mkt)+0.30*v*gauss(s),3.5,12);
+  s.fx =clamp(s.fx +0.10*(150-s.fx)+2.5*v*gauss(s),115,190);
+  s.mktHist.push({mkt:s.mkt,fx:s.fx}); if(s.mktHist.length>30) s.mktHist.shift();
+}
+function discount(q){ return q>=600?0.90:(q>=240?0.95:1); }
+function greenPrice(s,g,q){ return (s.mkt+g.diff)*s.fx*1.25*discount(q||0); }
+function lossRate(s){ return 0.16-0.003*s.skill; }
+function gasCost(s){ return (s.equip.r15?32:(s.equip.r5?38:45))*eff(s,'util'); }
+function capacity(s){
+  const roast=((s.equip.r1?250:0)+(s.equip.r5?1000:0)+(s.equip.r15?3000:0))*eff(s,'cap');
+  const labor=160+260*s.staff;
+  return {roast:Math.round(roast), labor, eff:Math.round(Math.min(roast,labor))};
+}
+function fixedAssets(s){ return s.assets.reduce((a,x)=>a+x.cost*x.left/x.life,0); }
+function inventory(s){ let v=0; for(const g of GR){ v+=s.green[g.k].kg*s.green[g.k].cost+s.carry[g.k].kg*s.carry[g.k].cost; } return v; }
+function equity(s){ return s.cash+s.ar+inventory(s)+fixedAssets(s)-s.loan-s.eloan; }
+function elasticity(g,p,ch){ return (ch==='ec'?g.kE:g.kR)*p/g.ref; }
+
+function demand(s,dec,noisy){
+  const sea=SEASON[(s.m-1)%12], dm=eff(s,'demand'), v=DIFF[s.diff].vol;
+  const aR=Math.pow(s.A/100,0.7)*(0.45+s.R/100), aE=Math.pow(s.A/100,1.4)*(0.35+s.R/100);
+  const qb=1+0.02*s.skill, common=noisy?1+0.05*v*gauss(s):1;
+  const n=()=>noisy?Math.max(0.5,common*(1+0.07*v*gauss(s))):1;
+  const out={retail:{},ec:{},wh:{}};
+  for(const g of GR){
+    const p=dec.price[g.k];
+    out.retail[g.k]=300*(s.equip.reno?1.3:1)*eff(s,'retail')*aR*g.shR*sea*dm*Math.exp(-g.kR*(p/g.ref-1))*qb*n();
+    out.ec[g.k]=s.equip.ec?420*aE*g.shE*sea*dm*Math.exp(-g.kE*(p/g.ref-1))*qb*n():0;
+    out.wh[g.k]=s.accounts*12*(1+(sea-1)*0.5)*g.wh*(noisy?Math.max(0.6,1+0.04*v*gauss(s)):1);
+  }
+  return out;
+}
+function whIndex(dec){ let i=0; for(const g of GR){ i+=g.wh*(dec.price[g.k]*dec.whRate)/(g.ref*0.6); } return i; }
+function whLeads(s,dec){ return 1.6*(1-Math.exp(-(dec.sales||0)/120000))*(0.4+s.R/100)*Math.pow(whIndex(dec),-2.5)*eff(s,'whLead')+0.15*s.R/100; }
+function whChurn(s,dec,stock){ return clamp(0.04+0.25*Math.max(0,whIndex(dec)-1)+0.3*(stock||0)-0.0003*(s.R-50),0.01,0.6); }
+
+function defaultDec(){ return {buy:{blend:0,so:0,micro:0}, roast:{blend:0,so:0,micro:0}, price:{blend:800,so:1150,micro:1900}, whRate:0.6, ad:30000, sales:0, train:0, hire:0, borrow:0, repay:0, invest:{}}; }
+function autoFit(s,dec){
+  const d=demand(s,dec,false), loss=lossRate(s);
+  // 今月の投資・採用を織り込んだ能力
+  const t=JSON.parse(JSON.stringify(s)); for(const it of INV){ if(dec.invest[it.k]) t.equip[it.k]=true; } t.staff=Math.max(0,t.staff+(dec.hire||0));
+  const cap=capacity(t).eff; let want={},tot=0;
+  for(const g of GR){ const need=(d.retail[g.k]+d.ec[g.k]+d.wh[g.k])*1.05-s.carry[g.k].kg; want[g.k]=Math.max(0,Math.ceil(need)); tot+=want[g.k]; }
+  const f=tot>cap?cap/tot:1;
+  for(const g of GR){ const r=Math.floor(want[g.k]*f); dec.roast[g.k]=r; dec.buy[g.k]=Math.max(0,Math.ceil((r/(1-loss)-s.green[g.k].kg)/10)*10); }
+  return dec;
+}
+
+function runMonth(s,dec,dry){
+  const D=DIFF[s.diff], rec={m:s.m,g:{},events:[]}, eq0=equity(s), cash0=s.cash;
+  // --- 財務 ---
+  const borrow=clamp(dec.borrow||0,0,Math.max(0,D.limit-s.loan)); s.loan+=borrow; s.cash+=borrow;
+  const repay=clamp(dec.repay||0,0,Math.min(s.loan+s.eloan,Math.max(0,s.cash)));
+  const re=Math.min(repay,s.eloan); s.eloan-=re; s.loan-=repay-re; s.cash-=repay;
+  // --- 設備投資 ---
+  let capex=0;
+  for(const it of INV){ if(dec.invest&&dec.invest[it.k]&&!s.equip[it.k]){ s.equip[it.k]=true; s.assets.push({name:it.name,cost:it.cost,life:it.life,left:it.life}); capex+=it.cost; } }
+  s.cash-=capex;
+  // --- 人員 ---
+  let hireCost=0; const h=Math.round(dec.hire||0);
+  if(h>0){ s.staff+=h; hireCost=h*100000; } else if(h<0){ const f=Math.min(-h,s.staff); s.staff-=f; hireCost=f*FIX.wage; }
+  // --- 仕入 ---
+  let purchase=0;
+  for(const g of GR){ const q=Math.max(0,dec.buy[g.k]||0); if(q>0){ const p=greenPrice(s,g,q), st=s.green[g.k]; st.cost=(st.kg*st.cost+q*p)/(st.kg+q); st.kg+=q; purchase+=q*p; } }
+  s.cash-=purchase;
+  // --- 焙煎 ---
+  const cap=capacity(s), loss=lossRate(s), gas=gasCost(s);
+  let plan={},tot=0;
+  for(const g of GR){ const r=Math.min(Math.max(0,dec.roast[g.k]||0), Math.floor(s.green[g.k].kg*(1-loss)+1e-6)); plan[g.k]=r; tot+=r; }
+  if(tot>cap.eff){ const f=cap.eff/tot; tot=0; for(const g of GR){ plan[g.k]=Math.floor(plan[g.k]*f); tot+=plan[g.k]; } }
+  const util=cap.eff>0?tot/cap.eff:0; let gasTotal=0; const fresh={};
+  for(const g of GR){ const r=plan[g.k], st=s.green[g.k], used=r/(1-loss); fresh[g.k]={kg:r,cost:r>0?used*st.cost/r+gas:0}; st.kg-=used; if(st.kg<0.05){st.kg=0;} gasTotal+=r*gas; }
+  s.cash-=gasTotal;
+  // --- 販売 ---
+  const dm=demand(s,dec,!dry);
+  const sales={retail:0,ec:0,wh:0}, kg={retail:0,ec:0,wh:0};
+  let cogs=0,waste=0,lostKg=0,lostYen=0,demKg=0,soldKg=0,oldSold=0,qSum=0,whDem=0,whLost=0,roastedKg=tot;
+  for(const g of GR){
+    const c=s.carry[g.k], f=fresh[g.k], p=dec.price[g.k]*10, wp=p*dec.whRate; let avail=c.kg+f.kg;
+    const sw=Math.min(dm.wh[g.k],avail); avail-=sw; const sr=Math.min(dm.retail[g.k],avail); avail-=sr; const se=Math.min(dm.ec[g.k],avail); avail-=se;
+    const sold=sw+sr+se, dtot=dm.wh[g.k]+dm.retail[g.k]+dm.ec[g.k], fromOld=Math.min(sold,c.kg), discard=c.kg-fromOld, fromFresh=sold-fromOld;
+    cogs+=fromOld*c.cost+fromFresh*f.cost; waste+=discard*c.cost;
+    const lost=dtot-sold; lostKg+=lost; lostYen+=(dm.wh[g.k]-sw)*wp+(dm.retail[g.k]-sr)*p+(dm.ec[g.k]-se)*p;
+    sales.wh+=sw*wp; sales.retail+=sr*p; sales.ec+=se*p; kg.wh+=sw; kg.retail+=sr; kg.ec+=se;
+    demKg+=dtot; soldKg+=sold; oldSold+=fromOld; whDem+=dm.wh[g.k]; whLost+=dm.wh[g.k]-sw;
+    qSum+=sold*(g.base+0.2*s.skill-(util>0.92?0.6:0));
+    rec.g[g.k]={demand:dtot,sold,lost,discard,roasted:f.kg,carry:f.kg-fromFresh,dR:dm.retail[g.k],dE:dm.ec[g.k],dW:dm.wh[g.k],sR:sr,sE:se,sW:sw,unit:f.cost||c.cost};
+    s.carry[g.k]={kg:f.kg-fromFresh,cost:f.cost};
+  }
+  sales.total=sales.retail+sales.ec+sales.wh;
+  const pack=(kg.retail+kg.ec)*450+kg.wh*120;
+  const fees=sales.retail*0.032+sales.ec*0.10+kg.ec*650;
+  let greenKg=0; for(const g of GR){ greenKg+=s.green[g.k].kg; }
+  const storage=greenKg*25;
+  const fixed={rent:FIX.rent, util:FIX.util*eff(s,'util'), owner:FIX.owner, staff:FIX.wage*s.staff, ecfee:s.equip.ec?FIX.ecfee:0, other:FIX.other};
+  const fixedSum=fixed.rent+fixed.util+fixed.owner+fixed.staff+fixed.ecfee+fixed.other;
+  const ad=Math.max(0,dec.ad||0), salesExp=Math.max(0,dec.sales||0), train=Math.max(0,dec.train||0);
+  const oneoff=hireCost+(s.pending||0); if(!dry||true){ s.pending=0; }
+  let dep=0; for(const a of s.assets){ if(a.left>0){ dep+=a.cost/a.life; a.left--; } }
+  const interest=s.loan*0.036/12+s.eloan*0.15/12;
+  const gross=sales.total-cogs-waste-pack-fees;
+  const opex=fixedSum+ad+salesExp+train+storage+oneoff;
+  const op=gross-opex-dep, pretax=op-interest;
+  // --- 現金 ---
+  const collected=s.ar;
+  s.cash+=sales.retail+sales.ec+collected-pack-fees-opex-interest; s.ar=sales.wh;
+  s.fyProfit+=pretax; let tax=0;
+  if(s.m%12===0){ tax=Math.max(0,s.fyProfit*0.30); s.cash-=tax; s.fyProfit=0; }
+  const net=pretax-tax;
+  // --- 緊急融資・倒産判定 ---
+  let emergency=0;
+  if(s.cash<0){ emergency=Math.ceil(-s.cash/100000)*100000; s.eloan+=emergency; s.cash+=emergency; if(s.loan+s.eloan>D.limit*1.3) s.over='bankrupt'; }
+  // --- 状態更新 ---
+  const lostRatio=demKg>0?lostKg/demKg:0, staleRatio=soldKg>0?oldSold/soldKg:0, avgQ=soldKg>0?qSum/soldKg:82;
+  const Rt=clamp(30+(avgQ-82)*7+(s.equip.reno?4:0),0,100);
+  const A0=s.A,R0=s.R;
+  s.R=clamp(s.R+0.22*(Rt-s.R)-7*lostRatio-2*staleRatio,0,100);
+  s.A=clamp(s.A*0.85+10*(1-Math.exp(-ad/250000))+1.5*s.R/100+s.accounts*0.05,0,100);
+  s.skill=clamp(s.skill+0.05+0.6*(1-Math.exp(-train/60000)),0,10);
+  const leads=whLeads(s,dec), churnP=whChurn(s,dec,whDem>0?whLost/whDem:0); let gained,lostAcc;
+  if(dry){ gained=leads; lostAcc=s.accounts*churnP; }
+  else { gained=Math.floor(leads)+(rnd(s)<(leads%1)?1:0); lostAcc=0; for(let i=0;i<s.accounts;i++){ if(rnd(s)<churnP) lostAcc++; } }
+  const acc0=s.accounts; s.accounts=Math.max(0,s.accounts+gained-lostAcc);
+  Object.assign(rec,{sales,kg,cogs,waste,pack,fees,gross,fixed,fixedSum,ad,salesExp,train,storage,oneoff,dep,op,interest,pretax,tax,net,
+    purchase,gasTotal,capex,borrow,repay,emergency,collected,cash0,cash:s.cash,ar:s.ar,util,cap:cap.eff,capRoast:cap.roast,capLabor:cap.labor,roastedKg,
+    lostKg,lostYen,lostRatio,staleRatio,avgQ,A0,R0,A:s.A,R:s.R,skill:s.skill,acc0,gained,lostAcc,accounts:s.accounts,staff:s.staff,equity:equity(s),eq0,
+    varRatio:sales.total>0?(cogs+waste+pack+fees)/sales.total:0, fixedAll:opex+dep+interest, loan:s.loan+s.eloan, inv:inventory(s), fa:fixedAssets(s)});
+  if(dry) return rec;
+  s.tot.lost+=lostYen; s.tot.waste+=waste; s.tot.interest+=interest; s.tot.tax+=tax;
+  s.effects=s.effects.map(e=>({...e,left:e.left-1})).filter(e=>e.left>0);
+  stepMarket(s); s.hist.push(rec); s.m++; s.news=[];
+  if(!s.over){ if(s.m>MONTHS){ s.over='end'; } else { genEvents(s,rec); } }
+  return rec;
+}
+
+function genEvents(s,rec){
+  const D=DIFF[s.diff], cm=calMonth(s.m);
+  if(cm===12) s.news.push({t:'歳暮・ギフト商戦', b:'12月は年間で最も需要が伸びます（平常月の約1.35倍）。在庫と焙煎能力の確保を。', tone:'info'});
+  if(cm===7)  s.news.push({t:'夏場の需要減', b:'7〜8月は豆の需要が約15%落ち込みます。作り過ぎに注意。', tone:'info'});
+  if(s.m%12===0) s.news.push({t:'今月は決算月', b:'今期の税引前利益の累計に30%の法人税がかかり、月末に現金で支払います。', tone:'warn'});
+  if(rec.emergency>0) s.news.push({t:'緊急融資が実行されました', b:'資金不足を年利15%の短期資金で補いました。早めの返済を。', tone:'bad'});
+  if(rnd(s)>D.ev) return;
+  const ev=[
+    {w:3, ok:()=>true, run:()=>{ s.mkt=clamp(s.mkt+1.8,3.5,12); return {t:'ブラジルで霜害', b:'生豆の国際相場が急騰しました。仕入価格が大きく上がっています。', tone:'bad'}; }},
+    {w:2, ok:()=>true, run:()=>{ s.mkt=clamp(s.mkt-1.2,3.5,12); return {t:'主要産地が豊作', b:'生豆相場が下落。まとめ買いの好機かもしれません。', tone:'good'}; }},
+    {w:3, ok:()=>true, run:()=>{ s.fx=clamp(s.fx+10,115,190); return {t:'円安が進行', b:'輸入原料である生豆の円建て価格が上昇しました。', tone:'bad'}; }},
+    {w:2, ok:()=>true, run:()=>{ s.fx=clamp(s.fx-9,115,190); return {t:'円高に振れる', b:'生豆の円建て価格が下がりました。', tone:'good'}; }},
+    {w:3, ok:()=>!s.flags.chain&&s.m>5, run:()=>{ s.flags.chain=1; s.effects.push({key:'retail',mult:0.82,left:8}); return {t:'近所に大手チェーンが出店', b:'店頭の需要が8ヶ月間およそ18%減ります。差別化かチャネル分散を。', tone:'bad'}; }},
+    {w:3, ok:()=>s.R>=50, run:()=>{ s.A=clamp(s.A+10,0,100); return {t:'雑誌の特集に掲載', b:'評判が編集者の目に留まりました。認知度が10ポイント上昇。', tone:'good'}; }},
+    {w:2, ok:()=>s.m>3, run:()=>{ s.effects.push({key:'cap',mult:0.6,left:1}); s.pending+=180000; return {t:'焙煎機が故障', b:'今月の焙煎能力が40%低下。修理費18万円が発生します。', tone:'bad'}; }},
+    {w:3, ok:()=>s.skill>=4&&!s.flags.award, run:()=>{ s.flags.award=1; s.R=clamp(s.R+8,0,100); s.A=clamp(s.A+5,0,100); return {t:'焙煎競技会で入賞', b:'技術への投資が実りました。評判 +8、認知度 +5。', tone:'good'}; }},
+    {w:2, ok:()=>!s.flags.energy, run:()=>{ s.flags.energy=1; s.effects.push({key:'util',mult:1.3,left:12}); return {t:'エネルギー価格が高騰', b:'光熱費とガス代が12ヶ月間30%上がります。', tone:'bad'}; }},
+    {w:3, ok:()=>true, run:()=>{ s.effects.push({key:'whLead',mult:1.8,left:3}); return {t:'カフェの開業ラッシュ', b:'3ヶ月間、営業活動による卸先の獲得率が1.8倍になります。', tone:'good'}; }},
+    {w:2, ok:()=>true, run:()=>{ s.effects.push({key:'demand',mult:1.15,left:2}); return {t:'テレビでコーヒー特集', b:'2ヶ月間、個人向け需要が15%増えます。', tone:'good'}; }},
+    {w:2, ok:()=>s.m>8&&!s.flags.rec, run:()=>{ s.flags.rec=1; s.effects.push({key:'demand',mult:0.9,left:4}); return {t:'物価高で節約志向', b:'4ヶ月間、個人向け需要が10%落ち込みます。', tone:'bad'}; }},
+    {w:2, ok:()=>s.staff>0&&rec.train<30000, run:()=>{ s.staff--; return {t:'スタッフが退職', b:'成長機会の不足が理由でした。研修投資が月3万円以上あれば防げます。', tone:'bad'}; }}
+  ].filter(e=>e.ok());
+  let w=ev.reduce((a,e)=>a+e.w,0), r=rnd(s)*w;
+  for(const e of ev){ r-=e.w; if(r<=0){ s.news.push(e.run()); break; } }
+}
+
+function valuation(s){
+  const h=s.hist.slice(-6), avgOp=h.length?h.reduce((a,r)=>a+r.op,0)/h.length:0;
+  const eq=equity(s), earn=Math.max(0,avgOp)*12*2.5, brand=s.A*s.R*300;
+  return {eq,earn,brand,total:eq+earn+brand,avgOp};
+}
+const RANKS=[[120000000,'S','地域を代表するロースター'],[60000000,'A','成長軌道に乗った優良店'],[25000000,'B','堅実に利益を出す店'],[8000000,'C','なんとか存続'],[-1e15,'D','再建が必要']];
+function rankOf(v){ for(const r of RANKS){ if(v>=r[0]) return r; } return RANKS[RANKS.length-1]; }
+/* ===== /ENGINE ===== */
+
+</script>
+<script>
+/* ===== UI ===== */
+let S=null, DEC=null, AUTO=true, TAB='dash', P=null;
+const $=id=>document.getElementById(id);
+const SAVE='roastery-save-v1';
+const clone=o=>JSON.parse(JSON.stringify(o));
+const reduced=()=>window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function man(n,sg){ const v=n/10000,a=Math.abs(v); const t=a>=1000?Math.round(a).toLocaleString():(a>=100?a.toFixed(0):a.toFixed(1)); return (n<-49?'−':(sg&&n>49?'+':''))+t+'万'; }
+const yen=n=>'¥'+Math.round(n).toLocaleString();
+const kgf=n=>Math.round(n).toLocaleString()+'kg';
+const pc=n=>Math.round(n*100)+'%';
+const cls=n=>n<0?'neg':'pos';
+const FMT={ price:v=>yen(v)+'/100g', kg:v=>v.toLocaleString()+' kg', yen:v=>v===0?'¥0':man(v)+'円', rate:v=>Math.round(v*100)+'%', staff:v=>(v>0?'+':'')+v+' 人' };
+function getP(o,p){ return p.split('.').reduce((a,k)=>a[k],o); }
+function setP(o,p,v){ const ks=p.split('.'); const l=ks.pop(); ks.reduce((a,k)=>a[k],o)[l]=v; }
+function project(){ P=runMonth(clone(S),DEC,true); return P; }
+function save(){ try{ localStorage.setItem(SAVE,JSON.stringify({S,DEC,AUTO})); }catch(e){} }
+function loadSave(){ try{ const j=JSON.parse(localStorage.getItem(SAVE)||'null'); return j&&j.S&&!j.S.over?j:null; }catch(e){ return null; } }
+
+/* ---------- 部品 ---------- */
+function sl(path,label,min,max,step,fmt,note){
+  const v=clamp(getP(DEC,path),min,max), id='c_'+path.replace('.','_');
+  return `<div class="ctl"><div class="ctl-h"><label for="${id}">${label}</label><output id="${id}_o" for="${id}">${FMT[fmt](v)}</output></div>
+  <div class="ctl-r"><button class="stp" data-step="-1" data-for="${id}" aria-label="${label}を減らす">−</button>
+  <input type="range" id="${id}" data-path="${path}" data-fmt="${fmt}" min="${min}" max="${max}" step="${step}" value="${v}">
+  <button class="stp" data-step="1" data-for="${id}" aria-label="${label}を増やす">＋</button></div>${note?`<p class="hint">${note}</p>`:''}</div>`;
+}
+function lineChart(series,o){
+  o=o||{}; const W=320,H=o.h||130,L=38,R=8,T=8,B=18; const n=Math.max(...series.map(s=>s.data.length));
+  let mn=Math.min(0,...series.flatMap(s=>s.data)), mx=Math.max(1,...series.flatMap(s=>s.data));
+  if(o.tight){ mn=Math.min(...series.flatMap(s=>s.data)); const pad=(mx-mn)*0.15||1; mn-=pad; mx+=pad; }
+  const x=i=>L+(n<=1?0.5:(i/(n-1)))*(W-L-R), y=v=>T+(1-(v-mn)/(mx-mn))*(H-T-B);
+  let g='';
+  for(let i=0;i<=3;i++){ const v=mn+(mx-mn)*i/3; g+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 3"/><text x="${L-4}" y="${y(v)+3}" text-anchor="end" font-size="8.5" fill="var(--muted)" font-family="DM Mono,monospace">${o.fmt?o.fmt(v):man(v)}</text>`; }
+  if(mn<0&&!o.tight) g+=`<line x1="${L}" x2="${W-R}" y1="${y(0)}" y2="${y(0)}" stroke="var(--ink)" stroke-width="1"/>`;
+  const x0=o.x0||1; const ticks=n<=1?[0]:[0,Math.floor((n-1)/2),n-1];
+  for(const i of [...new Set(ticks)]) g+=`<text x="${x(i)}" y="${H-5}" text-anchor="middle" font-size="8.5" fill="var(--muted)">${o.xl?o.xl(i):(i+x0)+'月目'}</text>`;
+  for(const s of series){ if(!s.data.length) continue;
+    const pts=s.data.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+    if(s.area&&s.data.length>1) g+=`<polygon points="${x(0)},${y(Math.max(mn,0))} ${pts} ${x(s.data.length-1)},${y(Math.max(mn,0))}" fill="${s.color}" opacity=".13"/>`;
+    if(s.data.length>1) g+=`<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    const li=s.data.length-1; g+=`<circle cx="${x(li)}" cy="${y(s.data[li])}" r="3.4" fill="${s.color}" stroke="var(--surface)" stroke-width="1.5"/>`; }
+  const lg=series.map(s=>`<span><i class="swatch" style="background:${s.color}"></i>${s.name} <b class="num">${o.fmt?o.fmt(s.data[s.data.length-1]):man(s.data[s.data.length-1])}</b></span>`).join('');
+  return `<div class="row small" style="justify-content:flex-start;gap:14px">${lg}</div><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${o.label||'推移グラフ'}" style="width:100%;height:auto;display:block">${g}</svg>`;
+}
+function roastColor(t){ const c=['#8FA387','#C9B46A','#B8823F','#8A5528','#5A3418','#2E1A0E']; return c[Math.min(5,Math.floor(t*5.999))]; }
+function scene(util){
+  const spd=(6-4.2*clamp(util||0.3,0,1)).toFixed(1);
+  return `<div class="scene" style="--spd:${spd}s"><svg viewBox="0 0 320 132" role="img" aria-label="稼働中の焙煎所">
+  <rect x="0" y="112" width="320" height="20" fill="var(--sunk)"/>
+  <g fill="var(--r0)" stroke="var(--ink)" stroke-width="1.2"><rect x="10" y="88" width="34" height="24" rx="7"/><rect x="26" y="70" width="34" height="22" rx="7"/></g>
+  <text x="43" y="85" font-size="7" text-anchor="middle" fill="var(--ink)" font-family="DM Mono,monospace">60kg</text>
+  <rect x="158" y="14" width="11" height="40" fill="var(--ink)"/>
+  <g fill="var(--muted)"><circle class="puff" cx="163" cy="10" r="5"/><circle class="puff p2" cx="163" cy="10" r="5"/><circle class="puff p3" cx="163" cy="10" r="5"/></g>
+  <polygon points="100,28 142,28 132,52 110,52" fill="var(--sage)" stroke="var(--ink)" stroke-width="1.2"/>
+  <rect x="78" y="50" width="100" height="56" rx="9" fill="var(--ink)"/>
+  <rect x="86" y="104" width="7" height="9" fill="var(--ink)"/><rect x="163" y="104" width="7" height="9" fill="var(--ink)"/>
+  <g fill="var(--accent)"><path class="flame" d="M112 112 q4 -9 0 -14 q7 5 4 14z"/><path class="flame f2" d="M124 112 q4 -11 0 -17 q8 6 4 17z"/><path class="flame f3" d="M136 112 q4 -9 0 -14 q7 5 4 14z"/></g>
+  <circle cx="125" cy="77" r="22" fill="var(--surface)"/><circle cx="125" cy="77" r="16" fill="#2E1A0E"/>
+  <g transform="translate(125 77)"><g class="spin" fill="#B8823F"><ellipse cx="-8" cy="3" rx="3.2" ry="2.2"/><ellipse cx="6" cy="-7" rx="3.2" ry="2.2" fill="#8A5528"/><ellipse cx="8" cy="6" rx="3.2" ry="2.2"/><ellipse cx="-4" cy="-8" rx="3.2" ry="2.2" fill="#C9B46A"/><ellipse cx="0" cy="9" rx="3.2" ry="2.2" fill="#8A5528"/><ellipse cx="-10" cy="-3" rx="2.8" ry="2"/></g></g>
+  <circle cx="125" cy="77" r="16" fill="none" stroke="var(--line)" stroke-width="2"/>
+  <path d="M176 80 l22 12" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/>
+  <g fill="#8A5528"><ellipse class="drop" cx="178" cy="78" rx="2.6" ry="1.8"/><ellipse class="drop d2" cx="178" cy="78" rx="2.6" ry="1.8"/><ellipse class="drop d3" cx="178" cy="78" rx="2.6" ry="1.8"/></g>
+  <ellipse cx="216" cy="103" rx="30" ry="8" fill="var(--sunk)" stroke="var(--ink)" stroke-width="1.5"/>
+  <g transform="translate(216 103) scale(1 .27)"><g class="spin rev"><line x1="-26" y1="0" x2="26" y2="0" stroke="var(--ink)" stroke-width="3"/><circle cx="-14" cy="9" r="3.5" fill="#8A5528"/><circle cx="12" cy="-10" r="3.5" fill="#8A5528"/><circle cx="18" cy="8" r="3.5" fill="#5A3418"/><circle cx="-8" cy="-9" r="3.5" fill="#5A3418"/></g></g>
+  <rect x="264" y="60" width="46" height="52" fill="none" stroke="var(--ink)" stroke-width="1.5"/><line x1="264" y1="78" x2="310" y2="78" stroke="var(--ink)" stroke-width="1.2"/><line x1="264" y1="95" x2="310" y2="95" stroke="var(--ink)" stroke-width="1.2"/>
+  <g fill="var(--roast)"><rect x="268" y="66" width="8" height="12"/><rect x="280" y="66" width="8" height="12"/><rect x="292" y="66" width="8" height="12"/><rect x="268" y="83" width="8" height="12"/><rect x="280" y="83" width="8" height="12"/><rect x="274" y="100" width="8" height="12"/><rect x="298" y="100" width="8" height="12"/></g>
+  <g fill="var(--accent)"><rect x="268" y="70" width="8" height="3"/><rect x="280" y="70" width="8" height="3"/><rect x="292" y="70" width="8" height="3"/><rect x="268" y="87" width="8" height="3"/><rect x="280" y="87" width="8" height="3"/><rect x="274" y="104" width="8" height="3"/><rect x="298" y="104" width="8" height="3"/></g>
+  <g class="walker" fill="var(--muted)"><circle cx="312" cy="96" r="4"/><rect x="308.5" y="101" width="7" height="12" rx="3"/></g>
+  <g class="walker w2" fill="var(--sage)"><circle cx="312" cy="96" r="4"/><rect x="308.5" y="101" width="7" height="12" rx="3"/></g>
+  </svg></div>`;
+}
+
+/* ---------- ヘッダー・ドック ---------- */
+function renderTop(){
+  if(!S){ $('top').innerHTML=`<div class="top-row"><span class="brand">焙煎所<b>経営</b>シミュレーター</span><span class="when">経営学部・経済学部向け</span></div>`; return; }
+  let beans=''; for(let i=1;i<=MONTHS;i++){ const done=i<S.m; beans+=`<i class="bean${i===S.m&&!S.over?' now':''}${i===12?' fy':''}" ${done?`style="background:${roastColor((i-1)/(MONTHS-1))}"`:''}></i>`; }
+  const mLeft=S.over?'終了':monthLabel(S.m)+'（'+S.m+'/'+MONTHS+'）';
+  $('top').innerHTML=`<div class="top-row"><span class="brand">焙煎所<b>経営</b>シミュレーター</span><span class="when">${mLeft}・${DIFF[S.diff].name}</span></div>
+  <div class="stats"><div class="stat"><div class="k">現金</div><div class="v ${S.cash<500000?'neg':''}">${man(S.cash)}円</div></div>
+  <div class="stat"><div class="k">認知度 <span class="num">${S.A.toFixed(0)}</span></div><div class="meter"><i style="width:${S.A}%"></i></div></div>
+  <div class="stat"><div class="k">評判 <span class="num">${S.R.toFixed(0)}</span></div><div class="meter rep"><i style="width:${S.R}%"></i></div></div></div>
+  <div class="beans" aria-label="24ヶ月の進行。経過した月が焙煎度の色で塗られます">${beans}</div>`;
+}
+const TABS=[['dash','概況'],['prod','生産'],['sales','販売'],['inv','投資'],['fin','財務'],['ana','分析']];
+function renderDock(){
+  const d=$('dock'); if(!S||S.over){ d.hidden=true; return; } d.hidden=false;
+  d.innerHTML=`<div class="dock-in"><div class="fore" data-live="dock"></div>
+  <button class="btn pri wide" data-act="run">${monthLabel(S.m)}を実行する</button>
+  <nav class="tabs" aria-label="画面切替">${TABS.map(t=>`<button class="tab${TAB===t[0]?' on':''}" data-tab="${t[0]}">${t[1]}</button>`).join('')}</nav></div>`;
+}
+
+/* ---------- ライブ表示 ---------- */
+const LIVE={
+  dock(){ return `<span>今月の予想</span><span>売上 <b>${man(P.sales.total)}</b></span><span>営業利益 <b class="${cls(P.op)}">${man(P.op,1)}</b></span><span>月末現金 <b class="${P.emergency>0?'neg':''}">${P.emergency>0?'不足':man(P.cash)}</b></span>`; },
+  cap(){ const plan=GR.reduce((a,g)=>a+DEC.roast[g.k],0); const w=P.cap>0?clamp(P.roastedKg/P.cap,0,1):0;
+    const bn=P.capRoast<=P.capLabor?'焙煎機':'人手';
+    let msg=''; if(plan>P.roastedKg+0.5) msg=`<p class="neg small">計画 ${kgf(plan)} のうち ${kgf(P.roastedKg)} しか焙煎できません（能力または生豆の不足）。</p>`;
+    else if(w>0.92) msg=`<p class="small" style="color:var(--warn)">稼働率が92%を超えると品質が落ちます。</p>`;
+    return `<div class="row"><span>焙煎計画 <b class="num">${kgf(P.roastedKg)}</b> / 能力 <b class="num">${kgf(P.cap)}</b></span><span class="pill" style="color:${w>0.92?'var(--warn)':'var(--muted)'}">稼働率 ${pc(w)}</span></div>
+    <div class="gauge"><i style="width:${w*100}%"></i></div><p class="hint">焙煎機 ${kgf(P.capRoast)}・人手 ${kgf(P.capLabor)}。制約になっているのは${bn}です。</p>${msg}`; },
+  prod(k){ const g=GR.find(x=>x.k===k), r=P.g[k], q=DEC.buy[k], up=greenPrice(S,g,q), d=discount(q);
+    const bal=r.lost>0.5?`<b class="neg">欠品 ${kgf(r.lost)}</b>`:`<b>翌月へ ${kgf(r.carry)}</b>`;
+    return `<div class="row"><span>予測需要</span><b>${kgf(r.demand)}</b></div><div class="row"><span>販売見込み</span><b>${kgf(r.sold)}</b></div><div class="row"><span>過不足</span>${bal}</div>
+    ${r.discard>0.5?`<div class="row"><span>前月分の廃棄</span><b class="neg">${kgf(r.discard)}</b></div>`:''}
+    <div class="row"><span>仕入単価${d<1?`（数量割引 −${Math.round((1-d)*100)}%）`:''}</span><b>${yen(up)}/kg</b></div><div class="row"><span>仕入額</span><b>${man(q*up)}円</b></div>`; },
+  price(k){ const g=GR.find(x=>x.k===k), p=DEC.price[k], r=P.g[k], unit=unitCost(g)/10;
+    const mR=p-unit-45-p*0.032, e=elasticity(g,p,'retail');
+    return `<div class="row"><span>需要の価格弾力性（店頭）</span><b>${e.toFixed(2)}</b></div>
+    <p class="hint">${e>1.05?'弾力的：値下げすると売上高が増えます。':(e<0.95?'非弾力的：値上げしても売上高は増えます。':'ほぼ1：売上高が最大になる価格帯です。')}</p>
+    <div class="row"><span>予測需要 店頭 / EC / 卸</span><b>${Math.round(r.dR)} / ${Math.round(r.dE)} / ${Math.round(r.dW)} kg</b></div>
+    <div class="row"><span>店頭の限界利益</span><b class="${cls(mR)}">${yen(mR)}/100g（${pc(mR/p)}）</b></div>`; },
+  wh(){ const leads=whLeads(S,DEC), ch=whChurn(S,DEC,0), i=whIndex(DEC);
+    return `<div class="row"><span>卸価格 ブレンド / シングル</span><b>${yen(DEC.price.blend*DEC.whRate*10)} / ${yen(DEC.price.so*DEC.whRate*10)} /kg</b></div>
+    <div class="row"><span>相場比</span><b>${pc(i)}</b></div><div class="row"><span>新規獲得の見込み</span><b>月 ${leads.toFixed(1)} 軒</b></div><div class="row"><span>解約率の見込み</span><b class="${ch>0.08?'neg':''}">月 ${(ch*100).toFixed(1)}%</b></div>
+    <p class="hint">現在の卸先 ${S.accounts} 軒。1軒あたり月およそ12kg。代金の回収は翌月です。</p>`; },
+  mkt(){ return `<div class="row"><span>来月の認知度（予想）</span><b>${S.A.toFixed(0)} → ${P.A.toFixed(0)}</b></div><p class="hint">認知度は毎月15%ずつ忘れられます。広告の効果は逓減します（月25万円で上げ幅の約63%に到達）。</p>`; },
+  inv(){ const add=INV.filter(it=>DEC.invest[it.k]&&!S.equip[it.k]).reduce((a,it)=>a+it.cost,0);
+    return `<div class="row"><span>今月の設備投資</span><b>${add?man(add)+'円':'なし'}</b></div><div class="row"><span>実行後の焙煎機能力</span><b>${kgf(P.capRoast)}</b></div><div class="row"><span>実行後の人手能力（${P.staff}人＋自分）</span><b>${kgf(P.capLabor)}</b></div><div class="row"><span>実行後の月間固定費</span><b>${man(P.fixedSum)}円</b></div>`; },
+  skill(){ return `<div class="row"><span>焙煎技術（10段階）</span><b>${S.skill.toFixed(1)} → ${P.skill.toFixed(1)}</b></div><p class="hint">技術が上がると品質と評判が上がり、歩留まりが改善します（現在の焙煎ロス ${(lossRate(S)*100).toFixed(1)}%）。</p>`; },
+  fin(){ const rows=[['月初の現金',P.cash0,0],['借入',P.borrow,1],['返済',-P.repay,1],['設備投資',-P.capex,1],['生豆の仕入',-P.purchase,1],['焙煎のガス代',-P.gasTotal,1],['店頭・ECの売上',P.sales.retail+P.sales.ec,1],['売掛金の回収（先月の卸）',P.collected,1],['包装・手数料',-(P.pack+P.fees),1],['固定費・販促・その他',-(P.fixedSum+P.ad+P.salesExp+P.train+P.storage+P.oneoff),1],['支払利息',-P.interest,1],['法人税',-P.tax,1]];
+    return `<table>${rows.filter(r=>!r[2]||Math.abs(r[1])>0.5).map(r=>`<tr><td>${r[0]}</td><td class="${r[2]?cls(r[1]):''}">${r[2]?man(r[1],1):man(r[1])}</td></tr>`).join('')}
+    <tr class="total"><td>月末の現金（予想）</td><td class="${P.emergency>0?'neg':''}">${P.emergency>0?'不足 → 緊急融資 '+man(P.emergency):man(P.cash)}</td></tr></table>
+    <p class="hint">今月の卸売上 ${man(P.sales.wh)}円 は売掛金になり、入金は来月です。利益と現金がずれる理由のひとつです。</p>`; },
+  ana(){ const v=P.varRatio, F=P.fixedAll, bep=v<1?F/(1-v):Infinity, s=P.sales.total, ms=s>0?(s-bep)/s:0, w=bep>0&&isFinite(bep)?clamp(s/(bep*1.6),0,1):0;
+    return `<div class="grid3"><div class="tile"><div class="k">限界利益率</div><div class="v">${pc(1-v)}</div></div><div class="tile"><div class="k">固定費（月）</div><div class="v">${man(F)}</div></div><div class="tile"><div class="k">損益分岐点売上高</div><div class="v">${isFinite(bep)?man(bep):'—'}</div></div></div>
+    <div style="position:relative;padding-top:16px"><div class="gauge"><i style="width:${w*100}%"></i></div><div style="position:absolute;left:62.5%;top:0;bottom:0;border-left:2px solid var(--ink)"></div><div class="small" style="position:absolute;left:62.5%;top:-3px;transform:translateX(-50%);white-space:nowrap">損益分岐点</div></div>
+    <p class="small">予想売上 <b class="num">${man(s)}円</b>、安全余裕率 <b class="num ${cls(ms)}">${pc(ms)}</b>。${ms<0?'売上が損益分岐点に届いていません。':'売上がこの割合だけ落ちても赤字になりません。'}</p>`; },
+  contrib(){ return `<div class="scroll"><table><tr><th>100gあたり限界利益</th><th>店頭</th><th>EC</th><th>卸</th></tr>${GR.map(g=>{ const p=DEC.price[g.k],u=unitCost(g)/10; const a=p-u-45-p*0.032,b=p-u-45-p*0.10-65,c=p*DEC.whRate-u-12; return `<tr><td>${g.name}</td><td class="${cls(a)}">${yen(a)}</td><td class="${cls(b)}">${S.equip.ec?yen(b):'—'}</td><td class="${cls(c)}">${g.wh?yen(c):'—'}</td></tr>`; }).join('')}</table></div>
+    <p class="hint">焙煎能力が足りないときは、能力1kgあたりの限界利益が高い商品・チャネルを優先すると利益が最大になります。</p>`; },
+  ratios(){ const eq=equity(S), ta=eq+S.loan+S.eloan; let gk=0; for(const g of GR){ gk+=S.green[g.k].kg; }
+    return `<div class="grid3"><div class="tile"><div class="k">自己資本比率</div><div class="v">${ta>0?pc(eq/ta):'—'}</div></div><div class="tile"><div class="k">ROE（年率換算）</div><div class="v ${cls(P.net)}">${eq>0?pc(P.net*12/eq):'—'}</div></div><div class="tile"><div class="k">生豆在庫</div><div class="v">${kgf(gk)}</div></div></div>`; }
+};
+function unitCost(g){ const st=S.green[g.k], q=DEC.buy[g.k]; const c=(st.kg+q)>0?(st.kg*st.cost+q*greenPrice(S,g,q))/(st.kg+q):greenPrice(S,g,0); return c/(1-lossRate(S))+gasCost(S); }
+function refreshLive(){ if(!S||S.over) return; project(); document.querySelectorAll('[data-live]').forEach(el=>{ const [n,a]=el.dataset.live.split(':'); if(LIVE[n]) el.innerHTML=LIVE[n](a); }); }
+
+/* ---------- 各画面 ---------- */
+const V={
+  dash(){ const h=S.hist, last=h[h.length-1], prev=h[h.length-2], val=valuation(S), rk=rankOf(val.total);
+    const news=S.news.map(n=>`<div class="news ${n.tone}"><h3><span class="pill">${{good:'追い風',bad:'逆風',warn:'注意',info:'季節'}[n.tone]||'情報'}</span>${n.t}</h3><p class="small">${n.b}</p></div>`).join('');
+    const d=(a,b)=>prev?`<div class="d ${cls(a-b)}">${man(a-b,1)}</div>`:'';
+    const cap=capacity(S);
+    return `${news}${scene(last?last.util:0.3)}
+    <div class="grid3"><div class="tile"><div class="k">焙煎能力</div><div class="v">${kgf(cap.eff)}</div></div><div class="tile"><div class="k">卸先</div><div class="v">${S.accounts}軒</div></div><div class="tile"><div class="k">スタッフ</div><div class="v">${S.staff}人</div></div></div>
+    ${last?`<section class="card"><div class="row"><h2>先月の成績</h2><span class="small muted">${monthLabel(last.m)}</span></div>
+      <div class="grid3"><div class="tile"><div class="k">売上高</div><div class="v">${man(last.sales.total)}</div>${d(last.sales.total,prev&&prev.sales.total)}</div><div class="tile"><div class="k">営業利益</div><div class="v ${cls(last.op)}">${man(last.op,1)}</div>${d(last.op,prev&&prev.op)}</div><div class="tile"><div class="k">稼働率</div><div class="v">${pc(last.util)}</div></div></div>
+      ${lineChart([{name:'売上高',data:h.map(r=>r.sales.total),color:'var(--roast)',area:1},{name:'営業利益',data:h.map(r=>r.op),color:'var(--accent)'},{name:'現金',data:h.map(r=>r.cash),color:'var(--sage)'}],{label:'売上高・営業利益・現金の推移'})}</section>`
+    :`<section class="card"><h2>最初の1ヶ月</h2><p class="small">下のタブで「生産・販売・投資・財務」を決め、赤いボタンで月を進めます。何もしなければ固定費に押されて赤字になります。まずは広告で認知度を上げるか、卸先を開拓するか、方針を決めましょう。</p><p class="small muted">仕入と焙煎の量は需要予測に合わせて自動で入ります。生産タブで手動に切り替えられます。</p></section>`}
+    <section class="card"><div class="row"><h2>生豆相場</h2><span class="small muted">ブレンド用・円/kg</span></div>
+      ${lineChart([{name:'仕入単価',data:S.mktHist.slice(-12).map(m=>(m.mkt+2)*m.fx*1.25),color:'var(--sage)',area:1}],{h:105,tight:1,fmt:v=>yen(v),xl:i=>{const n=Math.min(12,S.mktHist.length); return i===n-1?'今月':(n-1-i)+'ヶ月前';},label:'生豆の仕入単価の推移'})}
+      <p class="small muted">国際相場 <span class="num">$${S.mkt.toFixed(2)}/kg</span>・為替 <span class="num">${S.fx.toFixed(0)}円/ドル</span>。相場は平均（$6.5、150円）に戻る傾向があります。</p></section>
+    <section class="card"><div class="row"><h2>企業価値</h2><span class="pill" style="color:var(--accent)">現在のランク ${rk[1]}</span></div>
+      <div class="grid3"><div class="tile"><div class="k">純資産</div><div class="v ${cls(val.eq)}">${man(val.eq)}</div></div><div class="tile"><div class="k">収益力</div><div class="v">${man(val.earn)}</div></div><div class="tile"><div class="k">ブランド</div><div class="v">${man(val.brand)}</div></div></div>
+      <p class="small muted">24ヶ月後の企業価値（純資産＋直近6ヶ月の平均営業利益の2.5年分＋ブランド）で評価します。合計 <b class="num">${man(val.total)}円</b>。S: 1.2億円、A: 6,000万円、B: 2,500万円、C: 800万円。</p></section>`; },
+  prod(){ return `<section class="card"><div class="row"><h2>焙煎能力</h2><label class="sw"><input type="checkbox" id="auto" ${AUTO?'checked':''}>需要予測に自動で合わせる</label></div><div class="live" data-live="cap"></div>
+      <p class="hint">焙煎豆は鮮度が命です。売れ残りは翌月まで販売でき、それでも残ると廃棄になります。生豆は保管できますが1kgあたり月25円の保管料がかかります。</p></section>
+    ${GR.map(g=>{ const st=S.green[g.k], c=S.carry[g.k]; return `<section class="card"><div class="row"><h3><i class="swatch" style="background:${g.col}"></i>${g.name}</h3><span class="small muted">${g.tag}</span></div>
+      <div class="grid2"><div class="tile"><div class="k">生豆の在庫</div><div class="v">${kgf(st.kg)}</div></div><div class="tile"><div class="k">焙煎済み（前月分）</div><div class="v">${kgf(c.kg)}</div></div></div>
+      ${sl('buy.'+g.k,'生豆を仕入れる',0,g.k==='micro'?400:1500,10,'kg')}${sl('roast.'+g.k,'焙煎する（製品重量）',0,g.k==='micro'?300:1500,1,'kg')}
+      <div class="live" data-live="prod:${g.k}"></div></section>`; }).join('')}
+    <p class="hint">1回の仕入が240kg以上で5%、600kg以上で10%の数量割引。相場が安い月のまとめ買いは有効ですが、資金が在庫に寝ます。</p>`; },
+  sales(){ return `${GR.map(g=>`<section class="card"><div class="row"><h3><i class="swatch" style="background:${g.col}"></i>${g.name}</h3><span class="small muted">相場 ${yen(g.ref)}/100g</span></div>
+      ${sl('price.'+g.k,'店頭・ECの販売価格',g.min,g.max,10,'price')}<div class="live" data-live="price:${g.k}"></div></section>`).join('')}
+    <section class="card"><h2>卸売（カフェ・飲食店）</h2>${sl('whRate','卸の掛け率（小売価格比）',0.45,0.85,0.01,'rate')}${sl('sales','営業活動費',0,500000,10000,'yen','サンプル提供や訪問営業の費用です。')}<div class="live" data-live="wh"></div></section>
+    <section class="card"><h2>広告宣伝</h2>${sl('ad','広告宣伝費',0,800000,10000,'yen')}<div class="live" data-live="mkt"></div></section>`; },
+  inv(){ return `<section class="card"><h2>設備投資</h2>${INV.map(it=>{ const own=S.equip[it.k], on=DEC.invest[it.k]; return `<div class="row" style="align-items:center;flex-wrap:nowrap"><div style="min-width:0"><h3>${it.name} <span class="num muted" style="font-weight:400">${man(it.cost)}円</span></h3><p class="small muted">${it.desc}。${it.life}ヶ月で減価償却（月 ${man(it.cost/it.life)}円）</p></div>
+      ${own?'<span class="pill" style="color:var(--good)">導入済み</span>':`<button class="btn${on?' on':''}" data-toggle="invest.${it.k}" aria-pressed="${on?'true':'false'}">${on?'今月買う':'買う'}</button>`}</div>`; }).join('')}<div class="live" data-live="inv"></div></section>
+    <section class="card"><h2>人材</h2>${sl('hire','スタッフの採用・解雇',-S.staff,3,1,'staff','1人で月260kgの製造・販売をこなせます。人件費は月28万円、採用費は1人10万円、解雇は1ヶ月分の手当が必要です。')}
+      ${sl('train','研修・技術向上費',0,200000,10000,'yen')}<div class="live" data-live="skill"></div></section>`; },
+  fin(){ const lim=DIFF[S.diff].limit, eq=equity(S), last=S.hist[S.hist.length-1];
+    const pl=last?`<section class="card"><div class="row"><h2>損益計算書</h2><span class="small muted">${monthLabel(last.m)}</span></div>${plTable(last)}</section>`:'';
+    return `<section class="card"><h2>今月の資金繰り（予想）</h2><div data-live="fin"></div></section>
+    <section class="card"><h2>借入と返済</h2><p class="small muted">借入残高 <b class="num">${man(S.loan)}円</b>（年利3.6%、枠 ${man(lim)}円）${S.eloan>0?`・緊急融資 <b class="num neg">${man(S.eloan)}円</b>（年利15%）`:''}</p>
+      ${sl('borrow','今月借りる',0,Math.max(0,lim-S.loan),500000,'yen')}${sl('repay','今月返す',0,Math.max(0,Math.ceil((S.loan+S.eloan)/100000)*100000),100000,'yen','緊急融資から先に返済されます。')}
+      <p class="hint">月末に現金が不足すると、自動的に年利15%の緊急融資が入ります。借入総額が枠の1.3倍を超えると倒産です。</p></section>
+    <section class="card"><h2>貸借対照表</h2><table><tr><th>資産</th><th>金額</th></tr><tr><td>現金</td><td>${man(S.cash)}</td></tr><tr><td>売掛金</td><td>${man(S.ar)}</td></tr><tr><td>在庫（生豆・焙煎豆）</td><td>${man(inventory(S))}</td></tr><tr><td>設備（簿価）</td><td>${man(fixedAssets(S))}</td></tr>
+      <tr><th>負債・純資産</th><th></th></tr><tr><td>借入金</td><td>${man(S.loan+S.eloan)}</td></tr><tr class="total"><td>純資産</td><td class="${cls(eq)}">${man(eq)}</td></tr></table></section>${pl}`; },
+  ana(){ return `<section class="card"><h2>損益分岐点（今月の予想）</h2><div data-live="ana" style="display:flex;flex-direction:column;gap:10px"></div></section>
+    <section class="card"><h2>商品別の採算</h2><div data-live="contrib" style="display:flex;flex-direction:column;gap:8px"></div></section>
+    <section class="card"><h2>財務指標</h2><div data-live="ratios"></div></section>
+    <section class="card"><h2>このゲームで使う理論</h2><dl>
+      <div><dt>需要の価格弾力性</dt><dd>価格を1%上げたとき需要が何%減るか。1より大きい商品は値下げで、小さい商品は値上げで売上高が増えます。ブレンドは弾力的、マイクロロットは非弾力的です。</dd></div>
+      <div><dt>損益分岐点（CVP分析）</dt><dd>固定費÷限界利益率。家賃や人件費を増やす投資は、分岐点を押し上げる代わりに能力の上限を広げます。</dd></div>
+      <div><dt>運転資本と黒字倒産</dt><dd>卸は翌月入金、仕入は即払い。急成長すると利益が出ていても現金が先に尽きます。</dd></div>
+      <div><dt>新聞売り子問題</dt><dd>鮮度商品の生産量決定。作り過ぎは廃棄、不足は機会損失と評判の低下。限界利益が大きい商品ほど多めに作るのが合理的です。</dd></div>
+      <div><dt>制約理論</dt><dd>焙煎機と人手のうち小さい方が生産の上限。ボトルネック以外を増強しても産出は増えません。</dd></div>
+      <div><dt>規模の経済と数量割引</dt><dd>大型焙煎機はガス代が下がり、まとめ買いは単価が下がります。ただし在庫に資金が拘束されます。</dd></div>
+      <div><dt>ブランド資産</dt><dd>認知度は広告で積み上がり放置で減衰するストック、評判は品質と欠品で決まります。どちらも需要曲線を右に動かします。</dd></div>
+      <div><dt>為替・商品相場リスク</dt><dd>生豆はドル建ての国際商品。円安と相場高は原価を直撃します。</dd></div></dl></section>`; }
+};
+function plTable(r){ const vc=r.cogs+r.waste+r.pack+r.fees;
+  const rows=[['売上高',r.sales.total,'t'],['　店頭',r.sales.retail],['　EC',r.sales.ec],['　卸',r.sales.wh],['売上原価（生豆・ガス）',-r.cogs],['廃棄損',-r.waste],['包装・販売手数料',-(r.pack+r.fees)],['限界利益',r.sales.total-vc,'t'],['家賃・光熱費・その他',-(r.fixed.rent+r.fixed.util+r.fixed.other+r.fixed.ecfee)],['人件費（自分＋スタッフ）',-(r.fixed.owner+r.fixed.staff)],['広告・営業・研修',-(r.ad+r.salesExp+r.train)],['保管料・臨時費用',-(r.storage+r.oneoff)],['減価償却費',-r.dep],['営業利益',r.op,'t'],['支払利息',-r.interest],['法人税',-r.tax],['当期純利益',r.net,'t']];
+  return `<table>${rows.filter(x=>x[2]||Math.abs(x[1])>0.5).map(x=>`<tr${x[2]?' class="total"':''}><td>${x[0]}</td><td class="${x[2]&&x[0]!=='売上高'?cls(x[1]):''}">${man(x[1])}</td></tr>`).join('')}</table>`; }
+
+function render(){
+  renderTop(); renderDock();
+  if(!S){ $('view').innerHTML=startView(); return; }
+  if(S.over){ $('view').innerHTML=endView(); return; }
+  $('view').innerHTML=V[TAB](); refreshLive();
+}
+function startView(){ const sv=loadSave();
+  return `<h1 class="hero-t">豆を焼いて、<br><em>数字</em>で勝つ。</h1>${scene(0.55)}
+  <section class="card"><p>あなたはスペシャルティコーヒーのロースター。1kg焙煎機と小さな店から始め、24ヶ月で企業価値を最大化します。</p>
+    <ul style="display:flex;flex-direction:column;gap:5px;padding-left:18px;font-size:13.5px"><li>毎月、仕入・焙煎量・価格・広告・投資・借入を決める</li><li>販路は店頭・EC・卸の3つ。卸は入金が1ヶ月遅れる</li><li>生豆相場と為替が動き、霜害や競合出店などの出来事が起きる</li><li>決算月（12・24ヶ月目）に利益の30%を納税する</li></ul></section>
+  <section class="card"><h2>難易度を選んで開業</h2><div class="lv"><button class="btn" data-act="start" data-diff="easy">ゼミ入門<span>資金450万円</span></button><button class="btn pri" data-act="start" data-diff="normal">標準<span style="color:inherit">資金300万円</span></button><button class="btn" data-act="start" data-diff="hard">上級<span>資金220万円</span></button></div>
+    ${sv?`<button class="btn wide" data-act="continue">続きから（${monthLabel(sv.S.m)}）</button>`:''}<p class="hint">上級は相場変動が大きく、出来事も頻発します。進行はこの端末に自動保存されます。</p></section>`; }
+function endView(){ const v=valuation(S), rk=rankOf(v.total), h=S.hist, bk=S.over==='bankrupt';
+  const sum=k=>h.reduce((a,r)=>a+r[k],0), sales=h.reduce((a,r)=>a+r.sales.total,0), mx=Math.max(1,v.eq,v.earn,v.brand);
+  const avgU=h.reduce((a,r)=>a+r.util,0)/Math.max(1,h.length);
+  const rev=[];
+  if(S.tot.lost>sales*0.05) rev.push('欠品による機会損失が売上の5%を超えました。能力増強か値上げで需給を合わせる余地がありました。');
+  if(S.tot.waste>sales*0.02) rev.push('廃棄損が大きめです。需要の季節変動（夏の落ち込み）に合わせた焙煎量の調整が有効です。');
+  if(avgU<0.55) rev.push('平均稼働率が低く、固定費を回収しきれていません。能力に見合う需要づくり（広告・卸開拓）が課題でした。');
+  if(avgU>0.9) rev.push('能力がほぼ常に上限でした。設備と人への投資をもっと早く行えば成長できた可能性があります。');
+  if(S.tot.interest>sum('op')*0.15&&S.tot.interest>300000) rev.push('支払利息の負担が重くなりました。緊急融資（年利15%）を避ける資金計画が重要です。');
+  if(S.A<35) rev.push('認知度が低いままでした。認知度は需要全体を押し上げるストック資産です。');
+  if(!rev.length) rev.push('需給・資金・投資のバランスが取れた経営でした。価格と商品構成をさらに磨けば、もう一段上を狙えます。');
+  return `<section class="card" style="align-items:center;text-align:center;gap:14px"><p class="small muted">${bk?'資金繰りが破綻し、'+monthLabel(Math.min(S.m-1,MONTHS))+'で倒産しました':'24ヶ月の経営が終わりました'}</p><div class="stamp">${bk?'D':rk[1]}</div><h2>${bk?'倒産':rk[2]}</h2>
+    <p>企業価値 <b class="num" style="font-size:22px">${man(v.total)}円</b></p></section>
+  <section class="card"><h2>企業価値の内訳</h2>${[['純資産',v.eq,'var(--sage)'],['収益力',v.earn,'var(--accent)'],['ブランド',v.brand,'var(--roast)']].map(b=>`<div class="bar"><span>${b[0]}</span><span class="t"><i data-w="${clamp(b[1]/mx,0,1)*100}" style="background:${b[2]}"></i></span><span class="n">${man(b[1])}</span></div>`).join('')}</section>
+  <section class="card"><h2>24ヶ月の軌跡</h2>${h.length?lineChart([{name:'売上高',data:h.map(r=>r.sales.total),color:'var(--roast)',area:1},{name:'営業利益',data:h.map(r=>r.op),color:'var(--accent)'},{name:'現金',data:h.map(r=>r.cash),color:'var(--sage)'}],{h:150}):''}
+    <div class="grid3"><div class="tile"><div class="k">累計売上高</div><div class="v">${man(sales)}</div></div><div class="tile"><div class="k">累計営業利益</div><div class="v ${cls(sum('op'))}">${man(sum('op'))}</div></div><div class="tile"><div class="k">平均稼働率</div><div class="v">${pc(avgU)}</div></div>
+    <div class="tile"><div class="k">機会損失（欠品）</div><div class="v">${man(S.tot.lost)}</div></div><div class="tile"><div class="k">廃棄損</div><div class="v">${man(S.tot.waste)}</div></div><div class="tile"><div class="k">納税額</div><div class="v">${man(S.tot.tax)}</div></div></div></section>
+  <section class="card"><h2>経営の振り返り</h2><ul class="adv">${rev.map(t=>`<li>${t}</li>`).join('')}</ul></section>
+  <button class="btn pri wide" data-act="restart">もう一度経営する</button>`; }
+
+/* ---------- 月次実行 ---------- */
+function advise(r){ const a=[];
+  if(r.emergency>0) a.push(['bad',`現金が不足し、緊急融資 ${man(r.emergency)}円（年利15%）を受けました。仕入や投資の時期と、売掛金の回収の遅れを見直しましょう。`]);
+  if(r.lostRatio>0.08) a.push(['bad',`欠品で ${kgf(r.lostKg)}（約${man(r.lostYen)}円）の販売機会を逃し、評判も下がりました。${r.util>0.9?'能力が上限です。設備・人員の増強か、値上げで需要を絞る手があります。':'焙煎量か生豆の仕入が足りていません。'}`]);
+  const disc=GR.reduce((x,g)=>x+r.g[g.k].discard,0); if(disc>3) a.push(['warn',`前月の売れ残り ${kgf(disc)} を廃棄しました（${man(r.waste)}円の損失）。`]);
+  if(r.op<0) { const bep=r.varRatio<1?r.fixedAll/(1-r.varRatio):0; a.push(['bad',`営業赤字です。損益分岐点売上高は約${man(bep)}円、実際の売上は${man(r.sales.total)}円でした。`]); }
+  if(r.util<0.5&&r.cap>300) a.push(['warn',`稼働率が${pc(r.util)}にとどまりました。能力が余っています。需要を増やす施策か、卸の拡大を検討しましょう。`]);
+  if(r.util>0.92) a.push(['warn','稼働率が92%を超え、焙煎品質が落ちました。']);
+  if(r.sales.wh>r.cash*0.8&&r.sales.wh>500000) a.push(['warn',`売掛金が${man(r.sales.wh)}円あります。卸の比率が高いほど、現金は利益より遅れて増えます。`]);
+  if(r.lostAcc>=2) a.push(['warn',`卸先が${r.lostAcc}軒離れました。欠品や高い掛け率が原因です。`]);
+  if(r.A<r.A0-1&&r.ad<50000) a.push(['info','広告を絞ったため認知度が下がっています。']);
+  if(r.tax>0) a.push(['info',`決算で法人税 ${man(r.tax)}円 を納めました。`]);
+  if(r.op>0&&!a.some(x=>x[0]==='bad')) a.push(['good',`営業利益率は${pc(r.op/r.sales.total)}。${r.util>0.8?'能力の上限が近づいています。次の投資を考える時期です。':'この調子で需要を伸ばしましょう。'}`]);
+  return a.slice(0,4); }
+function runTurn(){
+  const root=$('ovroot');
+  root.innerHTML=`<div class="ov roasting" role="status"><div class="box"><h2>${monthLabel(S.m)}を営業中</h2>
+  <svg viewBox="0 0 300 130" style="width:100%;height:auto" aria-hidden="true"><line x1="24" y1="10" x2="24" y2="100" stroke="var(--line)"/><line x1="24" y1="100" x2="292" y2="100" stroke="var(--line)"/>
+  <text x="20" y="16" font-size="8" text-anchor="end" fill="var(--muted)">℃</text><text x="292" y="96" font-size="8" text-anchor="end" fill="var(--muted)">分</text>
+  <path class="curve" d="M26 34 C40 92 56 96 72 88 C120 64 190 40 288 16" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/>
+  <g class="crack"><line x1="214" y1="20" x2="214" y2="100" stroke="var(--ink)" stroke-dasharray="3 3"/><text x="214" y="14" font-size="9" text-anchor="middle" fill="var(--ink)">1ハゼ</text></g>
+  <defs><linearGradient id="rg" x1="0" x2="1"><stop offset="0" stop-color="#8FA387"/><stop offset=".3" stop-color="#C9B46A"/><stop offset=".55" stop-color="#B8823F"/><stop offset=".8" stop-color="#8A5528"/><stop offset="1" stop-color="#4A2A14"/></linearGradient></defs>
+  <rect x="24" y="110" width="268" height="10" rx="5" fill="var(--sunk)"/><rect class="wipe" x="24" y="110" width="268" height="10" rx="5" fill="url(#rg)"/></svg>
+  <p class="small muted">仕入 → 焙煎 → 販売 → 月次決算</p></div></div>`;
+  setTimeout(()=>{ const rec=runMonth(S,DEC,false); showResult(rec); }, reduced()?50:1750);
+}
+function showResult(r){
+  const mx=Math.max(1,r.sales.retail,r.sales.ec,r.sales.wh), adv=advise(r);
+  const next=S.over?'':S.news.filter(n=>n.tone!=='info'||true).map(n=>`<div class="news ${n.tone}"><h3><span class="pill">${{good:'追い風',bad:'逆風',warn:'注意',info:'季節'}[n.tone]}</span>${n.t}</h3><p class="small">${n.b}</p></div>`).join('');
+  $('ovroot').innerHTML=`<div class="ov"><div class="sheet" role="dialog" aria-label="月次結果"><div class="row"><h2>${monthLabel(r.m)}の結果</h2><span class="pill" style="color:${r.op>=0?'var(--good)':'var(--bad)'}">${r.op>=0?'黒字':'赤字'}</span></div>
+  <div class="big3"><div class="tile"><div class="k">売上高</div><div class="v" data-count="${r.sales.total}">0</div></div><div class="tile"><div class="k">営業利益</div><div class="v ${cls(r.op)}" data-count="${r.op}" data-sg="1">0</div></div><div class="tile"><div class="k">月末の現金</div><div class="v" data-count="${r.cash}">0</div></div></div>
+  <div style="display:flex;flex-direction:column;gap:6px">${[['店頭',r.sales.retail,'var(--roast)'],['EC',r.sales.ec,'var(--sage)'],['卸',r.sales.wh,'var(--accent)']].map(b=>`<div class="bar"><span>${b[0]}</span><span class="t"><i data-w="${b[1]/mx*100}" style="background:${b[2]}"></i></span><span class="n">${man(b[1])}</span></div>`).join('')}</div>
+  <div class="scroll"><table><tr><th>商品（kg）</th><th>需要</th><th>販売</th><th>欠品</th><th>廃棄</th></tr>${GR.map(g=>{const x=r.g[g.k]; return `<tr><td>${g.name}</td><td>${Math.round(x.demand)}</td><td>${Math.round(x.sold)}</td><td class="${x.lost>0.5?'neg':''}">${Math.round(x.lost)}</td><td class="${x.discard>0.5?'neg':''}">${Math.round(x.discard)}</td></tr>`;}).join('')}</table></div>
+  <div class="grid3"><div class="tile"><div class="k">認知度</div><div class="v">${r.A0.toFixed(0)} → ${r.A.toFixed(0)}</div></div><div class="tile"><div class="k">評判</div><div class="v">${r.R0.toFixed(0)} → ${r.R.toFixed(0)}</div></div><div class="tile"><div class="k">卸先</div><div class="v">${r.acc0} → ${r.accounts}軒</div></div></div>
+  <ul class="adv">${adv.map(a=>`<li class="${a[0]}">${a[1]}</li>`).join('')}</ul>
+  <details><summary class="small" style="cursor:pointer">損益計算書を見る</summary><div style="margin-top:8px">${plTable(r)}</div></details>
+  ${next?`<h3>来月のニュース</h3>${next}`:''}
+  <button class="btn pri wide" data-act="next">${S.over?'最終結果を見る':'翌月へ進む'}</button></div></div>`;
+  animate($('ovroot'));
+}
+function animate(root){
+  requestAnimationFrame(()=>requestAnimationFrame(()=>root.querySelectorAll('[data-w]').forEach(el=>el.style.width=el.dataset.w+'%')));
+  root.querySelectorAll('[data-count]').forEach(el=>{ const to=+el.dataset.count, sg=el.dataset.sg; if(reduced()){ el.textContent=man(to,sg); return; }
+    const t0=performance.now(), dur=900; const step=t=>{ const k=Math.min(1,(t-t0)/dur), e=1-Math.pow(1-k,3); el.textContent=man(to*e,sg); if(k<1) requestAnimationFrame(step); else el.textContent=man(to,sg); }; requestAnimationFrame(step); });
+}
+function rain(){ if(reduced()) return; const d=document.createElement('div'); d.className='rain'; for(let i=0;i<34;i++){ const b=document.createElement('i'); b.style.left=(Math.random()*100)+'%'; b.style.background=roastColor(0.35+Math.random()*0.6); b.style.animationDuration=(2.2+Math.random()*2.2)+'s'; b.style.animationDelay=(Math.random()*1.2)+'s'; d.appendChild(b); } document.body.appendChild(d); setTimeout(()=>d.remove(),6000); }
+function nextMonth(){
+  $('ovroot').innerHTML='';
+  if(S.over){ try{ localStorage.removeItem(SAVE); }catch(e){} TAB='dash'; render(); animate($('view')); if(S.over==='end'&&'SA'.includes(rankOf(valuation(S).total)[1])) rain(); window.scrollTo(0,0); return; }
+  DEC.invest={}; DEC.hire=0; DEC.borrow=0; DEC.repay=0; if(AUTO) autoFit(S,DEC);
+  TAB='dash'; save(); render(); window.scrollTo(0,0);
+}
+function start(diff){ S=newGame(diff,(Date.now()^(Math.random()*1e9))|0); DEC=defaultDec(); AUTO=true; autoFit(S,DEC); TAB='dash'; save(); render(); window.scrollTo(0,0); }
+
+/* ---------- イベント ---------- */
+document.addEventListener('input',e=>{ const t=e.target;
+  if(t.id==='auto'){ AUTO=t.checked; if(AUTO){ autoFit(S,DEC); render(); } return; }
+  if(!t.dataset||!t.dataset.path) return; const p=t.dataset.path; setP(DEC,p,+t.value); $(t.id+'_o').textContent=FMT[t.dataset.fmt](+t.value);
+  if(p.startsWith('buy.')||p.startsWith('roast.')){ if(AUTO){ AUTO=false; const c=$('auto'); if(c) c.checked=false; } } else if(AUTO){ autoFit(S,DEC); }
+  refreshLive(); });
+document.addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return;
+  if(b.dataset.step){ const i=$(b.dataset.for); const v=clamp(+i.value+(+b.dataset.step)*(+i.step),+i.min,+i.max); i.value=v; i.dispatchEvent(new Event('input',{bubbles:true})); return; }
+  if(b.dataset.toggle){ const p=b.dataset.toggle; setP(DEC,p,!getP(DEC,p)); if(AUTO) autoFit(S,DEC); render(); return; }
+  if(b.dataset.tab){ TAB=b.dataset.tab; render(); window.scrollTo(0,0); return; }
+  const a=b.dataset.act; if(!a) return;
+  if(a==='start') start(b.dataset.diff);
+  else if(a==='continue'){ const sv=loadSave(); if(sv){ S=sv.S; DEC=sv.DEC; AUTO=sv.AUTO; render(); } }
+  else if(a==='run'){ b.disabled=true; runTurn(); }
+  else if(a==='next') nextMonth();
+  else if(a==='restart'){ S=null; DEC=null; render(); window.scrollTo(0,0); }
+});
+function boot(d){ if(d&&d.S){ S=d.S; DEC=d.DEC; AUTO=d.AUTO; TAB=d.TAB||'dash'; } render(); }
+const hot=window.claude&&window.claude.hot;
+if(hot&&hot.snapshot) hot.snapshot(()=>({S,DEC,AUTO,TAB}));
+if(hot&&hot.ready) hot.ready(boot); else boot((hot&&hot.data)||{});
+</script>
+</body>
+</html>
