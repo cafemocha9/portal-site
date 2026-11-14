@@ -31,6 +31,7 @@ import {
   Pencil,
   Pickaxe,
   Rat,
+  Sparkles,
   Rocket,
   Rotate3d,
   Shield,
@@ -89,6 +90,7 @@ export const games = [
   { id: 'pokapoka-island', genre: 'adventure', title: 'ぽかぽか島ぐらし', icon: TreePalm, color: 'bg-emerald-300', iconColor: 'text-emerald-900', type: 'html' },
   { id: 'mystery-dungeon', genre: 'adventure', title: '不思議の迷宮', icon: Dices, color: 'bg-lime-300', iconColor: 'text-lime-900', type: 'react', component: lazy(() => import('./games/mystery-dungeon/Game.jsx')) },
 
+  { id: 'hikari-meikyu', genre: 'adventure', title: 'ひかりの迷宮', icon: Sparkles, color: 'bg-amber-100', iconColor: 'text-amber-700', type: 'html' },
   { id: 'eighth-passage', genre: 'adventure', title: '第八通路', icon: Footprints, color: 'bg-yellow-200', iconColor: 'text-yellow-900', type: 'html' },
 
   // --- さくせん ---
