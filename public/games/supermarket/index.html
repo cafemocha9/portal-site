@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>スーパーマーケット経営記</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+/* 設計メモ: のどかな町の木造のお店を一人称で歩く。3D画面が主役、操作パネルは木の看板と丸いボタン。昼の世界に固定した単一テーマ */
+:root{
+  color-scheme:light;
+  --bg:#fbf1d9; --surface:#fffaf0; --surface2:#f6e8c8; --ink:#4a3322; --muted:#876a50; --line:#e2cfa5;
+  --green:#3a8a2b; --green-d:#2c6d20; --red:#dd5a45; --red-d:#b9432f; --yellow:#ffcf4a; --wood:#b07a45; --wood-d:#8a5a2b;
+  --good:#2f7d23; --bad:#c43a28;
+  --display:"Mochiy Pop One","Zen Maru Gothic","Hiragino Maru Gothic ProN","Hiragino Sans",sans-serif;
+  --body:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Hiragino Sans","Yu Gothic",Meiryo,sans-serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0;overflow:hidden}
+body{background:#9fd8f7;color:var(--ink);font-family:var(--body);font-weight:500;font-size:15px;line-height:1.55;-webkit-text-size-adjust:100%;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent}
+button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+b{font-weight:900}
+.ic{display:inline-flex;width:1.25em;height:1.25em;vertical-align:-.22em;flex:none}
+.ic svg{width:100%;height:100%;stroke-width:2.2}
+.num{font-variant-numeric:tabular-nums}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes wig{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(8deg)}}
+@keyframes press{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes feedIn{from{transform:translateX(-12px);opacity:0}to{transform:none;opacity:1}}
+@keyframes bump{0%{transform:scale(1)}40%{transform:scale(1.18)}100%{transform:scale(1)}}
+.a-bob{animation:bob 1.8s ease-in-out infinite}.a-wig{animation:wig 1.6s ease-in-out infinite;transform-origin:50% 80%}
+@media (prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
+
+#app{position:fixed;inset:0;overflow:hidden}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.hud{position:absolute;left:0;right:0;top:0;padding:8px 10px;display:flex;flex-direction:column;gap:6px;pointer-events:none}
+.hud .row{display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap}
+.sign{font-family:var(--display);font-size:14px;line-height:1.3;background:var(--wood);color:#fff;border:2px solid var(--wood-d);border-radius:10px;padding:3px 10px;display:flex;gap:6px;align-items:center;overflow-wrap:anywhere;max-width:60%}
+.pill{background:var(--surface);border:2px solid var(--wood-d);border-radius:99px;padding:2px 11px 2px 8px;display:inline-flex;align-items:center;gap:5px;font-weight:900;font-size:14px;white-space:nowrap}
+.pill .ic{font-size:17px}
+.pill.money{font-family:var(--display);font-weight:400;font-size:16px}.pill.money .ic{color:#d99200}
+.pill.money.bump{animation:bump .35s}
+.pill.rep .ic{color:var(--red)}
+.pill.day{background:var(--wood-d);color:#fff;border-color:#6d4520}
+.xp{width:46px;height:7px;border-radius:4px;background:var(--surface2);overflow:hidden}.xp i{display:block;height:100%;background:var(--green)}
+.tip{align-self:flex-start;max-width:min(92%,420px);background:#fff;border:2px solid var(--wood);border-radius:4px 16px 16px 16px;padding:7px 11px;font-size:13px;font-weight:700;display:flex;gap:8px;align-items:flex-start}
+.tip .ic{font-size:26px;color:var(--wood-d)}.tip .ic svg{fill:#fff}
+.feed{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+.feed li{background:rgba(255,250,240,.92);border:2px solid var(--line);border-radius:99px;padding:2px 10px 2px 7px;font-size:12px;font-weight:900;display:flex;gap:5px;align-items:center;animation:feedIn .25s}
+.feed li.good{color:var(--good)}.feed li.bad{color:var(--bad)}.feed li.coin{color:#a86200}
+
+#joy{position:absolute;left:14px;bottom:22px;width:120px;height:120px;border-radius:50%;background:rgba(255,250,240,.45);border:3px solid rgba(138,90,43,.6);touch-action:none}
+#joy i{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px;border-radius:50%;background:var(--wood);border:3px solid var(--wood-d);box-shadow:0 3px 0 rgba(0,0,0,.2)}
+#joy span{position:absolute;left:0;right:0;top:-24px;text-align:center;font-size:11px;font-weight:900;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.acts{position:absolute;right:10px;bottom:20px;display:flex;flex-direction:column;gap:10px;align-items:flex-end}
+.btn{border-radius:14px;padding:9px 13px;font-weight:900;background:var(--surface);border:2px solid var(--line);box-shadow:0 3px 0 var(--line);display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--line)}
+.btn.p{background:var(--green);color:#fff;border-color:var(--green-d);box-shadow:0 3px 0 var(--green-d)}
+.btn.r{background:var(--red);color:#fff;border-color:var(--red-d);box-shadow:0 4px 0 var(--red-d)}
+.btn.d{color:var(--bad)}
+.btn.big{font-family:var(--display);font-weight:400;font-size:17px;padding:12px 16px;border-radius:18px}
+.btn.big .ic{font-size:22px}
+.btn.go{animation:press 1.3s ease-in-out infinite}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.s{padding:7px 10px;font-size:13px}
+.place{position:absolute;left:50%;bottom:150px;transform:translateX(-50%);display:flex;gap:8px;white-space:nowrap}
+.aim{position:absolute;left:50%;top:50%;width:10px;height:10px;margin:-5px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.35);pointer-events:none}
+
+.sheet{position:absolute;left:0;right:0;bottom:0;max-height:72%;overflow-y:auto;background:var(--surface);border-top:4px solid var(--wood);border-radius:22px 22px 0 0;padding:14px 14px 18px;display:none;flex-direction:column;gap:10px;max-width:620px;margin:0 auto;z-index:5}
+.sheet.on{display:flex}
+.sheet h2{margin:0;font-size:17px;font-weight:900;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.sheet h2>span{display:flex;align-items:center;gap:8px}
+.sub{color:var(--muted);font-size:12px;display:block;font-weight:700}
+.x{border:2px solid var(--line);background:var(--surface2);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex:none}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.card{border:2px solid var(--line);background:#fff;border-radius:14px;padding:8px 10px;display:flex;gap:9px;align-items:center;text-align:left;box-shadow:0 3px 0 var(--line);min-width:0}
+.card.on{border-color:var(--green-d);background:#e9f6e2;box-shadow:0 3px 0 var(--green-d)}
+.card:disabled{opacity:.5}
+.card b{display:block;font-size:14px}
+.card>div{min-width:0}
+.badge{width:38px;height:38px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:20px;flex:none;
+  background:color-mix(in srgb,var(--c,#b07a45) 22%,#fff);border:2px solid var(--c,#b07a45);color:color-mix(in srgb,var(--c,#b07a45) 55%,#3a2616)}
+.gauge{height:12px;background:var(--surface2);border-radius:6px;overflow:hidden;border:2px solid var(--line)}
+.gauge i{display:block;height:100%;background:var(--green)}
+.gauge.low i{background:var(--red)}
+.rowb{display:flex;gap:8px;flex-wrap:wrap}
+.rowb .btn{flex:1}
+.modal{position:absolute;inset:0;background:rgba(74,51,34,.55);display:none;align-items:center;justify-content:center;padding:18px;z-index:9}
+.modal.on{display:flex}
+.modal>div{background:var(--surface);border:3px solid var(--wood);border-radius:20px;padding:18px;max-width:400px;width:100%;max-height:94%;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
+.modal h1{font-family:var(--display);font-weight:400;font-size:24px;line-height:1.3;margin:0;color:var(--wood-d);word-break:keep-all;overflow-wrap:anywhere;text-wrap:balance}
+.modal h2{margin:0;font-size:18px;font-weight:900;display:flex;align-items:center;gap:8px}
+.modal p{margin:0}
+.field{display:flex;flex-direction:column;gap:8px}
+.field label{font-weight:900;display:flex;gap:6px;align-items:center}
+.field input{padding:13px;border:3px solid var(--wood);border-radius:14px;background:#fff;font-size:18px;font-weight:700;user-select:text;-webkit-user-select:text}
+.how{display:flex;flex-direction:column;gap:9px}.how>div{display:flex;gap:10px;align-items:center}.how b{display:block}
+.rl{display:flex;justify-content:space-between;gap:10px;font-variant-numeric:tabular-nums;align-items:center}
+.rl>span:first-child{display:flex;align-items:center;gap:6px}.rl .ic{color:var(--wood)}
+.rl.t{font-weight:900;font-size:17px;border-top:2px dashed var(--line);padding-top:8px}
+.neg{color:var(--bad)}
+.result{display:flex;gap:12px;align-items:center}.result>.ic{font-size:46px;color:#e0a100}.result.lose>.ic{color:#4f8fc4}
+.result b{font-family:var(--display);font-weight:400;font-size:19px;display:block;line-height:1.35}
+#toast{position:absolute;left:50%;top:38%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 16px;border-radius:99px;font-size:13px;font-weight:900;opacity:0;pointer-events:none;transition:opacity .2s;z-index:10;max-width:90%;text-align:center}
+#toast.on{opacity:1}
+#nogl{position:absolute;inset:0;display:none;align-items:center;justify-content:center;padding:24px;text-align:center;background:var(--bg);z-index:20}
+@media (hover:hover) and (pointer:fine){#joy{display:none}}
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="cv" aria-label="お店の中の3D画面"></canvas>
+  <div class="aim" id="aim" hidden></div>
+  <div class="hud" id="hud"></div>
+  <div id="joy" hidden><span>歩く</span><i></i></div>
+  <div class="acts" id="acts"></div>
+  <div class="place" id="place" hidden></div>
+  <div class="sheet" id="sheet"></div>
+  <div class="modal" id="modal"><div id="modalIn"></div></div>
+  <div id="toast" role="status"></div>
+  <div id="nogl"><p>この画面では3D表示（WebGL）が使えませんでした。別のブラウザか、アプリを新しくしてためしてください。</p></div>
+</div>
+<script src="https://unpkg.com/lucide@0.453.0/dist/umd/lucide.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+'use strict';
+/* ================= データ ================= */
+const KEY='supermarket-3d-v1';
+const CS=1.5,GW=10,GH=8,HX=GW*CS/2,HZ=GH*CS/2,WALLH=3.2,DAYLEN=110;
+const FIX={
+ table:{n:'木の台',d:'やさい・くだもの・パン',cost:3000,cap:12,lv:1,icon:'table',c:'#b07a45'},
+ shelf:{n:'たな',d:'のみもの・おかし',cost:4000,cap:16,lv:1,icon:'library',c:'#d9983f'},
+ fridge:{n:'れいぞうケース',d:'ぎゅうにゅう・肉・魚',cost:8000,cap:12,lv:2,icon:'refrigerator',c:'#5fb2e0'},
+ freezer:{n:'れいとうケース',d:'アイス・れいとう食品',cost:10000,cap:12,lv:5,icon:'snowflake',c:'#7fa3e8'},
+};
+const P=(id,n,f,cost,price,lv,icon,m,c,c2)=>({id,n,f,cost,price,lv,icon,m,c,c2});
+const PRODUCTS=[
+ P('cabbage','キャベツ','table',60,100,1,'leafy-green','ball',0x8fcf5a),
+ P('tomato','トマト','table',70,120,1,'cherry','ball',0xe2412f),
+ P('apple','りんご','table',80,130,1,'apple','apple',0xd9342b),
+ P('banana','バナナ','table',90,150,1,'banana','banana',0xf5d21f),
+ P('bread','食パン','table',100,160,1,'sandwich','box',0xd9a05b,0xf3d9a6),
+ P('tea','お茶','shelf',70,120,1,'glass-water','bottle',0x6fae3c),
+ P('chips','ポテトチップス','shelf',80,130,1,'popcorn','bag',0xf2a51f),
+ P('carrot','にんじん','table',50,90,2,'carrot','carrot',0xf08a24),
+ P('milk','牛乳','fridge',130,200,2,'milk','box',0xffffff,0x3b7dd8),
+ P('egg','たまご','fridge',150,230,2,'egg','egg',0xf6efe0),
+ P('meat','お肉','fridge',250,400,3,'beef','meat',0xc93a3a),
+ P('juice','ジュース','shelf',80,140,3,'cup-soda','bottle',0xf28c28),
+ P('cookie','クッキー','shelf',110,180,3,'cookie','bag',0xc06a8a),
+ P('fish','お魚','fridge',220,360,4,'fish','fish',0x6f9fc0),
+ P('suika','スイカ','table',480,780,4,'grape','ball',0x2f7d32),
+ P('ice','アイス','freezer',80,150,5,'ice-cream-cone','ice',0xffc1d6),
+ P('pizza','れいとうピザ','freezer',250,400,5,'pizza','pizza',0xf0b040),
+ P('cake','ケーキ','fridge',300,500,6,'cake','cake',0xffffff),
+];
+const PROD={};PRODUCTS.forEach(p=>PROD[p.id]=p);
+const XP=[0,40,120,280,520,900];
+const lvOf=xp=>{let l=1;for(let i=1;i<XP.length;i++)if(xp>=XP[i])l=i+1;return l};
+const rnd=(a,b)=>a+Math.random()*(b-a),ri=(a,b)=>Math.floor(rnd(a,b+1)),pick=a=>a[Math.floor(Math.random()*a.length)],clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const cx2x=c=>(c-GW/2+.5)*CS,cz2z=c=>(c-GH/2+.5)*CS,x2c=x=>clamp(Math.floor(x/CS+GW/2),0,GW-1),z2c=z=>clamp(Math.floor(z/CS+GH/2),0,GH-1);
+const REG={cx:7,cz:7},PAY={x:cx2x(7),z:4.1},DOOR=[4,7];
+const buildable=(cx,cz)=>cx>=0&&cx<GW&&cz>=0&&cz<=5;
+
+/* ================= 状態 ================= */
+let S=null,phase='title',speed=1,clock=0,T=null,placing=null,openFx=null,tipText='';
+const customers=[],queue=[];let spawnList=[],regT=0;
+function newState(name){return {v:1,name,day:1,money:8000,pop:50,xp:0,tut:0,fast:0,
+  fx:[{t:'table',cx:3,cz:2,p:'cabbage',n:12},{t:'table',cx:6,cz:2,p:'apple',n:12},{t:'shelf',cx:4,cz:1,p:'tea',n:0}]}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function load(){try{const j=localStorage.getItem(KEY);return j?JSON.parse(j):null}catch(e){return null}}
+function wipe(){try{localStorage.removeItem(KEY)}catch(e){}}
+
+/* ================= アイコンと画面部品 ================= */
+const $=q=>document.querySelector(q);
+const esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const yen=n=>(n<0?'−':'')+'¥'+Math.abs(Math.round(n)).toLocaleString('ja-JP');
+const _ic={};
+function svgOf(n){if(n in _ic)return _ic[n];let h='';
+  try{const L=window.lucide,Pn=n.replace(/(^|-)([a-z0-9])/g,(m,a,b)=>b.toUpperCase()),node=L&&((L.icons&&L.icons[Pn])||L[Pn]);if(node)h=L.createElement(node).outerHTML}catch(e){}
+  return _ic[n]=h}
+const ic=(n,cls)=>`<span class="ic ${cls||''}" aria-hidden="true">${svgOf(n)}</span>`;
+const hex=c=>'#'+c.toString(16).padStart(6,'0');
+const badge=(icon,c)=>`<span class="badge" style="--c:${c}">${ic(icon)}</span>`;
+const face=v=>v>=80?'laugh':v>=60?'smile':v>=40?'meh':'frown';
+let toastT;function toast(x){const t=$('#toast');t.textContent=x;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),2000)}
+function modal(html){$('#modalIn').innerHTML=html;$('#modal').classList.add('on')}
+function closeModal(){$('#modal').classList.remove('on')}
+const feed=[];
+function addFeed(icon,text,cls){feed.push({icon,text,cls,t:performance.now()});if(feed.length>4)feed.shift();drawHud()}
+function drawHud(){
+  if(!S||phase=='title'){$('#hud').innerHTML='';return}
+  const lv=lvOf(S.xp),nx=XP[lv],pv=XP[lv-1],h=9+Math.floor(clock/DAYLEN*8),m=Math.floor((clock/DAYLEN*8%1)*6)*10;
+  $('#hud').innerHTML=`<div class="row"><span class="sign">${ic('store')}${esc(S.name)}</span>
+    <span class="pill day">${ic('clock')}${S.day}日目 ${phase=='open'?`${h}:${String(m).padStart(2,'0')}`:phase=='closing'?'しめる時間':'じゅんび中'}</span></div>
+   <div class="row"><span class="pill money num" id="money">${ic('coins')}${yen(S.money)}</span>
+    <span class="pill rep">${ic(face(S.pop))}人気 ${Math.round(S.pop)}</span>
+    <span class="pill">${ic('star')}Lv${lv}${nx?`<span class="xp"><i style="width:${clamp((S.xp-pv)/(nx-pv)*100,0,100)}%"></i></span>`:''}</span></div>
+   ${tipText?`<div class="tip">${ic('rabbit','a-wig')}<span>${tipText}</span></div>`:''}
+   <ul class="feed">${feed.map(f=>`<li class="${f.cls||''}">${ic(f.icon)}${esc(f.text)}</li>`).join('')}</ul>`;
+}
+function drawActs(){
+  const a=$('#acts');if(!S||phase=='title'||placing){a.innerHTML='';return}
+  a.innerHTML=`<button class="btn" data-a="help" aria-label="あそびかた">${ic('circle-help')}</button>
+   <button class="btn" data-a="build">${ic('hammer')}台をおく</button>
+   ${phase=='prep'?`<button class="btn r big ${S.fx.some(f=>f.n>0)?'go':''}" data-a="open">${ic('door-open')}お店を開ける</button>`
+     :`<button class="btn ${speed>1?'p':''}" data-a="fast">${ic('fast-forward')}${speed>1?'はやおくり中':'はやおくり'}</button>`}`;
+}
+function setTip(t){if(tipText!==t){tipText=t;drawHud()}}
+function addMoney(v){S.money+=v;drawHud();const m=$('#money');if(m&&v>0){m.classList.remove('bump');void m.offsetWidth;m.classList.add('bump')}}
+
+/* ================= 3D ================= */
+let renderer,scene,camera,ray,ghost,world={fx:[]};
+const yawPitch={yaw:0,pitch:-.05},pos={x:0,z:4.3};
+const GEO={},MAT={};
+const mat=c=>MAT[c]||(MAT[c]=new THREE.MeshLambertMaterial({color:c}));
+function mesh(g,c,sx,sy,sz,x,y,z){const m=new THREE.Mesh(GEO[g],mat(c));m.scale.set(sx,sy,sz);m.position.set(x||0,y||0,z||0);return m}
+function tex(w,h,draw){const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);return t}
+const SPR={};
+function initGL(){
+  const cv=$('#cv');
+  try{renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true})}catch(e){$('#nogl').style.display='flex';return false}
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+  scene=new THREE.Scene();scene.background=new THREE.Color(0x9fd8f7);
+  camera=new THREE.PerspectiveCamera(70,1,.1,80);camera.rotation.order='YXZ';
+  ray=new THREE.Raycaster();
+  GEO.box=new THREE.BoxGeometry(1,1,1);GEO.sph=new THREE.SphereGeometry(.5,12,9);GEO.cyl=new THREE.CylinderGeometry(.5,.5,1,12);GEO.cone=new THREE.ConeGeometry(.5,1,10);GEO.tor=new THREE.TorusGeometry(.5,.14,6,10,Math.PI*.9);
+  scene.add(new THREE.HemisphereLight(0xffffff,0xcdb98a,.72));
+  const dl=new THREE.DirectionalLight(0xfff2d6,.38);dl.position.set(4,8,6);scene.add(dl);
+  // 外
+  const grass=mesh('box',0x8ecb6c,70,.1,70,0,-.07,0);scene.add(grass);
+  scene.add(mesh('box',0xecd9a8,3,.1,12,0,-.05,HZ+6));
+  for(let i=0;i<14;i++){const x=(i%2?1:-1)*rnd(3,16),z=HZ+rnd(3,14),s=rnd(.8,1.4),g=new THREE.Group();
+    g.add(mesh('cyl',0x8a5a2b,.3*s,1.2*s,.3*s,0,.6*s,0),i%3?mesh('sph',0x6fb84f,2.2*s,2*s,2.2*s,0,1.9*s,0):mesh('cone',0x3d7d2a,1.8*s,2.6*s,1.8*s,0,2.3*s,0));g.position.set(x,0,z);scene.add(g)}
+  // ゆか
+  const ft=tex(128,128,(c)=>{c.fillStyle='#f3e2bb';c.fillRect(0,0,128,128);c.fillStyle='#ecd6a4';c.fillRect(0,0,64,64);c.fillRect(64,64,64,64);c.strokeStyle='rgba(138,90,43,.18)';c.lineWidth=2;c.strokeRect(0,0,64,64);c.strokeRect(64,64,64,64);c.strokeRect(64,0,64,64);c.strokeRect(0,64,64,64)});
+  ft.wrapS=ft.wrapT=THREE.RepeatWrapping;ft.repeat.set(GW/2,GH/2);
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(GW*CS,GH*CS),new THREE.MeshLambertMaterial({map:ft}));floor.rotation.x=-Math.PI/2;scene.add(floor);
+  // かべ
+  const W=0xfff3d6,WD=0xb07a45,th=.2;
+  scene.add(mesh('box',W,GW*CS+th*2,WALLH,th,0,WALLH/2,-HZ-th/2),mesh('box',W,th,WALLH,GH*CS,-HX-th/2,WALLH/2,0),mesh('box',W,th,WALLH,GH*CS,HX+th/2,WALLH/2,0));
+  const seg=(HX-1.5);scene.add(mesh('box',W,seg,WALLH,th,-1.5-seg/2,WALLH/2,HZ+th/2),mesh('box',W,seg,WALLH,th,1.5+seg/2,WALLH/2,HZ+th/2),mesh('box',WD,3.2,.7,th+.06,0,2.85,HZ+th/2));
+  scene.add(mesh('box',0x6fb84f,GW*CS,.9,.04,0,.45,-HZ+.03),mesh('box',0x6fb84f,.04,.9,GH*CS,-HX+.03,.45,0),mesh('box',0x6fb84f,.04,.9,GH*CS,HX-.03,.45,0));
+  for(const sx of [-1,1])for(const z of [-3,0,3]){scene.add(mesh('box',0xbfe6fb,.05,1.1,1.6,sx*(HX-.02),1.9,z),mesh('box',WD,.08,.1,1.8,sx*(HX-.03),1.3,z),mesh('box',WD,.08,.1,1.8,sx*(HX-.03),2.5,z))}
+  for(const x of [-4.6,4.6])scene.add(mesh('box',0xbfe6fb,1.8,1.1,.05,x,1.9,HZ-.02));
+  const ceil=mesh('box',0xfffaf0,GW*CS,.1,GH*CS,0,WALLH+.05,0);scene.add(ceil);
+  for(let z=-4.5;z<=4.5;z+=3)scene.add(mesh('box',WD,GW*CS,.18,.22,0,WALLH-.1,z));
+  for(const x of [-4.5,0,4.5])for(const z of [-3,0]){scene.add(mesh('cyl',0x8a5a2b,.03,.3,.03,x,WALLH-.3,z),mesh('sph',0xfff1b8,.3,.2,.3,x,WALLH-.5,z))}
+  // レジ
+  const rg=new THREE.Group();rg.add(mesh('box',0xc08748,1.3,.9,.7,0,.45,0),mesh('box',0x8a5a2b,1.34,.06,.74,0,.93,0),mesh('box',0x4a3322,.4,.28,.3,.25,1.1,0),mesh('box',0x9fe0a8,.3,.2,.02,.25,1.14,-.16),mesh('box',0x6fb84f,.5,.03,.4,-.3,.97,0));
+  rg.position.set(cx2x(REG.cx),0,5.0);scene.add(rg);
+  const clerk=figure(0x3a8a2b,0xf2c9a0);clerk.position.set(cx2x(REG.cx),0,5.62);clerk.rotation.y=Math.PI;scene.add(clerk);
+  // マーク
+  SPR.heart=tex(64,64,c=>{c.fillStyle='#fff';c.beginPath();c.arc(32,32,30,0,7);c.fill();c.fillStyle='#e8507a';c.beginPath();c.moveTo(32,50);c.bezierCurveTo(4,30,16,10,32,24);c.bezierCurveTo(48,10,60,30,32,50);c.fill()});
+  SPR.cross=tex(64,64,c=>{c.fillStyle='#fff';c.beginPath();c.arc(32,32,30,0,7);c.fill();c.strokeStyle='#c43a28';c.lineWidth=9;c.lineCap='round';c.beginPath();c.moveTo(19,19);c.lineTo(45,45);c.moveTo(45,19);c.lineTo(19,45);c.stroke()});
+  SPR.bang=tex(64,64,c=>{c.fillStyle='#dd5a45';c.beginPath();c.arc(32,32,30,0,7);c.fill();c.fillStyle='#fff';c.fillRect(27,12,10,26);c.beginPath();c.arc(32,48,6,0,7);c.fill()});
+  SPR.coin=tex(64,64,c=>{c.fillStyle='#ffcf4a';c.beginPath();c.arc(32,32,30,0,7);c.fill();c.strokeStyle='#a86200';c.lineWidth=5;c.stroke();c.fillStyle='#a86200';c.fillRect(28,16,8,32);c.fillRect(20,22,24,6);c.fillRect(20,32,24,6)});
+  ghost=mesh('box',0x3a8a2b,1.3,1.2,1.3);ghost.material=new THREE.MeshBasicMaterial({color:0x3a8a2b,transparent:true,opacity:.45});ghost.visible=false;scene.add(ghost);
+  resize();window.addEventListener('resize',resize);
+  return true;
+}
+let banner=null;
+function drawBanner(){
+  if(banner){scene.remove(banner);banner.material.map.dispose()}
+  const t=tex(1024,192,(c,w,h)=>{c.fillStyle='#b07a45';c.fillRect(0,0,w,h);c.strokeStyle='#8a5a2b';c.lineWidth=14;c.strokeRect(7,7,w-14,h-14);c.fillStyle='#fff';c.textAlign='center';c.textBaseline='middle';
+    let fs=96;c.font=`${fs}px "Mochiy Pop One","Zen Maru Gothic","Hiragino Maru Gothic ProN",sans-serif`;const name=S?S.name:'あなたのお店';while(c.measureText(name).width>w-80&&fs>30){fs-=6;c.font=`${fs}px "Mochiy Pop One","Zen Maru Gothic","Hiragino Maru Gothic ProN",sans-serif`}c.fillText(name,w/2,h/2+4)});
+  banner=new THREE.Mesh(new THREE.PlaneGeometry(6,1.12),new THREE.MeshBasicMaterial({map:t}));banner.position.set(0,2.35,-HZ+.02);scene.add(banner);
+}
+function resize(){const w=window.innerWidth,h=window.innerHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.fov=w<h?84:70;camera.updateProjectionMatrix()}
+function figure(body,skin){const g=new THREE.Group();g.add(mesh('cyl',body,.42,.85,.42,0,.72,0),mesh('sph',skin,.36,.36,.36,0,1.36,0),mesh('cyl',0x4a3322,.16,.3,.16,-.1,.15,0),mesh('cyl',0x4a3322,.16,.3,.16,.1,.15,0),mesh('sph',0x3a2616,.05,.06,.04,-.07,1.4,.16),mesh('sph',0x3a2616,.05,.06,.04,.07,1.4,.16),mesh('sph',0xf08a8a,.07,.04,.03,0,1.3,.165));return g}
+function sprite(t,s){const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:t,depthTest:false}));sp.scale.set(s,s,s);sp.renderOrder=5;return sp}
+
+/* ---- 商品のかたち ---- */
+function item(p){
+  const g=new THREE.Group(),c=p.c;
+  switch(p.m){
+   case 'ball':{const r=p.id=='suika'?.3:p.id=='cabbage'?.24:.17;g.add(mesh('sph',c,r,r*.92,r,0,r*.46,0));if(p.id=='tomato')g.add(mesh('cyl',0x3d7d2a,.06,.03,.06,0,r*.9,0));break}
+   case 'apple':g.add(mesh('sph',c,.18,.17,.18,0,.085,0),mesh('cyl',0x6b4a2e,.02,.07,.02,0,.19,0));break;
+   case 'banana':{const m=new THREE.Mesh(GEO.tor,mat(c));m.scale.set(.2,.2,.3);m.rotation.set(Math.PI/2,0,.2);m.position.y=.05;g.add(m);break}
+   case 'carrot':{const m=mesh('cone',c,.09,.26,.09,0,.05,0);m.rotation.z=Math.PI/2;g.add(m,mesh('sph',0x3d7d2a,.08,.06,.08,-.15,.05,0));break}
+   case 'box':g.add(mesh('box',c,.15,.2,.12,0,.1,0),mesh('box',p.c2,.152,.06,.122,0,.19,0));break;
+   case 'bottle':g.add(mesh('cyl',c,.1,.2,.1,0,.1,0),mesh('cyl',0xffffff,.05,.06,.05,0,.23,0),mesh('cyl',0xfff7df,.102,.07,.102,0,.11,0));break;
+   case 'bag':g.add(mesh('box',c,.18,.22,.07,0,.11,0),mesh('box',0xfff7df,.1,.08,.072,0,.12,0));break;
+   case 'egg':g.add(mesh('box',0xe8dcc0,.2,.05,.14,0,.025,0));for(let i=0;i<6;i++)g.add(mesh('sph',c,.055,.07,.055,-.065+(i%3)*.065,.07,-.033+Math.floor(i/3)*.066));break;
+   case 'meat':g.add(mesh('box',0xffffff,.22,.03,.16,0,.015,0),mesh('box',c,.17,.05,.11,0,.05,0),mesh('box',0xf4b8b0,.05,.052,.11,.03,.05,0));break;
+   case 'fish':{g.add(mesh('box',0xffffff,.24,.03,.14,0,.015,0),mesh('sph',c,.2,.07,.09,-.01,.06,0));const t=mesh('cone',c,.08,.08,.03,.11,.06,0);t.rotation.z=Math.PI/2;g.add(t,mesh('sph',0x222222,.015,.015,.015,-.08,.075,.03));break}
+   case 'ice':{const k=mesh('cone',0xe0a458,.11,.16,.11,0,.08,0);k.rotation.x=Math.PI;g.add(k,mesh('sph',c,.14,.13,.14,0,.2,0));break}
+   case 'pizza':g.add(mesh('box',0xc93a3a,.22,.04,.22,0,.02,0),mesh('cyl',c,.17,.012,.17,0,.047,0));break;
+   case 'cake':g.add(mesh('cyl',c,.2,.11,.2,0,.055,0),mesh('cyl',0xf7c6d3,.205,.03,.205,0,.05,0),mesh('sph',0xe2412f,.06,.06,.06,0,.14,0));break;
+  }
+  return g;
+}
+/* ---- 台 ---- */
+function slotsOf(t){
+  const s=[];
+  if(t=='shelf'){for(const y of [.2,.78])for(const z of [-.24,.24])for(let i=0;i<4;i++)s.push([-.42+i*.28,y,z])}
+  else{const y=t=='table'?.84:.8;for(let r=0;r<3;r++)for(let i=0;i<4;i++)s.push([-.42+i*.28,y,-.3+r*.3])}
+  return s;
+}
+function mkFixture(t){
+  const g=new THREE.Group(),wd=0xc08748,wdd=0x8a5a2b;
+  if(t=='table'){g.add(mesh('box',wd,1.3,.1,1.15,0,.78,0));for(const x of [-.56,.56])for(const z of [-.48,.48])g.add(mesh('box',wdd,.09,.74,.09,x,.37,z));
+    g.add(mesh('box',wdd,1.3,.12,.05,0,.86,.56),mesh('box',wdd,1.3,.12,.05,0,.86,-.56),mesh('box',wdd,.05,.12,1.15,.63,.86,0),mesh('box',wdd,.05,.12,1.15,-.63,.86,0),mesh('box',0x6fb84f,1.2,.02,1.05,0,.835,0))}
+  else if(t=='shelf'){g.add(mesh('box',wdd,1.3,.18,1.05,0,.09,0),mesh('box',wd,1.3,.05,1.05,0,.75,0),mesh('box',wd,1.3,.05,1.05,0,1.36,0),mesh('box',0xf3d9a6,1.3,1.3,.06,0,.75,0),mesh('box',wdd,.06,1.36,1.05,-.65,.7,0),mesh('box',wdd,.06,1.36,1.05,.65,.7,0))}
+  else{const body=t=='fridge'?0xffffff:0xdcecff,trim=t=='fridge'?0x5fb2e0:0x7fa3e8;
+    g.add(mesh('box',body,1.32,.74,1.15,0,.37,0),mesh('box',trim,1.36,.1,1.19,0,.1,0),mesh('box',0xe8f4fb,1.2,.06,1.03,0,.77,0),
+      mesh('box',trim,1.32,.16,.06,0,.84,.55),mesh('box',trim,1.32,.16,.06,0,.84,-.55),mesh('box',trim,.06,.16,1.15,.63,.84,0),mesh('box',trim,.06,.16,1.15,-.63,.84,0));
+    if(t=='freezer'){const lid=mesh('box',0xbfe6fb,1.26,.02,1.1,0,1.12,0);lid.material=new THREE.MeshLambertMaterial({color:0xbfe6fb,transparent:true,opacity:.3});g.add(lid)}}
+  return g;
+}
+function addFx(f){
+  const g=mkFixture(f.t);g.position.set(cx2x(f.cx),0,cz2z(f.cz));g.userData.f=f;scene.add(g);
+  const w={f,g,items:[],slots:slotsOf(f.t),mark:sprite(SPR.bang,.42)};w.mark.position.set(0,1.95,0);g.add(w.mark);
+  world.fx.push(w);syncItems(w);return w;
+}
+function wOf(f){return world.fx.find(w=>w.f===f)}
+function syncItems(w){
+  const f=w.f;
+  while(w.items.length>f.n){w.g.remove(w.items.pop())}
+  if(w.items.length&&w.items[0].userData.p!==f.p){w.items.forEach(i=>w.g.remove(i));w.items=[]}
+  while(f.p&&w.items.length<f.n){const it=item(PROD[f.p]),s=w.slots[w.items.length];it.position.set(s[0],s[1],s[2]);it.rotation.y=rnd(-.3,.3);it.userData.p=f.p;w.g.add(it);w.items.push(it)}
+  w.mark.visible=!f.p||f.n==0;
+}
+function removeFx(f){const w=wOf(f);scene.remove(w.g);world.fx.splice(world.fx.indexOf(w),1);S.fx.splice(S.fx.indexOf(f),1)}
+
+/* ================= マス目と道さがし ================= */
+function blocked(cx,cz,extra){if(cx<0||cz<0||cx>=GW||cz>=GH)return true;if(cx==REG.cx&&cz==REG.cz)return true;if(extra&&extra[0]==cx&&extra[1]==cz)return true;return S.fx.some(f=>f.cx==cx&&f.cz==cz)}
+const DIRS=[[1,0],[-1,0],[0,1],[0,-1]];
+function bfs(sx,sz,goal,extra){
+  const prev=new Map(),key=(a,b)=>a*100+b,q=[[sx,sz]];prev.set(key(sx,sz),null);
+  while(q.length){const [x,z]=q.shift();if(goal(x,z)){const path=[];let k=key(x,z);while(k!=null){path.unshift([Math.floor(k/100),k%100]);k=prev.get(k)}return path}
+    for(const [dx,dz] of DIRS){const nx=x+dx,nz=z+dz,k=key(nx,nz);if(prev.has(k)||blocked(nx,nz,extra))continue;prev.set(k,key(x,z));q.push([nx,nz])}}
+  return null;
+}
+function canPlace(cx,cz){
+  if(!buildable(cx,cz)||blocked(cx,cz))return false;
+  if(x2c(pos.x)==cx&&z2c(pos.z)==cz)return false;
+  const ex=[cx,cz],reach=new Set(),q=[DOOR.slice()];reach.add(DOOR[0]*100+DOOR[1]);
+  while(q.length){const [x,z]=q.shift();for(const [dx,dz] of DIRS){const nx=x+dx,nz=z+dz,k=nx*100+nz;if(reach.has(k)||blocked(nx,nz,ex))continue;reach.add(k);q.push([nx,nz])}}
+  for(const f of S.fx.concat([{cx,cz}]))if(!DIRS.some(([dx,dz])=>reach.has((f.cx+dx)*100+f.cz+dz)))return false;
+  return true;
+}
+
+/* ================= お客さん ================= */
+const BODY=[0xe0695a,0x5fb2e0,0xf2a93b,0xa78bd9,0xea7fa6,0x3fa9c9,0xd9983f],SKIN=[0xf2c9a0,0xe8b88a,0xf6d5b5];
+function spawnCustomer(){
+  const lv=lvOf(S.xp),shown=[...new Set(S.fx.filter(f=>f.p).map(f=>f.p))],unl=PRODUCTS.filter(p=>p.lv<=lv).map(p=>p.id);
+  const n=clamp(ri(1,1+Math.ceil(shown.length/2)),1,4),wants=[];
+  for(let i=0;i<n*3&&wants.length<n;i++){const id=shown.length&&Math.random()<.8?pick(shown):pick(unl);if(!wants.includes(id))wants.push(id)}
+  const g=figure(pick(BODY),pick(SKIN));const bk=mesh('box',0xd9983f,.22,.14,.16,.3,.75,.05);g.add(bk);
+  const emo=sprite(SPR.heart,.5);emo.position.y=1.95;emo.visible=false;g.add(emo);
+  g.position.set(rnd(-.6,.6),0,HZ+4);scene.add(g);
+  const c={g,emo,emoT:0,wants,items:0,total:0,cost:0,pts:[{x:rnd(-.5,.5),z:HZ+.4}],then:null,wait:0,qT:0,ph:rnd(0,6)};
+  c.then=()=>nextWant(c);customers.push(c);T.cust++;
+}
+function emote(c,t){c.emo.material.map=t;c.emo.visible=true;c.emoT=1.6}
+function goCell(c,cx,cz,final,then){
+  const sx=x2c(c.g.position.x),sz=z2c(Math.min(c.g.position.z,HZ-.1));
+  const path=bfs(sx,sz,(x,z)=>x==cx&&z==cz);
+  c.pts=(path?path.slice(1).map(([x,z])=>({x:cx2x(x)+rnd(-.2,.2),z:cz2z(z)+rnd(-.2,.2)})):[]);
+  if(final)c.pts.push(final);c.then=then;c.goal=[cx,cz,final,then];
+}
+function nextWant(c){
+  if(!c.wants.length){finishShopping(c);return}
+  const id=c.wants.shift(),p=PROD[id];
+  let cand=S.fx.filter(f=>f.p==id);if(!cand.length){miss(c,p,`${p.n}がほしかったな`);return}
+  cand.sort((a,b)=>(b.n>0)-(a.n>0));const f=cand[0];
+  const sx=x2c(c.g.position.x),sz=z2c(Math.min(c.g.position.z,HZ-.1));
+  const path=bfs(sx,sz,(x,z)=>Math.abs(x-f.cx)+Math.abs(z-f.cz)==1);
+  if(!path){miss(c,p,`${p.n}の台に行けない`);return}
+  const [ex,ez]=path[path.length-1],fx=cx2x(f.cx),fz=cz2z(f.cz),final={x:cx2x(ex)+(fx-cx2x(ex))*.22,z:cz2z(ez)+(fz-cz2z(ez))*.22};
+  goCell(c,ex,ez,final,()=>{c.g.rotation.y=Math.atan2(fx-c.g.position.x,fz-c.g.position.z);c.wait=.7;c.goal=null;
+    c.then=()=>{if(S.fx.includes(f)&&f.p==id&&f.n>0){f.n--;syncItems(wOf(f));c.items++;c.total+=p.price;c.cost+=p.cost;S.pop=clamp(S.pop+.12,0,100);emote(c,SPR.heart);
+        if(f.n==0)addFeed('package-x',`${p.n}が売り切れ！`,'bad');if(openFx===f)drawSheet();c.wait=.5;c.then=()=>nextWant(c)}
+      else miss(c,p,`${p.n}が売り切れだった`)}});
+}
+function miss(c,p,msg){T.miss++;S.pop=clamp(S.pop-.35,0,100);emote(c,SPR.cross);if(Math.random()<.5||T.miss<3)addFeed('frown',msg,'bad');c.wait=.7;c.goal=null;c.then=()=>nextWant(c);drawHud()}
+function slotPos(i){return i<4?{x:PAY.x+.85*i,z:PAY.z}:{x:PAY.x+.85*(7-Math.min(i,7)),z:PAY.z-.9}}
+function finishShopping(c){
+  if(!c.items){leave(c);return}
+  queue.push(c);c.inQ=true;const sp=slotPos(queue.length-1);goCell(c,7,6,sp,()=>{c.atQ=true;c.goal=null;c.g.rotation.y=0});
+}
+function leave(c){c.inQ=false;c.atQ=false;goCell(c,pick([4,5]),7,{x:rnd(-.5,.5),z:HZ+4.5},()=>{c.dead=true})}
+function updateCustomers(dt){
+  for(const c of customers){
+    if(c.emoT>0){c.emoT-=dt;if(c.emoT<=0)c.emo.visible=false}
+    if(c.inQ){c.qT+=dt;if(c.qT>18&&!c.mad){c.mad=true;S.pop=clamp(S.pop-.6,0,100);emote(c,SPR.cross);addFeed('frown','レジが長くて、まちくたびれた','bad')}}
+    if(c.pts.length){const t=c.pts[0],dx=t.x-c.g.position.x,dz=t.z-c.g.position.z,l=Math.hypot(dx,dz),v=1.7*dt;
+      if(l<=v){c.g.position.x=t.x;c.g.position.z=t.z;c.pts.shift()}else{c.g.position.x+=dx/l*v;c.g.position.z+=dz/l*v;c.g.rotation.y=Math.atan2(dx,dz)}
+      c.ph+=dt*10;c.g.position.y=Math.abs(Math.sin(c.ph))*.05}
+    else if(c.wait>0){c.wait-=dt;c.g.position.y=0}
+    else if(c.then){const f=c.then;c.then=null;f()}
+  }
+  if(queue.length&&queue[0].atQ){regT+=dt;if(regT>=2){regT=0;const c=queue.shift();T.sold+=c.items;T.rev+=c.total;T.cogs+=c.cost;addMoney(c.total);addFeed('coins',`+${yen(c.total)}`,'coin');emote(c,SPR.coin);
+      const lv0=lvOf(S.xp);S.xp+=c.items;if(lvOf(S.xp)>lv0)levelUp(lvOf(S.xp));leave(c);
+      queue.forEach((q,i)=>{q.atQ=false;q.pts=[slotPos(i)];q.then=()=>{q.atQ=true;q.g.rotation.y=0}})}}
+  for(let i=customers.length-1;i>=0;i--)if(customers[i].dead){scene.remove(customers[i].g);customers.splice(i,1)}
+}
+function repathAll(){for(const c of customers)if(c.goal&&c.pts.length){const g=c.goal;goCell(c,g[0],g[1],g[2],g[3])}}
+function levelUp(lv){
+  const ps=PRODUCTS.filter(p=>p.lv==lv),fs=Object.keys(FIX).filter(k=>FIX[k].lv==lv);
+  addFeed('star',`レベル${lv}になった！`,'good');
+  modal(`<h2>${ic('party-popper','a-wig')}レベル${lv}になった！</h2><p>新しく売れるようになったよ。</p>
+   <div class="grid">${fs.map(k=>`<div class="card">${badge(FIX[k].icon,FIX[k].c)}<div><b>${FIX[k].n}</b><span class="sub">新しい台</span></div></div>`).join('')}${ps.map(p=>`<div class="card">${badge(p.icon,hex(p.c==0xffffff?0x5fb2e0:p.c))}<div><b>${p.n}</b><span class="sub">${FIX[p.f].n}におく</span></div></div>`).join('')}</div>
+   <div class="rowb"><button class="btn p" data-a="closeM">やった！</button></div>`);
+}
+
+/* ================= 1日のながれ ================= */
+function startPrep(){phase='prep';clock=0;speed=1;feed.length=0;tips();drawHud();drawActs();save()}
+function openStore(){
+  if(!S.fx.some(f=>f.n>0)){toast('まず、台に商品をならべよう');return}
+  phase='open';clock=0;T={cust:0,sold:0,rev:0,cogs:0,miss:0};
+  const lv=lvOf(S.xp),n=Math.round(12+S.pop*.22+lv*5);spawnList=[];
+  for(let i=0;i<n;i++)spawnList.push(clamp((i+rnd(.1,.9))/n,0,1)*DAYLEN*.93);
+  if(S.tut<3)S.tut=3;addFeed('door-open','お店が開いたよ！','good');tips();drawActs();
+}
+function endDay(){
+  phase='result';const rent=1000,profit=T.rev-T.cogs-rent;S.money-=rent;
+  const win=profit>=0;
+  modal(`<div class="result ${win?'':'lose'}">${ic(win?'party-popper':'cloud-rain',win?'a-wig':'a-bob')}<div><b>${S.day}日目 おつかれさま！</b><span class="sub">${win?`${yen(profit)} のもうけが出たよ。`:`${yen(-profit)} の赤字だったよ。`}</span></div></div>
+   <div class="rl"><span>${ic('users')}来てくれたお客さん</span><span>${T.cust}人</span></div>
+   <div class="rl"><span>${ic('shopping-basket')}売れた商品</span><span>${T.sold}こ</span></div>
+   <div class="rl"><span>${ic('banknote')}売上（入ってきたお金）</span><span>${yen(T.rev)}</span></div>
+   <div class="rl"><span>${ic('truck')}売れた商品の仕入れ代</span><span class="neg">${yen(-T.cogs)}</span></div>
+   <div class="rl"><span>${ic('house')}お店の家賃</span><span class="neg">${yen(-rent)}</span></div>
+   <div class="rl t"><span>${ic('piggy-bank')}今日のもうけ</span><span class="${win?'':'neg'}">${yen(profit)}</span></div>
+   <span class="sub">${ic('rabbit')} ${T.miss>T.sold*.4?'ほしい商品がなくて、がっかりしたお客さんが多かったよ。台をふやして、商品をたくさんならべよう。':T.sold<10?'商品が少なかったみたい。開ける前に、台をいっぱいにしておこう。':'いい調子！お金がたまったら「台をおく」で売り場を広げよう。'}</span>
+   <div class="rowb"><button class="btn p big" data-a="nextDay">${ic('sunrise')}次の日へ</button></div>`);
+  drawHud();drawActs();
+}
+function tips(){
+  if(phase=='prep'){
+    if(S.tut==0)setTip(matchMedia('(hover:hover) and (pointer:fine)').matches?'W・A・S・Dキーで歩こう。マウスをドラッグすると見回せるよ。':'左下の丸いスティックで歩こう。画面をなぞると見回せるよ。');
+    else if(S.tut==1)setTip('赤い「！」がついた台に近づいて、タップ。商品をならべよう。');
+    else if(S.tut==2)setTip('じゅんびができたら、赤い「お店を開ける」ボタンをおそう。');
+    else if(S.fx.some(f=>!f.p||f.n<FIX[f.t].cap/2))setTip('開ける前に、台をタップして商品をいっぱいにしておこう。');
+    else if(S.money>=3000)setTip('お金があるね。「台をおく」で売り場を広げると、もっと売れるよ。');
+    else setTip('じゅんびOK！「お店を開ける」をおそう。');
+  }else if(phase=='open'){
+    setTip(S.fx.some(f=>f.n==0)?'赤い「！」の台は売り切れ。歩いていってタップして、商品をたそう。':S.day==1?'お客さんが商品を取って、レジでお金をはらうよ。へった商品をたしにいこう。':'');
+  }else setTip('');
+}
+
+/* ================= 台の画面 ================= */
+function drawSheet(){
+  const sh=$('#sheet');
+  if(placing=='menu'){
+    const lv=lvOf(S.xp);
+    sh.innerHTML=`<h2><span>${ic('hammer')}どの台をおく？</span><button class="x" data-a="closeSheet" aria-label="とじる">${ic('x')}</button></h2>
+     <div class="grid">${Object.keys(FIX).map(k=>{const F=FIX[k],lock=F.lv>lv;return `<button class="card" data-a="pickFix" data-v="${k}" ${lock||S.money<F.cost?'disabled':''}>${badge(lock?'lock':F.icon,F.c)}<div><b>${F.n}</b><span class="sub">${lock?`レベル${F.lv}でつかえる`:`${F.d}<br>${yen(F.cost)}・${F.cap}こ ならぶ`}</span></div></button>`}).join('')}</div>
+     <span class="sub">えらんだあと、おきたい場所の前まで歩いて「ここにおく」をおしてね。</span>`;
+    sh.classList.add('on');return}
+  const f=openFx;if(!f){sh.classList.remove('on');return}
+  const F=FIX[f.t],lv=lvOf(S.xp),p=f.p&&PROD[f.p],need=p?F.cap-f.n:0,can=p?Math.min(need,Math.floor(S.money/p.cost)):0;
+  sh.innerHTML=`<h2><span>${badge(F.icon,F.c)}${F.n}</span><button class="x" data-a="closeSheet" aria-label="とじる">${ic('x')}</button></h2>
+   ${p?`<div><b>${p.n}</b>　${f.n}／${F.cap}こ<div class="gauge ${f.n<F.cap*.3?'low':''}"><i style="width:${f.n/F.cap*100}%"></i></div></div>
+    <div class="rowb"><button class="btn p" data-a="fill" ${can>0?'':'disabled'}>${ic('package-plus')}${need==0?'いっぱいだよ':can<need?`${can}こ ならべる（${yen(can*p.cost)}）`:`いっぱいまでならべる（${yen(need*p.cost)}）`}</button></div>
+    <span class="sub">1こ ${yen(p.cost)}で仕入れて、${yen(p.price)}で売るよ。1こ売れると ${yen(p.price-p.cost)} のもうけ。</span>`:`<span class="sub">この台で売る商品をえらぼう。</span>`}
+   <b>${p?'ほかの商品にかえる':'商品をえらぶ'}</b>
+   <div class="grid">${PRODUCTS.filter(q=>q.f==f.t).map(q=>{const lock=q.lv>lv;return `<button class="card ${f.p==q.id?'on':''}" data-a="setProd" data-v="${q.id}" ${lock?'disabled':''}>${badge(lock?'lock':q.icon,hex(q.c==0xffffff?0x5fb2e0:q.c))}<div><b>${q.n}</b><span class="sub">${lock?`レベル${q.lv}から`:`${yen(q.price)}で売る`}</span></div></button>`}).join('')}</div>
+   <div class="rowb"><button class="btn s d" data-a="sellFix">${ic('trash-2')}この台をかたづける（${yen(F.cost/2)}もどる）</button></div>`;
+  sh.classList.add('on');
+}
+function closeSheet(){openFx=null;if(placing=='menu')placing=null;$('#sheet').classList.remove('on');drawActs()}
+
+/* ================= 操作 ================= */
+const keys={},joy={x:0,y:0,id:null};
+const ACT={
+ closeM(){closeModal()},closeSheet(){closeSheet()},
+ help(){howto()},
+ build(){openFx=null;placing='menu';drawSheet();drawActs()},
+ pickFix(v){placing=v;$('#sheet').classList.remove('on');ghost.visible=true;$('#aim').hidden=true;
+   $('#place').hidden=false;$('#place').innerHTML=`<button class="btn" data-a="cancelPlace">${ic('x')}やめる</button><button class="btn p big" data-a="place" id="placeBtn">${ic('check')}ここにおく</button>`;
+   setTip(`緑の四角が出るところまで歩こう。「ここにおく」で${FIX[v].n}をおけるよ。赤いときはおけないよ。`);drawActs()},
+ cancelPlace(){placing=null;ghost.visible=false;$('#place').hidden=true;tips();drawActs()},
+ place(){const g=ghostCell();if(!g.ok){toast(g.why);return}const F=FIX[placing];if(S.money<F.cost){toast('お金が足りないよ');return}
+   addMoney(-F.cost);const f={t:placing,cx:g.cx,cz:g.cz,p:null,n:0};S.fx.push(f);addFx(f);repathAll();save();toast(`${F.n}をおいたよ。タップして商品をえらぼう`);ACT.cancelPlace()},
+ setProd(id){const f=openFx,p=PROD[id];if(!f||f.p==id)return;if(f.p&&f.n){addMoney(f.n*PROD[f.p].cost);toast('前の商品は、仕入れ先に返したよ')}
+   f.p=id;f.n=0;syncItems(wOf(f));ACT.fill()},
+ fill(){const f=openFx;if(!f||!f.p)return;const p=PROD[f.p],n=Math.min(FIX[f.t].cap-f.n,Math.floor(S.money/p.cost));
+   if(n<=0){if(f.n<FIX[f.t].cap)toast('お金が足りないよ');drawSheet();return}
+   f.n+=n;addMoney(-n*p.cost);syncItems(wOf(f));if(S.tut<2)S.tut=2;tips();drawSheet();drawActs();save()},
+ sellFix(){const f=openFx;if(!f)return;if(S.fx.length<=1){toast('台は1つはのこしておこう');return}
+   addMoney(FIX[f.t].cost/2+(f.p?f.n*PROD[f.p].cost:0));removeFx(f);repathAll();closeSheet();save();tips()},
+ open(){closeSheet();openStore()},
+ fast(){speed=speed>1?1:3;drawActs()},
+ nextDay(){closeModal();S.day++;startPrep();if(S.money<300&&!S.fx.some(f=>f.n>0)){S.money=2000;toast('町のみんなが ¥2,000 かしてくれたよ。もう一度がんばろう！');drawHud()}},
+ cont(){S=load();if(S)begin()},
+ reset(){modal(`<h2>最初からやり直す？</h2><p>「${esc(S.name)}」のセーブを消して、名前を決めるところにもどるよ。</p><div class="rowb"><button class="btn" data-a="closeM">やめておく</button><button class="btn d" data-a="doReset">消してやり直す</button></div>`)},
+ doReset(){wipe();world.fx.forEach(w=>scene.remove(w.g));world.fx=[];customers.forEach(c=>scene.remove(c.g));customers.length=0;queue.length=0;S=null;phase='title';closeModal();closeSheet();drawHud();drawActs();$('#joy').hidden=true;titleScreen()},
+};
+function howto(){
+  const pc=matchMedia('(hover:hover) and (pointer:fine)').matches;
+  modal(`<h2>${ic('circle-help')}あそびかた</h2><div class="how">
+   <div>${badge('move','#5fb2e0')}<div><b>歩く・見回す</b><span class="sub">${pc?'W・A・S・Dキー（または矢印キー）で歩く。マウスをドラッグして見回す。':'左下のスティックで歩く。画面をなぞって見回す。'}</span></div></div>
+   <div>${badge('hand','#6fb84f')}<div><b>商品をならべる</b><span class="sub">台に近づいてタップ。商品をえらんで「ならべる」。</span></div></div>
+   <div>${badge('hammer','#b07a45')}<div><b>売り場を広げる</b><span class="sub">「台をおく」で新しい台を買って、すきな場所におく。</span></div></div>
+   <div>${badge('door-open','#e0695a')}<div><b>お店を開ける</b><span class="sub">お客さんが買いに来るよ。売り切れたら、歩いていってたそう。</span></div></div>
+   <div>${badge('star','#cfa520')}<div><b>レベルアップ</b><span class="sub">たくさん売ると、肉や魚、アイスも売れるようになるよ。</span></div></div></div>
+   <div class="rowb"><button class="btn p" data-a="closeM">わかった</button>${S?`<button class="btn s d" data-a="reset">${ic('rotate-ccw')}最初から</button>`:''}</div>`);
+}
+function titleScreen(){
+  const sv=load();drawBanner();
+  modal(`<h1>スーパーマーケット<wbr>経営記</h1><p>お店の中を歩いて、やさいやお肉を自分でならべよう。自分だけの売り場をつくって、町いちばんのスーパーにするゲームだよ。</p>
+   <form class="field" id="startForm"><label for="storeName">${ic('store')}お店の名前を決めてね</label>
+    <input id="storeName" maxlength="14" placeholder="例：さくらマート" autocomplete="off" required>
+    <span class="sub">14文字まで。お店のかんばんに書かれるよ。</span>
+    <button class="btn r big go" type="submit">${ic('door-open')}この名前ではじめる</button></form>
+   ${sv&&sv.name?`<button class="btn" data-a="cont">${ic('play')}つづきから：${esc(sv.name)}（${sv.day}日目）</button>`:''}`);
+}
+function begin(){
+  closeModal();world.fx.forEach(w=>scene.remove(w.g));world.fx=[];S.fx.forEach(addFx);drawBanner();
+  if(document.fonts&&document.fonts.load)document.fonts.load('48px "Mochiy Pop One"').then(()=>{if(S)drawBanner()}).catch(()=>{});
+  pos.x=0;pos.z=5.2;yawPitch.yaw=0;yawPitch.pitch=-.14;$('#joy').hidden=false;startPrep();if(S.day==1&&S.tut==0)howto();
+}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b||b.disabled)return;const f=ACT[b.dataset.a];if(f)f(b.dataset.v)});
+document.addEventListener('submit',e=>{e.preventDefault();if(e.target.id!='startForm')return;const n=$('#storeName').value.trim();if(!n){toast('お店の名前を入れてね');return}S=newState(n.slice(0,14));begin()});
+window.addEventListener('keydown',e=>{if(e.target.tagName=='INPUT')return;keys[e.key.toLowerCase()]=true});
+window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false});
+
+function ghostCell(){
+  const fx=-Math.sin(yawPitch.yaw),fz=-Math.cos(yawPitch.yaw),cx=Math.floor((pos.x+fx*2.1)/CS+GW/2),cz=Math.floor((pos.z+fz*2.1)/CS+GH/2);
+  let ok=true,why='';
+  if(!(cx>=0&&cx<GW&&cz>=0&&cz<GH)){ok=false;why='かべの外にはおけないよ'}
+  else if(!buildable(cx,cz)){ok=false;why='入口とレジの前はあけておこう'}
+  else if(blocked(cx,cz)){ok=false;why='ここにはもう台があるよ'}
+  else if(!canPlace(cx,cz)){ok=false;why='ここにおくと、お客さんが通れなくなるよ'}
+  return {cx,cz,ok,why};
+}
+function setupInput(){
+  const cv=$('#cv'),jd=$('#joy'),knob=jd.querySelector('i');let look=null;
+  cv.addEventListener('pointerdown',e=>{if(phase=='title')return;look={id:e.pointerId,x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY,t:performance.now()};try{cv.setPointerCapture(e.pointerId)}catch(_){}});
+  cv.addEventListener('pointermove',e=>{if(!look||look.id!=e.pointerId)return;const dx=e.clientX-look.x,dy=e.clientY-look.y;look.x=e.clientX;look.y=e.clientY;
+    yawPitch.yaw-=dx*.0055;yawPitch.pitch=clamp(yawPitch.pitch-dy*.004,-.9,.6)});
+  const up=e=>{if(!look||look.id!=e.pointerId)return;const moved=Math.hypot(e.clientX-look.sx,e.clientY-look.sy),dt=performance.now()-look.t;look=null;if(moved<10&&dt<400)tap(e.clientX,e.clientY)};
+  cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',()=>{look=null});
+  const jm=e=>{const r=jd.getBoundingClientRect(),dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2),l=Math.hypot(dx,dy),m=r.width/2-10,k=l>m?m/l:1;
+    joy.x=dx*k/m;joy.y=-dy*k/m;knob.style.transform=`translate(${dx*k}px,${dy*k}px)`};
+  jd.addEventListener('pointerdown',e=>{joy.id=e.pointerId;try{jd.setPointerCapture(e.pointerId)}catch(_){};jm(e)});
+  jd.addEventListener('pointermove',e=>{if(joy.id==e.pointerId)jm(e)});
+  const je=e=>{if(joy.id!=e.pointerId)return;joy.id=null;joy.x=joy.y=0;knob.style.transform=''};
+  jd.addEventListener('pointerup',je);jd.addEventListener('pointercancel',je);
+}
+function tap(x,y){
+  if(placing||phase=='title'||phase=='result')return;
+  const v=new THREE.Vector2(x/window.innerWidth*2-1,-(y/window.innerHeight)*2+1);ray.setFromCamera(v,camera);
+  const hits=ray.intersectObjects(world.fx.map(w=>w.g),true);if(!hits.length){if(openFx)closeSheet();return}
+  let o=hits[0].object;while(o&&!o.userData.f)o=o.parent;if(!o)return;const f=o.userData.f;
+  if(Math.hypot(cx2x(f.cx)-pos.x,cz2z(f.cz)-pos.z)>4.2){toast('もう少し近くまで歩いてからタップしてね');return}
+  openFx=f;drawSheet();
+}
+let moved=0;
+function updatePlayer(dt){
+  let f=joy.y,s=joy.x;
+  if(keys.w||keys.arrowup)f+=1;if(keys.s||keys.arrowdown)f-=1;if(keys.d)s+=1;if(keys.a)s-=1;
+  if(keys.arrowleft)yawPitch.yaw+=1.9*dt;if(keys.arrowright)yawPitch.yaw-=1.9*dt;
+  const l=Math.hypot(f,s);if(l>1){f/=l;s/=l}
+  if(l>.05){const sy=Math.sin(yawPitch.yaw),cy=Math.cos(yawPitch.yaw),v=3.1*dt,dx=(-sy*f+cy*s)*v,dz=(-cy*f-sy*s)*v;
+    if(free(pos.x+dx,pos.z))pos.x+=dx;if(free(pos.x,pos.z+dz))pos.z+=dz;moved+=Math.hypot(dx,dz);
+    if(S.tut==0&&moved>3){S.tut=1;tips()}}
+  camera.position.set(pos.x,1.5+(l>.05?Math.sin(performance.now()*.012)*.025:0),pos.z);camera.rotation.y=yawPitch.yaw;camera.rotation.x=yawPitch.pitch;
+}
+function free(x,z){
+  const r=.33;if(x<-HX+r||x>HX-r||z<-HZ+r||z>HZ-r)return false;
+  for(let cz=z2c(z-r);cz<=z2c(z+r);cz++)for(let cx=x2c(x-r);cx<=x2c(x+r);cx++){
+    if(!blocked(cx,cz))continue;const bx=cx2x(cx),bz=cz==REG.cz&&cx==REG.cx?5.0:cz2z(cz),h=.66;
+    if(Math.abs(x-bx)<h+r&&Math.abs(z-bz)<h+r)return false}
+  return true;
+}
+
+/* ================= ループ ================= */
+let last=performance.now(),hudT=0,titleA=0;
+function loop(now){
+  requestAnimationFrame(loop);
+  const dt=Math.min(.05,(now-last)/1000);last=now;
+  if(phase=='title'){titleA+=dt*.12;camera.position.set(Math.sin(titleA)*3,1.7,2+Math.cos(titleA)*1.5);camera.rotation.set(-.08,titleA*.6,0)}
+  else{
+    updatePlayer(dt);
+    if(phase=='open'||phase=='closing'){
+      const sdt=dt*speed;
+      if(phase=='open'){clock+=sdt;while(spawnList.length&&spawnList[0]<=clock){spawnList.shift();spawnCustomer()}
+        if(clock>=DAYLEN){clock=DAYLEN;phase='closing';addFeed('clock','しめる時間。のこりのお客さんを見送ろう','')}}
+      updateCustomers(sdt);
+      if(phase=='closing'&&!customers.length)endDay();
+    }
+    if(placing&&placing!='menu'){const g=ghostCell();ghost.position.set((g.cx-GW/2+.5)*CS,.6,(g.cz-GH/2+.5)*CS);ghost.material.color.setHex(g.ok?0x3a8a2b:0xdd5a45);const b=$('#placeBtn');if(b)b.disabled=!g.ok}
+    const bobY=1.95+Math.sin(now*.005)*.08;for(const w of world.fx)if(w.mark.visible)w.mark.position.y=bobY;
+    hudT+=dt;if(hudT>1){hudT=0;const n=performance.now();while(feed.length&&n-feed[0].t>6000)feed.shift();if(phase=='open')tips();drawHud()}
+  }
+  renderer.render(scene,camera);
+}
+if(window.THREE&&initGL()){setupInput();titleScreen();requestAnimationFrame(loop)}
+else if(!window.THREE)$('#nogl').style.display='flex';
+window.__game={get S(){return S},get phase(){return phase},pos,yawPitch,customers,get T(){return T},tapFx(i){openFx=S.fx[i];drawSheet()}};
+</script>
+</body>
+</html>

@@ -17,6 +17,7 @@ import {
   Dices,
   Drum,
   Disc3,
+  DoorClosed,
   Flag,
   Footprints,
   Ghost,
@@ -33,6 +34,7 @@ import {
   Rotate3d,
   Shield,
   Sprout,
+  Store,
   Swords,
   Trophy,
   TreePalm,
@@ -48,6 +50,7 @@ export const genres = [
   { id: 'action', label: 'アクション', icon: Zap },
   { id: 'adventure', label: 'ぼうけん・つくる', icon: Compass },
   { id: 'strategy', label: 'さくせん', icon: Shield },
+  { id: 'manage', label: 'けいえい', icon: Store },
   { id: 'puzzle', label: 'パズル', icon: Brain },
   { id: 'board', label: 'ボードゲーム', icon: ChessKnight },
   { id: 'learn', label: '学習', icon: GraduationCap },
@@ -93,7 +96,11 @@ export const games = [
   { id: 'orbit-defense', genre: 'strategy', title: '軌道防衛線', icon: Orbit, color: 'bg-violet-300', iconColor: 'text-violet-900', type: 'html' },
   { id: 'breach', genre: 'strategy', title: 'BREACH', icon: Swords, color: 'bg-rose-300', iconColor: 'text-rose-900', type: 'react', component: lazy(() => import('./games/breach/Game.jsx')) },
 
+  // --- けいえい ---
+  { id: 'supermarket', genre: 'manage', title: 'スーパーマーケット経営記', icon: Store, color: 'bg-orange-100', iconColor: 'text-orange-800', type: 'html' },
+
   // --- パズル ---
+  { id: 'white-room', genre: 'puzzle', title: '白い部屋からの脱出', icon: DoorClosed, color: 'bg-slate-100', iconColor: 'text-slate-700', type: 'html' },
   { id: 'mouse-rocket', genre: 'puzzle', title: 'Mouse Rocket', icon: Rat, color: 'bg-amber-200', iconColor: 'text-amber-900', type: 'html' },
   { id: 'futatsu-no-kage', genre: 'puzzle', title: 'ふたつの影', icon: Rotate3d, color: 'bg-indigo-300', iconColor: 'text-indigo-900', type: 'html' },
   { id: 'rensa-dojo', genre: 'learn', title: '連鎖道場', icon: Blocks, color: 'bg-red-200', iconColor: 'text-red-900', type: 'html' },
