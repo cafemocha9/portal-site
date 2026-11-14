@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>国旗クイズ</title>
+<style>
+  :root {
+    --bg: #f4f1ea; --card: #fff; --ink: #1f2a37; --sub: #6b7280; --line: #e5e1d8;
+    --main: #2f6fde; --main-d: #1f55b5; --ok: #1f9d55; --ng: #e0453a; --gold: #f2b631;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body { background: var(--bg); color: var(--ink); font-family: "Hiragino Maru Gothic ProN", "Hiragino Sans", "M PLUS Rounded 1c", "Noto Sans JP", system-ui, sans-serif;
+    -webkit-user-select: none; user-select: none; overflow-x: hidden; }
+  svg { width: 1em; height: 1em; flex: none; }
+  button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; touch-action: manipulation; }
+  .screen { display: none; min-height: 100%; padding: 18px 16px 28px; max-width: 640px; margin: 0 auto; }
+  .screen.on { display: block; }
+
+  /* メニュー */
+  .title { text-align: center; padding: 8px 0 4px; }
+  .title h1 { font-size: clamp(30px, 8vw, 40px); font-weight: 900; letter-spacing: .06em; display: inline-flex; align-items: center; gap: 10px; }
+  .title h1 svg { color: var(--main); font-size: 1.05em; }
+  .title p { color: var(--sub); font-size: 14px; margin-top: 4px; }
+  .progress { margin: 16px 0 6px; background: var(--card); border-radius: 16px; padding: 12px 14px; box-shadow: 0 2px 0 var(--line); }
+  .progress .row { display: flex; justify-content: space-between; font-size: 14px; font-weight: 800; }
+  .progress .row b { color: var(--main); font-size: 18px; }
+  .bar { height: 10px; border-radius: 99px; background: #ebe7de; margin-top: 8px; overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #4f8df0, #2f6fde); }
+
+  .sec { font-size: 13px; font-weight: 800; color: var(--sub); margin: 18px 4px 8px; }
+  .seg { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--card); border-radius: 14px; padding: 4px; box-shadow: 0 2px 0 var(--line); }
+  .seg button { padding: 10px 0; border-radius: 10px; font-weight: 800; font-size: 15px; }
+  .seg button[aria-pressed="true"] { background: var(--main); color: #fff; }
+  .levels { display: grid; gap: 10px; }
+  .lv { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; border-radius: 16px; background: var(--card); box-shadow: 0 3px 0 var(--line); text-align: left; }
+  .lv:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--line); }
+  .lv .num { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; font-weight: 900; font-size: 20px; color: #fff; flex: none; }
+  .lv .tx { flex: 1; min-width: 0; }
+  .lv .tx b { display: block; font-size: 17px; }
+  .lv .tx span { font-size: 12px; color: var(--sub); }
+  .lv .flags { display: flex; gap: 3px; margin-top: 5px; }
+  .lv .flags img { width: 26px; height: 19.5px; border-radius: 3px; box-shadow: 0 0 0 1px rgba(0,0,0,.08); object-fit: cover; }
+  .lv .best { font-size: 12px; font-weight: 800; color: var(--sub); text-align: right; white-space: nowrap; }
+  .lv .best b { display: block; font-size: 16px; color: var(--ink); }
+  .lv .best .stars { display: flex; gap: 1px; justify-content: flex-end; color: #d9d4c8; font-size: 13px; margin-top: 2px; }
+  .lv .best .stars .on { color: var(--gold); }
+  .wide { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; border-radius: 16px; font-weight: 900; font-size: 16px; }
+  .wide.main { background: var(--main); color: #fff; box-shadow: 0 4px 0 var(--main-d); }
+  .wide.sub { background: var(--card); box-shadow: 0 3px 0 var(--line); }
+  .wide:active { transform: translateY(2px); }
+
+  /* クイズ */
+  .qtop { display: flex; align-items: center; gap: 10px; }
+  .icon-btn { width: 42px; height: 42px; border-radius: 12px; background: var(--card); box-shadow: 0 2px 0 var(--line); display: grid; place-items: center; font-size: 22px; flex: none; }
+  .qprog { flex: 1; }
+  .qprog .row { display: flex; justify-content: space-between; font-size: 13px; font-weight: 800; color: var(--sub); }
+  .qprog .row b { color: var(--ink); }
+  .flagbox { margin: 18px auto 0; width: min(100%, 420px); aspect-ratio: 4 / 3; border-radius: 14px; background: var(--card); padding: 12px; box-shadow: 0 4px 0 var(--line); display: grid; place-items: center; position: relative; }
+  .flagbox img { width: 100%; height: 100%; object-fit: contain; border-radius: 4px; filter: drop-shadow(0 1px 1px rgba(0,0,0,.2)); }
+  .flagbox .mark { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+  .flagbox .mark span { width: 96px; height: 96px; border-radius: 50%; display: grid; place-items: center; font-size: 60px; color: #fff; transform: scale(.4); opacity: 0; transition: transform .25s cubic-bezier(.2,1.6,.4,1), opacity .2s; }
+  .flagbox .mark.on span { transform: scale(1); opacity: .95; }
+  .flagbox .mark.ok span { background: var(--ok); }
+  .flagbox .mark.ng span { background: var(--ng); }
+  .ask { text-align: center; font-weight: 900; font-size: 17px; margin: 16px 0 10px; }
+  .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 420px) { .choices { grid-template-columns: 1fr; gap: 8px; } }
+  .ch { min-height: 56px; padding: 10px 12px; border-radius: 14px; background: var(--card); box-shadow: 0 3px 0 var(--line); font-weight: 900; font-size: 17px; line-height: 1.25; display: flex; align-items: center; justify-content: center; text-align: center; }
+  .ch:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--line); }
+  .ch.ok { background: var(--ok); color: #fff; box-shadow: 0 3px 0 #157a40; }
+  .ch.ng { background: var(--ng); color: #fff; box-shadow: 0 3px 0 #b23128; }
+  .ch.dim { opacity: .45; }
+  .feedback { min-height: 64px; margin-top: 12px; display: flex; align-items: center; gap: 10px; }
+  .feedback .msg { flex: 1; font-weight: 900; font-size: 16px; }
+  .feedback .msg small { display: block; font-size: 12px; color: var(--sub); font-weight: 700; margin-top: 2px; }
+  .feedback .msg.ok { color: var(--ok); } .feedback .msg.ng { color: var(--ng); }
+  .next { display: none; align-items: center; gap: 6px; padding: 12px 18px; border-radius: 14px; background: var(--main); color: #fff; font-weight: 900; box-shadow: 0 3px 0 var(--main-d); }
+  .next.on { display: inline-flex; }
+
+  /* けっか */
+  .result { text-align: center; padding-top: 10px; }
+  .result .big { font-size: clamp(40px, 12vw, 56px); font-weight: 900; margin-top: 4px; }
+  .result .big small { font-size: .4em; color: var(--sub); }
+  .result .stars { display: flex; justify-content: center; gap: 6px; font-size: 40px; color: #d9d4c8; margin-top: 8px; }
+  .result .stars .on { color: var(--gold); }
+  .result .msg { font-weight: 800; margin-top: 8px; }
+  .result .rec { display: inline-block; margin-top: 8px; padding: 4px 12px; border-radius: 99px; background: var(--gold); color: #fff; font-weight: 900; font-size: 13px; }
+  .misses { margin-top: 18px; text-align: left; }
+  .misses .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+  .fl { background: var(--card); border-radius: 12px; padding: 8px; box-shadow: 0 2px 0 var(--line); text-align: center; }
+  .fl img { width: 100%; aspect-ratio: 4 / 3; object-fit: contain; border-radius: 3px; }
+  .fl b { display: block; font-size: 13px; margin-top: 4px; line-height: 1.25; }
+  .fl span { font-size: 11px; color: var(--sub); }
+  .stack { display: grid; gap: 10px; margin-top: 18px; }
+
+  /* ずかん */
+  .tabs { display: flex; gap: 6px; overflow-x: auto; padding: 4px 0 8px; scrollbar-width: none; }
+  .tabs button { flex: none; padding: 8px 14px; border-radius: 99px; background: var(--card); box-shadow: 0 2px 0 var(--line); font-weight: 800; font-size: 14px; }
+  .tabs button[aria-pressed="true"] { background: var(--main); color: #fff; }
+  .zgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+  .zgrid .fl { position: relative; }
+  .zgrid .fl.learned::after { content: ""; position: absolute; top: 6px; right: 6px; width: 18px; height: 18px; border-radius: 50%; background: var(--ok) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / 12px no-repeat; }
+  .zgrid .fl:not(.learned) img { filter: grayscale(.15) opacity(.85); }
+  .zhead { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .zhead h2 { font-size: 20px; flex: 1; }
+  .zhead span { font-size: 13px; color: var(--sub); font-weight: 800; }
+</style>
+</head>
+<body>
+
+<!-- メニュー -->
+<section class="screen on" id="s-menu">
+  <div class="title">
+    <h1><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>国旗クイズ</h1>
+    <p>世界197か国の国旗をおぼえよう</p>
+  </div>
+  <div class="progress">
+    <div class="row"><span>おぼえた国</span><span><b id="m-learned">0</b> / 197</span></div>
+    <div class="bar"><i id="m-bar" style="width:0"></i></div>
+  </div>
+  <div class="sec">もんだいの数</div>
+  <div class="seg" id="m-count">
+    <button type="button" data-v="10">10問</button>
+    <button type="button" data-v="20">20問</button>
+    <button type="button" data-v="0">ぜんぶ</button>
+  </div>
+  <div class="sec">レベルをえらぶ</div>
+  <div class="levels" id="m-levels"></div>
+  <div class="stack">
+    <button class="wide sub" id="b-zukan" type="button"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v16"></path><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"></path></svg> 国旗ずかん</button>
+  </div>
+</section>
+
+<!-- クイズ -->
+<section class="screen" id="s-quiz">
+  <div class="qtop">
+    <button class="icon-btn" id="b-quit" type="button" aria-label="やめる"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+    <div class="qprog">
+      <div class="row"><span id="q-level"></span><span><b id="q-no">1</b> / <span id="q-total">10</span>　せいかい <b id="q-score">0</b></span></div>
+      <div class="bar"><i id="q-bar" style="width:0"></i></div>
+    </div>
+    <button class="icon-btn" id="b-sound" type="button" aria-label="音の切り替え"></button>
+  </div>
+  <div class="flagbox"><img id="q-flag" alt="国旗"><div class="mark" id="q-mark"><span></span></div></div>
+  <p class="ask">この国旗は どこの国？</p>
+  <div class="choices" id="q-choices"></div>
+  <div class="feedback"><div class="msg" id="q-msg"></div><button class="next" id="b-next" type="button">つぎへ <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></button></div>
+</section>
+
+<!-- けっか -->
+<section class="screen" id="s-result">
+  <div class="result">
+    <p id="r-level" style="color:var(--sub);font-weight:800"></p>
+    <div class="big" id="r-score"></div>
+    <div class="stars" id="r-stars"></div>
+    <p class="msg" id="r-msg"></p>
+    <span class="rec" id="r-rec" hidden>じこベスト！</span>
+  </div>
+  <div class="misses" id="r-misses"></div>
+  <div class="stack">
+    <button class="wide main" id="b-retry-miss" type="button"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg> まちがえた国だけ もう一度</button>
+    <button class="wide sub" id="b-retry" type="button"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg> おなじレベルを もう一度</button>
+    <button class="wide sub" id="b-menu" type="button"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg> レベルをえらびなおす</button>
+  </div>
+</section>
+
+<!-- ずかん -->
+<section class="screen" id="s-zukan">
+  <div class="zhead">
+    <button class="icon-btn" id="b-zback" type="button" aria-label="もどる"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button>
+    <h2>国旗ずかん</h2><span id="z-count"></span>
+  </div>
+  <div class="tabs" id="z-tabs"></div>
+  <div class="zgrid" id="z-grid"></div>
+</section>
+
+<script>
+'use strict';
+/* [ISOコード, 日本語名, 地域, レベル]  193の国連加盟国 ＋ バチカン・コソボ・クック諸島・ニウエ ＝ 197か国 */
+const DATA = [["JP", "日本", "as", 1], ["CN", "中国", "as", 1], ["KR", "韓国", "as", 1], ["KP", "北朝鮮", "as", 2], ["MN", "モンゴル", "as", 2], ["IN", "インド", "as", 1], ["PK", "パキスタン", "as", 2], ["BD", "バングラデシュ", "as", 3], ["LK", "スリランカ", "as", 3], ["NP", "ネパール", "as", 2], ["BT", "ブータン", "as", 3], ["MV", "モルディブ", "as", 3], ["AF", "アフガニスタン", "as", 3], ["TH", "タイ", "as", 1], ["VN", "ベトナム", "as", 1], ["LA", "ラオス", "as", 3], ["KH", "カンボジア", "as", 2], ["MM", "ミャンマー", "as", 2], ["MY", "マレーシア", "as", 2], ["SG", "シンガポール", "as", 1], ["ID", "インドネシア", "as", 1], ["PH", "フィリピン", "as", 1], ["BN", "ブルネイ", "as", 3], ["TL", "東ティモール", "as", 4], ["KZ", "カザフスタン", "as", 3], ["UZ", "ウズベキスタン", "as", 3], ["TM", "トルクメニスタン", "as", 4], ["KG", "キルギス", "as", 4], ["TJ", "タジキスタン", "as", 4], ["IR", "イラン", "as", 2], ["IQ", "イラク", "as", 3], ["SA", "サウジアラビア", "as", 2], ["AE", "アラブ首長国連邦", "as", 2], ["QA", "カタール", "as", 3], ["KW", "クウェート", "as", 3], ["BH", "バーレーン", "as", 4], ["OM", "オマーン", "as", 4], ["YE", "イエメン", "as", 4], ["JO", "ヨルダン", "as", 3], ["SY", "シリア", "as", 3], ["LB", "レバノン", "as", 3], ["IL", "イスラエル", "as", 2], ["TR", "トルコ", "as", 1], ["GE", "ジョージア", "as", 3], ["AM", "アルメニア", "as", 4], ["AZ", "アゼルバイジャン", "as", 4], ["GB", "イギリス", "eu", 1], ["FR", "フランス", "eu", 1], ["DE", "ドイツ", "eu", 1], ["IT", "イタリア", "eu", 1], ["ES", "スペイン", "eu", 1], ["PT", "ポルトガル", "eu", 2], ["NL", "オランダ", "eu", 2], ["BE", "ベルギー", "eu", 2], ["LU", "ルクセンブルク", "eu", 3], ["CH", "スイス", "eu", 1], ["AT", "オーストリア", "eu", 2], ["IE", "アイルランド", "eu", 2], ["IS", "アイスランド", "eu", 3], ["NO", "ノルウェー", "eu", 2], ["SE", "スウェーデン", "eu", 2], ["FI", "フィンランド", "eu", 2], ["DK", "デンマーク", "eu", 2], ["EE", "エストニア", "eu", 4], ["LV", "ラトビア", "eu", 4], ["LT", "リトアニア", "eu", 4], ["PL", "ポーランド", "eu", 2], ["CZ", "チェコ", "eu", 3], ["SK", "スロバキア", "eu", 4], ["HU", "ハンガリー", "eu", 3], ["RO", "ルーマニア", "eu", 3], ["BG", "ブルガリア", "eu", 3], ["GR", "ギリシャ", "eu", 2], ["AL", "アルバニア", "eu", 4], ["MK", "北マケドニア", "eu", 4], ["RS", "セルビア", "eu", 3], ["ME", "モンテネグロ", "eu", 4], ["BA", "ボスニア・ヘルツェゴビナ", "eu", 4], ["HR", "クロアチア", "eu", 3], ["SI", "スロベニア", "eu", 4], ["XK", "コソボ", "eu", 4], ["MT", "マルタ", "eu", 3], ["CY", "キプロス", "eu", 4], ["UA", "ウクライナ", "eu", 2], ["BY", "ベラルーシ", "eu", 3], ["MD", "モルドバ", "eu", 4], ["RU", "ロシア", "eu", 1], ["AD", "アンドラ", "eu", 4], ["MC", "モナコ", "eu", 3], ["SM", "サンマリノ", "eu", 4], ["LI", "リヒテンシュタイン", "eu", 4], ["VA", "バチカン", "eu", 3], ["EG", "エジプト", "af", 2], ["LY", "リビア", "af", 4], ["TN", "チュニジア", "af", 3], ["DZ", "アルジェリア", "af", 3], ["MA", "モロッコ", "af", 3], ["SD", "スーダン", "af", 4], ["SS", "南スーダン", "af", 5], ["ET", "エチオピア", "af", 3], ["ER", "エリトリア", "af", 5], ["DJ", "ジブチ", "af", 5], ["SO", "ソマリア", "af", 4], ["KE", "ケニア", "af", 2], ["UG", "ウガンダ", "af", 4], ["TZ", "タンザニア", "af", 3], ["RW", "ルワンダ", "af", 4], ["BI", "ブルンジ", "af", 5], ["CD", "コンゴ民主共和国", "af", 4], ["CG", "コンゴ共和国", "af", 5], ["CF", "中央アフリカ", "af", 5], ["CM", "カメルーン", "af", 3], ["TD", "チャド", "af", 5], ["NE", "ニジェール", "af", 5], ["NG", "ナイジェリア", "af", 3], ["GH", "ガーナ", "af", 3], ["CI", "コートジボワール", "af", 3], ["LR", "リベリア", "af", 5], ["SL", "シエラレオネ", "af", 5], ["GN", "ギニア", "af", 5], ["GW", "ギニアビサウ", "af", 5], ["SN", "セネガル", "af", 3], ["GM", "ガンビア", "af", 5], ["ML", "マリ", "af", 4], ["BF", "ブルキナファソ", "af", 5], ["MR", "モーリタニア", "af", 5], ["CV", "カーボベルデ", "af", 5], ["BJ", "ベナン", "af", 5], ["TG", "トーゴ", "af", 5], ["GQ", "赤道ギニア", "af", 5], ["GA", "ガボン", "af", 5], ["ST", "サントメ・プリンシペ", "af", 5], ["AO", "アンゴラ", "af", 4], ["ZM", "ザンビア", "af", 4], ["ZW", "ジンバブエ", "af", 4], ["MW", "マラウイ", "af", 5], ["MZ", "モザンビーク", "af", 4], ["MG", "マダガスカル", "af", 3], ["MU", "モーリシャス", "af", 5], ["SC", "セーシェル", "af", 5], ["KM", "コモロ", "af", 5], ["ZA", "南アフリカ", "af", 2], ["NA", "ナミビア", "af", 4], ["BW", "ボツワナ", "af", 4], ["LS", "レソト", "af", 5], ["SZ", "エスワティニ", "af", 5], ["US", "アメリカ", "na", 1], ["CA", "カナダ", "na", 1], ["MX", "メキシコ", "na", 1], ["GT", "グアテマラ", "na", 4], ["BZ", "ベリーズ", "na", 5], ["SV", "エルサルバドル", "na", 4], ["HN", "ホンジュラス", "na", 4], ["NI", "ニカラグア", "na", 4], ["CR", "コスタリカ", "na", 3], ["PA", "パナマ", "na", 3], ["CU", "キューバ", "na", 2], ["JM", "ジャマイカ", "na", 2], ["HT", "ハイチ", "na", 4], ["DO", "ドミニカ共和国", "na", 4], ["BS", "バハマ", "na", 4], ["TT", "トリニダード・トバゴ", "na", 4], ["BB", "バルバドス", "na", 5], ["DM", "ドミニカ国", "na", 5], ["GD", "グレナダ", "na", 5], ["LC", "セントルシア", "na", 5], ["VC", "セントビンセント・グレナディーン", "na", 5], ["KN", "セントクリストファー・ネービス", "na", 5], ["AG", "アンティグア・バーブーダ", "na", 5], ["BR", "ブラジル", "sa", 1], ["AR", "アルゼンチン", "sa", 1], ["CL", "チリ", "sa", 2], ["PE", "ペルー", "sa", 2], ["CO", "コロンビア", "sa", 2], ["VE", "ベネズエラ", "sa", 3], ["EC", "エクアドル", "sa", 3], ["BO", "ボリビア", "sa", 3], ["PY", "パラグアイ", "sa", 3], ["UY", "ウルグアイ", "sa", 3], ["GY", "ガイアナ", "sa", 4], ["SR", "スリナム", "sa", 4], ["AU", "オーストラリア", "oc", 1], ["NZ", "ニュージーランド", "oc", 1], ["PG", "パプアニューギニア", "oc", 3], ["FJ", "フィジー", "oc", 3], ["WS", "サモア", "oc", 4], ["TO", "トンガ", "oc", 4], ["VU", "バヌアツ", "oc", 5], ["SB", "ソロモン諸島", "oc", 4], ["KI", "キリバス", "oc", 5], ["TV", "ツバル", "oc", 5], ["NR", "ナウル", "oc", 5], ["PW", "パラオ", "oc", 3], ["FM", "ミクロネシア連邦", "oc", 5], ["MH", "マーシャル諸島", "oc", 5], ["CK", "クック諸島", "oc", 5], ["NU", "ニウエ", "oc", 5]];
+const REGION = { as: 'アジア', eu: 'ヨーロッパ', af: 'アフリカ', na: '北・中央アメリカ', sa: '南アメリカ', oc: 'オセアニア' };
+const LEVELS = [
+  { id: 1, name: 'はじめて', desc: 'よく知られている国', color: '#3fb27f' },
+  { id: 2, name: 'なれてきた', desc: 'ニュースでよく聞く国', color: '#2f9bd6' },
+  { id: 3, name: 'ものしり', desc: '世界の主な国', color: '#7a5af0' },
+  { id: 4, name: 'はかせ', desc: '少しむずかしい国', color: '#e48a2a' },
+  { id: 5, name: 'めいじん', desc: 'とてもむずかしい国', color: '#e0453a' },
+  { id: 0, name: 'ぜんぶ', desc: '197か国すべてから', color: '#1f2a37' },
+];
+/* 見た目が似ている国旗。むずかしいレベルでは、まちがいの選択肢にまぜる */
+const SIMILAR = [
+  ['ID', 'MC', 'PL', 'SG'], ['TD', 'RO', 'AD', 'MD'], ['IE', 'CI', 'IT', 'NE'], ['NL', 'LU', 'PY', 'HR', 'FR'], ['AU', 'NZ', 'TV', 'FJ', 'CK', 'NU'],
+  ['NO', 'IS', 'DK', 'FI', 'SE'], ['ML', 'GN', 'SN', 'CM', 'BJ'], ['RU', 'SI', 'SK', 'RS'], ['CO', 'EC', 'VE'], ['SY', 'IQ', 'EG', 'YE'],
+  ['JO', 'SD', 'KW', 'AE'], ['GH', 'BO', 'LT', 'ET', 'GW'], ['AT', 'LV', 'LB', 'PE', 'CA'], ['HU', 'BG', 'IR', 'TJ'], ['US', 'LR', 'MY'],
+  ['QA', 'BH'], ['NE', 'IN'], ['SV', 'HN', 'NI', 'GT', 'AR'], ['CZ', 'PH', 'BS'], ['JP', 'BD', 'PW', 'LA'], ['GA', 'SL', 'RW'],
+  ['CR', 'TH', 'KP'], ['AR', 'UY'], ['DZ', 'PK', 'TR', 'TN', 'MR'], ['KE', 'SS', 'MW'], ['CL', 'CU', 'PA'], ['AL', 'ME'],
+  ['CN', 'VN', 'KG'], ['BE', 'DE', 'UG'], ['TO', 'GE', 'CH'], ['DO', 'DM', 'GR'], ['SA', 'PK'], ['UA', 'KZ'], ['ZW', 'ZM', 'ZA', 'MZ'],
+  ['TT', 'AG', 'BB', 'LC', 'VC', 'GD', 'KN'], ['FM', 'MH', 'SO'], ['MN', 'BT', 'NP'], ['KI', 'SB', 'VU', 'PG', 'WS', 'TO', 'NR'],
+];
+const BY = Object.fromEntries(DATA.map(([c, n, r, l]) => [c, { c, n, r, l }]));
+const ALL = DATA.map(([c]) => BY[c]);
+const flagSrc = (c) => 'flags/' + c.toLowerCase() + '.svg';
+const $ = (id) => document.getElementById(id);
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('flagquiz:' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('flagquiz:' + k, JSON.stringify(v)); } catch {} },
+};
+const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+let learned = new Set(store.get('learned', []));
+let count = store.get('count', 10);
+let soundOn = store.get('sound', true);
+
+/* ---------- 音（ファイルなし、その場で合成） ---------- */
+let ac = null;
+function tone(f, t, d, type = 'sine', v = 0.18) {
+  const o = ac.createOscillator(), g = ac.createGain(); o.type = type; o.frequency.setValueAtTime(f, t);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+  o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + d + 0.05);
+}
+function sfx(kind) {
+  if (!soundOn) return;
+  try { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); if (ac.state !== 'running') ac.resume(); } catch { return; }
+  const t = ac.currentTime + 0.01;
+  if (kind === 'ok') { tone(880, t, 0.18); tone(1318, t + 0.09, 0.3); }
+  if (kind === 'ng') { tone(220, t, 0.28, 'triangle', 0.2); tone(196, t + 0.12, 0.3, 'triangle', 0.16); }
+  if (kind === 'end') [523, 659, 784, 1047].forEach((f, i) => tone(f, t + i * 0.11, 0.35, 'sine', 0.16));
+}
+const ICON_ON = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"></path><path d="M16 9a5 5 0 0 1 0 6"></path><path d="M19.364 18.364a9 9 0 0 0 0-12.728"></path></svg>', ICON_OFF = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4.702a.7.7 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.7.7 0 0 0 11 19.298z"></path><path d="m16.5 14.5 5-5"></path><path d="m16.5 9.5 5 5"></path></svg>', ICON_OK = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>', ICON_NG = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>', STAR = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg>';
+function renderSound() { $('b-sound').innerHTML = soundOn ? ICON_ON : ICON_OFF; }
+$('b-sound').onclick = () => { soundOn = !soundOn; store.set('sound', soundOn); renderSound(); };
+
+/* ---------- 画面 ---------- */
+function show(id) { document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('on', s.id === id)); window.scrollTo(0, 0); }
+const poolOf = (lv) => (lv === 0 ? ALL : ALL.filter((x) => x.l === lv));
+function stars(score, total) { const r = total ? score / total : 0; return r >= 0.9 ? 3 : r >= 0.7 ? 2 : r >= 0.4 ? 1 : 0; }
+function starHtml(n, max = 3) { let s = ''; for (let i = 0; i < max; i++) s += `<span class="${i < n ? 'on' : ''}">${STAR}</span>`; return s; }
+
+function renderMenu() {
+  $('m-learned').textContent = learned.size;
+  $('m-bar').style.width = (learned.size / ALL.length) * 100 + '%';
+  document.querySelectorAll('#m-count button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.v === count)));
+  const box = $('m-levels'); box.innerHTML = '';
+  for (const L of LEVELS) {
+    const pool = poolOf(L.id), best = store.get('best:' + L.id, null);
+    const sample = pool.slice(0, 5).map((x) => `<img src="${flagSrc(x.c)}" alt="" loading="lazy">`).join('');
+    const got = pool.filter((x) => learned.has(x.c)).length;
+    const b = document.createElement('button'); b.className = 'lv'; b.type = 'button';
+    b.innerHTML = `<span class="num" style="background:${L.color}">${L.id || '全'}</span>
+      <span class="tx"><b>${L.id ? 'レベル' + L.id + '　' : ''}${L.name}</b><span>${L.desc}・${pool.length}か国（おぼえた ${got}）</span><span class="flags">${sample}</span></span>
+      <span class="best">${best ? `ベスト<b>${best.score}/${best.total}</b><span class="stars">${starHtml(stars(best.score, best.total))}</span>` : 'まだ'}</span>`;
+    b.onclick = () => startQuiz(L.id);
+    box.appendChild(b);
+  }
+}
+document.querySelectorAll('#m-count button').forEach((b) => (b.onclick = () => { count = +b.dataset.v; store.set('count', count); renderMenu(); }));
+
+/* ---------- 出題 ---------- */
+let Q = null;
+/* まちがいの選択肢：やさしいレベルは有名な国から、むずかしいレベルは「似た国旗」と「同じ地域」から選ぶ */
+function distractors(ans, lv) {
+  const pick = [], used = new Set([ans.c]);
+  const add = (list, n) => { for (const x of shuffle(list)) { if (pick.length >= n) break; if (!used.has(x.c)) { used.add(x.c); pick.push(x); } } };
+  if (lv === 1) { add(ALL.filter((x) => x.l <= 2), 3); return pick; }
+  if (lv >= 3 || lv === 0) {
+    const sim = SIMILAR.filter((g) => g.includes(ans.c)).flat().map((c) => BY[c]);
+    add(sim, lv >= 4 || lv === 0 ? 2 : 1);
+  }
+  add(ALL.filter((x) => x.r === ans.r && (lv === 2 ? x.l <= 3 : true)), 3);
+  add(ALL.filter((x) => (lv === 2 ? x.l <= 3 : true)), 3);
+  return pick;
+}
+function startQuiz(lv, only) {
+  const pool = only || poolOf(lv);
+  const n = only ? pool.length : count === 0 ? pool.length : Math.min(count, pool.length);
+  Q = { lv, list: shuffle(pool).slice(0, n), i: 0, score: 0, misses: [], locked: false, retry: !!only };
+  $('q-level').textContent = only ? 'まちがえた国' : lv ? `レベル${lv}　${LEVELS.find((x) => x.id === lv).name}` : 'ぜんぶ';
+  $('q-total').textContent = n;
+  show('s-quiz'); renderSound(); ask();
+}
+function ask() {
+  const ans = Q.list[Q.i];
+  Q.locked = false; Q.choices = shuffle([ans, ...distractors(ans, Q.lv)]);
+  $('q-no').textContent = Q.i + 1; $('q-score').textContent = Q.score;
+  $('q-bar').style.width = (Q.i / Q.list.length) * 100 + '%';
+  const img = $('q-flag'); img.src = flagSrc(ans.c);
+  const mk = $('q-mark'); mk.className = 'mark';
+  $('q-msg').className = 'msg'; $('q-msg').innerHTML = ''; $('b-next').classList.remove('on');
+  const box = $('q-choices'); box.innerHTML = '';
+  Q.choices.forEach((x) => {
+    const b = document.createElement('button'); b.className = 'ch'; b.type = 'button'; b.textContent = x.n; b.dataset.c = x.c;
+    b.onclick = () => answer(x, b); box.appendChild(b);
+  });
+  // つぎの国旗を先に読みこんでおく
+  const nx = Q.list[Q.i + 1]; if (nx) { const p = new Image(); p.src = flagSrc(nx.c); }
+}
+function answer(x, btn) {
+  if (Q.locked) return; Q.locked = true;
+  const ans = Q.list[Q.i], ok = x.c === ans.c, mk = $('q-mark');
+  document.querySelectorAll('.ch').forEach((b) => { if (b.dataset.c === ans.c) b.classList.add('ok'); else if (b !== btn) b.classList.add('dim'); });
+  if (ok) {
+    Q.score++; learned.add(ans.c); store.set('learned', [...learned]); sfx('ok');
+    mk.className = 'mark ok on'; mk.firstChild.innerHTML = ICON_OK;
+    $('q-msg').className = 'msg ok'; $('q-msg').innerHTML = `せいかい！<small>${ans.n}（${REGION[ans.r]}）</small>`;
+    $('q-score').textContent = Q.score;
+    Q.timer = setTimeout(next, 900);
+  } else {
+    btn.classList.add('ng'); Q.misses.push(ans); sfx('ng');
+    mk.className = 'mark ng on'; mk.firstChild.innerHTML = ICON_NG;
+    $('q-msg').className = 'msg ng'; $('q-msg').innerHTML = `ざんねん… こたえは「${ans.n}」<small>${REGION[ans.r]}の国</small>`;
+  }
+  $('b-next').classList.add('on');
+}
+function next() {
+  clearTimeout(Q.timer);
+  if (!Q.locked) return;
+  Q.i++;
+  if (Q.i >= Q.list.length) finish(); else ask();
+}
+$('b-next').onclick = next;
+$('b-quit').onclick = () => { if (Q) clearTimeout(Q.timer); Q = null; renderMenu(); show('s-menu'); };
+
+function finish() {
+  const total = Q.list.length, st = stars(Q.score, total);
+  $('q-bar').style.width = '100%';
+  $('r-level').textContent = $('q-level').textContent;
+  $('r-score').innerHTML = `${Q.score}<small> / ${total}問 せいかい</small>`;
+  $('r-stars').innerHTML = starHtml(st);
+  $('r-msg').textContent = st === 3 ? 'すばらしい！ 国旗はかせだね' : st === 2 ? 'よくできました！' : st === 1 ? 'そのちょうし！ ずかんで見なおそう' : 'ずかんで国旗をながめてから、もう一度！';
+  let rec = false;
+  if (!Q.retry && (count === 0 || total >= Math.min(count, poolOf(Q.lv).length))) {
+    const prev = store.get('best:' + Q.lv, null);
+    if (!prev || Q.score / total > prev.score / prev.total || (Q.score / total === prev.score / prev.total && total > prev.total)) { store.set('best:' + Q.lv, { score: Q.score, total }); rec = !!prev || Q.score > 0; }
+  }
+  $('r-rec').hidden = !rec;
+  const m = $('r-misses');
+  m.innerHTML = Q.misses.length ? `<div class="sec">まちがえた国（${Q.misses.length}）</div><div class="grid">${Q.misses.map((x) => `<div class="fl"><img src="${flagSrc(x.c)}" alt=""><b>${x.n}</b><span>${REGION[x.r]}</span></div>`).join('')}</div>` : '';
+  $('b-retry-miss').style.display = Q.misses.length ? '' : 'none';
+  sfx('end'); show('s-result');
+}
+$('b-retry-miss').onclick = () => { const lv = Q.lv, misses = Q.misses; startQuiz(lv, misses); };
+$('b-retry').onclick = () => startQuiz(Q.lv);
+$('b-menu').onclick = () => { renderMenu(); show('s-menu'); };
+
+/* ---------- ずかん ---------- */
+let zRegion = 'all';
+function renderZukan() {
+  const tabs = [['all', 'ぜんぶ'], ...Object.entries(REGION)];
+  $('z-tabs').innerHTML = tabs.map(([k, v]) => `<button type="button" data-k="${k}" aria-pressed="${k === zRegion}">${v}</button>`).join('');
+  $('z-tabs').querySelectorAll('button').forEach((b) => (b.onclick = () => { zRegion = b.dataset.k; renderZukan(); }));
+  const list = ALL.filter((x) => zRegion === 'all' || x.r === zRegion);
+  $('z-count').textContent = `おぼえた ${list.filter((x) => learned.has(x.c)).length} / ${list.length}`;
+  $('z-grid').innerHTML = list.map((x) => `<div class="fl${learned.has(x.c) ? ' learned' : ''}"><img src="${flagSrc(x.c)}" alt="" loading="lazy"><b>${x.n}</b><span>${REGION[x.r]}・Lv${x.l}</span></div>`).join('');
+}
+$('b-zukan').onclick = () => { renderZukan(); show('s-zukan'); };
+$('b-zback').onclick = () => { renderMenu(); show('s-menu'); };
+
+renderMenu();
+window.__flagquiz = { DATA, ALL, BY, SIMILAR, distractors, startQuiz, get Q() { return Q; }, answer, next };
+</script>
+</body>
+</html>

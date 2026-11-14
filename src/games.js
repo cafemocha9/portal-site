@@ -16,6 +16,7 @@ import {
   Diamond,
   Dices,
   Drum,
+  Earth,
   Disc3,
   DoorClosed,
   Flag,
@@ -107,6 +108,7 @@ export const games = [
   { id: 'color-match', genre: 'puzzle', title: 'いろ あて', icon: Palette, color: 'bg-sky-300', iconColor: 'text-sky-800', type: 'html' },
 
   // --- ボードゲーム ---
+  { id: 'flag-quiz', genre: 'learn', title: '国旗クイズ', icon: Earth, color: 'bg-blue-200', iconColor: 'text-blue-900', type: 'html' },
   { id: 'chess-dojo', genre: 'learn', title: 'チェス作戦道場', icon: ChessKnight, color: 'bg-stone-300', iconColor: 'text-stone-800', type: 'html' },
   { id: 'chess', genre: 'board', title: 'チェス', icon: Crown, color: 'bg-yellow-200', iconColor: 'text-yellow-900', type: 'react', component: lazy(() => import('./games/chess/Game.jsx')) },
   { id: 'chess2', genre: 'board', title: 'チェス2', icon: Crown, color: 'bg-amber-200', iconColor: 'text-amber-900', type: 'react', component: lazy(() => import('./games/chess2/Game.jsx')) },
