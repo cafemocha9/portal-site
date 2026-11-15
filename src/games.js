@@ -9,6 +9,7 @@ import {
   CarFront,
   Castle,
   ChessKnight,
+  CircleDashed,
   Coffee,
   CircleDot,
   Compass,
@@ -84,6 +85,7 @@ export const games = [
   { id: 'zanzo', genre: 'action', title: '残像 -ZANZO-', icon: Ghost, color: 'bg-slate-300', iconColor: 'text-slate-800', type: 'html' },
   { id: 'singularity', genre: 'action', title: '特異点', icon: Atom, color: 'bg-blue-300', iconColor: 'text-blue-900', type: 'html' },
   { id: 'houkago-dodge', genre: 'action', title: '放課後ドッジ', icon: Volleyball, color: 'bg-orange-300', iconColor: 'text-orange-900', type: 'html' },
+  { id: 'korokoro', genre: 'action', title: 'コロコロ大玉', icon: CircleDashed, color: 'bg-lime-300', iconColor: 'text-lime-900', type: 'html' },
   { id: 'balloon', genre: 'action', title: 'ふうせん わり', icon: Balloon, color: 'bg-rose-200', iconColor: 'text-rose-700', type: 'react', component: lazy(() => import('./games/balloon/Balloon.jsx')) },
 
   // --- ぼうけん・つくる ---
