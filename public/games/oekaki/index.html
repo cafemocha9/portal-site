@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>ゆめいろ おえかき</title>
+<style>
+  :root { --bg1:#ffe9f3; --bg2:#ece6ff; --ink:#5b3a66; --pink:#ff7eb6; --pink-d:#e85a9b; --lav:#b79cff; --card:#fff; --line:#f3d3e4; }
+  * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+  html,body { height:100%; overflow:hidden; }
+  body { display:flex; flex-direction:column; background:linear-gradient(160deg,var(--bg1),var(--bg2)); color:var(--ink);
+    font-family:"Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans JP",system-ui,sans-serif; font-weight:800; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+  button { font:inherit; color:inherit; border:0; background:none; cursor:pointer; touch-action:manipulation; }
+
+  header { display:flex; align-items:center; gap:6px; padding:8px 10px 6px; }
+  header h1 { font-size:16px; letter-spacing:.04em; margin-right:auto; white-space:nowrap; background:linear-gradient(90deg,#ff6fae,#a47bff,#5cc8ff); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  header h1 { min-width:0; overflow:hidden; text-overflow:clip; flex:0 1 auto; }
+  @media (max-width:420px) { header h1 { font-size:13px; } header { gap:4px; } .pill { padding:8px 9px !important; font-size:12px !important; } }
+  .pill { flex:none; padding:8px 11px; border-radius:99px; background:var(--card); box-shadow:0 2px 0 var(--line); font-size:13px; white-space:nowrap; }
+  .pill:active { transform:translateY(2px); box-shadow:none; }
+  .pill:disabled { opacity:.4; }
+  .pill.save { background:linear-gradient(90deg,#ff7eb6,#b79cff); color:#fff; box-shadow:0 2px 0 #c86aa0; }
+
+  #stage { flex:1; min-height:0; position:relative; margin:2px 10px 6px; display:grid; place-items:center; }
+  #wrap { position:relative; border-radius:18px; overflow:hidden; background:#fff; box-shadow:0 0 0 4px #fff, 0 0 0 6px var(--line), 0 8px 18px rgba(170,110,160,.25); touch-action:none; }
+  #wrap canvas { position:absolute; left:0; top:0; width:100%; height:100%; display:block; }
+  #live { pointer-events:none; }
+  #mirrorLine { position:absolute; top:0; bottom:0; left:50%; width:0; border-left:2px dashed rgba(183,156,255,.7); display:none; pointer-events:none; }
+  .mirror #mirrorLine { display:block; }
+
+  footer { padding:0 10px max(10px,env(safe-area-inset-bottom)); display:grid; gap:7px; }
+  .row { display:flex; gap:6px; align-items:center; overflow-x:auto; scrollbar-width:none; padding:2px 1px 3px; }
+  .row::-webkit-scrollbar { display:none; }
+  #tools { flex-wrap:wrap; overflow:visible; }
+  .tool { flex:1 0 auto; padding:8px 10px; border-radius:14px; background:var(--card); box-shadow:0 2px 0 var(--line); font-size:13px; border:2.5px solid transparent; }
+  .tool[aria-pressed="true"] { border-color:var(--pink); background:#fff3f9; color:var(--pink-d); }
+  .tool.tog[aria-pressed="true"] { border-color:var(--lav); background:#f4efff; color:#7a5af0; }
+  .sz { flex:none; width:40px; height:40px; border-radius:50%; background:var(--card); box-shadow:0 2px 0 var(--line); display:grid; place-items:center; border:2.5px solid transparent; }
+  .sz i { display:block; border-radius:50%; background:var(--ink); }
+  .sz[aria-pressed="true"] { border-color:var(--pink); }
+  .st { flex:none; width:44px; height:44px; border-radius:12px; background:var(--card); box-shadow:0 2px 0 var(--line); border:2.5px solid transparent; padding:4px; }
+  .st[aria-pressed="true"] { border-color:var(--pink); }
+  .st canvas { width:100%; height:100%; display:block; }
+  .lab { flex:none; font-size:11px; opacity:.7; width:2.6em; line-height:1.2; }
+  .sw { flex:none; width:38px; height:38px; border-radius:50%; border:3px solid #fff; box-shadow:0 0 0 2px var(--line); }
+  .sw.g { width:58px; border-radius:20px; }
+  .sw[aria-pressed="true"] { box-shadow:0 0 0 3px var(--pink); transform:scale(1.08); }
+  .mk { flex:none; height:38px; padding:0 12px; border-radius:20px; background:var(--card); box-shadow:0 0 0 2px var(--line); font-size:12px; white-space:nowrap; }
+  #stampRow { display:none; } .stamp #stampRow { display:contents; }
+  .stamp .sz { width:34px; height:34px; }
+
+  .ov { position:fixed; inset:0; z-index:9; display:none; place-items:center; background:rgba(91,58,102,.45); padding:16px; }
+  .ov.on { display:grid; }
+  .box { width:min(380px,100%); background:#fff; border-radius:22px; padding:18px; text-align:center; max-height:92vh; overflow-y:auto; }
+  .box h2 { font-size:18px; margin-bottom:10px; }
+  .box p { font-size:13px; line-height:1.7; margin:8px 0; font-weight:700; }
+  .box img { max-width:100%; max-height:46vh; border-radius:12px; box-shadow:0 0 0 2px var(--line); -webkit-touch-callout:default; }
+  .box .btns { display:flex; gap:8px; margin-top:12px; } .box .btns button { flex:1; padding:12px; border-radius:14px; background:#f6eef5; font-size:15px; }
+  .box .btns .main { background:linear-gradient(90deg,#ff7eb6,#b79cff); color:#fff; }
+  .pick { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin:6px 0 10px; }
+  .pick .sw { width:32px; height:32px; }
+  #gPrev { height:34px; border-radius:17px; margin:4px 0 2px; box-shadow:0 0 0 2px var(--line); }
+  /* 横向きのスマホ：道具を右がわにまとめて、紙を広くとる */
+  @media (orientation: landscape) and (max-height: 560px) {
+    body { display:grid; grid-template:"h h" auto "s f" 1fr / 1fr min(46vw,330px); }
+    header { grid-area:h; padding:5px 10px 3px; } #stage { grid-area:s; margin:2px 6px 8px 10px; }
+    footer { grid-area:f; overflow-y:auto; align-content:start; padding:2px 10px 8px 2px; gap:5px; }
+    .row { flex-wrap:wrap; overflow:visible; } .lab { width:100%; }
+    .sw { width:32px; height:32px; } .sw.g { width:48px; } .tool { padding:7px 10px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>ゆめいろ おえかき</h1>
+  <button class="pill" id="bUndo" type="button">もどす</button>
+  <button class="pill" id="bRedo" type="button">すすむ</button>
+  <button class="pill" id="bClear" type="button">けす</button>
+  <button class="pill save" id="bSave" type="button">ほぞん</button>
+</header>
+
+<main id="stage"><div id="wrap"><canvas id="main"></canvas><canvas id="live"></canvas><div id="mirrorLine"></div></div></main>
+
+<footer>
+  <div class="row" id="tools"></div>
+  <div class="row"><span class="lab" id="sizeLab">ふとさ</span><span id="sizes" style="display:contents"></span><span id="stampRow"></span></div>
+  <div class="row"><span class="lab">グラデ</span><span id="grads" style="display:contents"></span><button class="mk" id="bMake" type="button">＋ つくる</button></div>
+  <div class="row"><span class="lab">いろ</span><span id="solids" style="display:contents"></span></div>
+</footer>
+
+<div class="ov" id="ovSave"><div class="box">
+  <h2>できあがり！</h2><img id="saveImg" alt="かいた絵">
+  <p id="saveMsg"></p>
+  <div class="btns"><button id="bDl" class="main" type="button">ほぞんする</button><button id="bSaveClose" type="button">とじる</button></div>
+</div></div>
+<div class="ov" id="ovClear"><div class="box">
+  <h2>ぜんぶ けしても いい？</h2><p>「もどす」で もとにもどせるよ</p>
+  <div class="btns"><button id="bClearNo" type="button">やめる</button><button id="bClearYes" class="main" type="button">けす</button></div>
+</div></div>
+<div class="ov" id="ovMake"><div class="box">
+  <h2>グラデーションを つくる</h2>
+  <p>はじめの いろ</p><div class="pick" id="pickA"></div>
+  <p>おわりの いろ</p><div class="pick" id="pickB"></div>
+  <div id="gPrev"></div>
+  <div class="btns"><button id="bMakeNo" type="button">やめる</button><button id="bMakeYes" class="main" type="button">つかう</button></div>
+</div></div>
+
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+const store = { get(k, d) { try { const v = localStorage.getItem('oekaki:' + k); return v === null ? d : JSON.parse(v); } catch { return d; } }, set(k, v) { try { localStorage.setItem('oekaki:' + k, JSON.stringify(v)); } catch {} } };
+
+/* ---------- 色 ---------- */
+const GRADS = [
+  ['ゆめかわ', ['#ff9ecf', '#c7a6ff', '#8fd3ff']], ['にじ', ['#ff5c7a', '#ffb347', '#ffe866', '#6ddc8b', '#5cc8ff', '#a47bff']],
+  ['ゆうやけ', ['#ff6fae', '#ff9a5c', '#ffd86b']], ['マーメイド', ['#6fe3c9', '#5cc8ff', '#a47bff']],
+  ['さくら', ['#ffd1e3', '#ff8fb8', '#ff5c93']], ['ほしぞら', ['#2b2f77', '#7a5af0', '#ff9ecf']],
+  ['ミント', ['#d6ffe9', '#7fe3b0', '#3fbf9a']], ['いちごミルク', ['#fff0f5', '#ffc2d8', '#ff7eb6']],
+  ['レモンソーダ', ['#fff9b0', '#c8f2a0', '#8fe0ff']], ['ぶどう', ['#f0c6ff', '#b07cf5', '#6a45c9']],
+];
+const SOLIDS = ['#ff5c93', '#ff9ecf', '#ff5c5c', '#ff9a5c', '#ffd86b', '#fff3a8', '#6ddc8b', '#3fbf9a', '#8fd3ff', '#5c9dff', '#a47bff', '#d9b8ff', '#b07a5a', '#5b3a66', '#222222', '#9aa0aa', '#ffffff'];
+let customs = store.get('customs', []);
+const hex = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+/* グラデーションの t（0〜1）の色 */
+function mix(stops, t) {
+  if (stops.length === 1) return stops[0];
+  t = Math.max(0, Math.min(1, t)) * (stops.length - 1); const i = Math.min(stops.length - 2, Math.floor(t)), f = t - i, a = hex(stops[i]), b = hex(stops[i + 1]);
+  return `rgb(${Math.round(a[0] + (b[0] - a[0]) * f)},${Math.round(a[1] + (b[1] - a[1]) * f)},${Math.round(a[2] + (b[2] - a[2]) * f)})`;
+}
+const mixRGB = (stops, t) => (stops.length === 1 ? hex(stops[0]) : mix(stops, t).match(/\d+/g).map(Number));
+const css = (stops) => (stops.length === 1 ? stops[0] : `linear-gradient(90deg,${stops.join(',')})`);
+
+/* ---------- 状態 ---------- */
+const TOOLS = [['pen', 'ペン'], ['marker', 'マーカー'], ['kira', 'きらきら'], ['fill', 'ぬりつぶし'], ['stamp', 'スタンプ'], ['eraser', 'けしゴム']];
+const SIZES = [4, 9, 16, 28, 44];
+const A = { tool: 'pen', size: 9, stops: GRADS[0][1], stamp: 'heart', mirror: false };
+
+/* ---------- キャンバス（端末の画面に合わせる。中身の解像度は開いたときに決めて固定） ---------- */
+const stage = $('stage'), wrap = $('wrap'), main = $('main'), live = $('live'), mc = main.getContext('2d', { willReadFrequently: true }), lc = live.getContext('2d');
+let CW = 0, CH = 0, K = 1;   // 中身の大きさ(px)と、1cssピクセルあたりの倍率
+function initCanvas() {
+  const w = stage.clientWidth - 12, h = stage.clientHeight - 12; K = Math.min(2, window.devicePixelRatio || 1);
+  CW = Math.round(w * K); CH = Math.round(h * K);
+  for (const c of [main, live]) { c.width = CW; c.height = CH; }
+  mc.fillStyle = '#fff'; mc.fillRect(0, 0, CW, CH); fit(); undo.stack = []; undo.i = -1; snap();
+}
+function fit() {   // 画面の向きや大きさが変わっても、絵はそのまま、枠に収まるように表示
+  if (!CW) return; const w = stage.clientWidth - 12, h = stage.clientHeight - 12, s = Math.min(w / CW, h / CH);
+  wrap.style.width = Math.floor(CW * s) + 'px'; wrap.style.height = Math.floor(CH * s) + 'px';
+}
+addEventListener('resize', fit); if (window.ResizeObserver) new ResizeObserver(fit).observe(stage);
+const pos = (e) => { const r = wrap.getBoundingClientRect(); return { x: (e.clientX - r.left) * CW / r.width, y: (e.clientY - r.top) * CH / r.height }; };
+
+/* ---------- もどす・すすむ ---------- */
+const undo = { stack: [], i: -1 };
+function snap() { undo.stack.length = undo.i + 1; undo.stack.push(mc.getImageData(0, 0, CW, CH)); if (undo.stack.length > 12) undo.stack.shift(); undo.i = undo.stack.length - 1; syncUndo(); }
+function syncUndo() { $('bUndo').disabled = undo.i <= 0; $('bRedo').disabled = undo.i >= undo.stack.length - 1; }
+$('bUndo').onclick = () => { if (undo.i > 0) { mc.putImageData(undo.stack[--undo.i], 0, 0); syncUndo(); } };
+$('bRedo').onclick = () => { if (undo.i < undo.stack.length - 1) { mc.putImageData(undo.stack[++undo.i], 0, 0); syncUndo(); } };
+
+/* ---------- スタンプの形（-1〜1 の大きさでえがく） ---------- */
+const STAMPS = {
+  heart(c) { c.moveTo(0, .9); c.bezierCurveTo(-1.5, -.1, -.8, -1.2, 0, -.45); c.bezierCurveTo(.8, -1.2, 1.5, -.1, 0, .9); },
+  star(c) { for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? .45 : 1; c.lineTo(Math.cos(a) * r, Math.sin(a) * r); } c.closePath(); },
+  flower(c) { for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + i * Math.PI * 2 / 5; c.moveTo(Math.cos(a) * .55 + .45, Math.sin(a) * .55); c.arc(Math.cos(a) * .55, Math.sin(a) * .55, .45, 0, 7); } },
+  ribbon(c) { c.moveTo(0, 0); c.lineTo(-1, -.6); c.quadraticCurveTo(-.8, 0, -1, .6); c.closePath(); c.moveTo(0, 0); c.lineTo(1, -.6); c.quadraticCurveTo(.8, 0, 1, .6); c.closePath(); c.moveTo(.26, 0); c.arc(0, 0, .26, 0, 7); c.moveTo(-.1, .2); c.lineTo(-.5, .95); c.lineTo(-.15, .8); c.closePath(); c.moveTo(.1, .2); c.lineTo(.5, .95); c.lineTo(.15, .8); c.closePath(); },
+  gem(c) { c.moveTo(-.6, -.75); c.lineTo(.6, -.75); c.lineTo(1, -.2); c.lineTo(0, .95); c.lineTo(-1, -.2); c.closePath(); },
+  butterfly(c) { c.ellipse(-.5, -.35, .5, .6, -.5, 0, 7); c.moveTo(1, -.35); c.ellipse(.5, -.35, .5, .6, .5, 0, 7); c.moveTo(-.1, .45); c.ellipse(-.4, .45, .36, .42, .4, 0, 7); c.moveTo(.76, .45); c.ellipse(.4, .45, .36, .42, -.4, 0, 7); },
+  crown(c) { c.moveTo(-1, .7); c.lineTo(-1, -.5); c.lineTo(-.5, .05); c.lineTo(0, -.8); c.lineTo(.5, .05); c.lineTo(1, -.5); c.lineTo(1, .7); c.closePath(); },
+  cat(c) { c.arc(0, .15, .8, 0, 7); c.moveTo(-.78, -.1); c.lineTo(-.7, -.95); c.lineTo(-.15, -.6); c.closePath(); c.moveTo(.78, -.1); c.lineTo(.7, -.95); c.lineTo(.15, -.6); c.closePath(); },
+};
+function drawStamp(c, name, x, y, r, stops) {
+  c.save(); c.translate(x, y); c.scale(r, r);
+  const g = c.createLinearGradient(-1, -1, 1, 1); stops.forEach((s, i) => g.addColorStop(stops.length === 1 ? 0 : i / (stops.length - 1), s)); c.fillStyle = g;
+  c.beginPath(); STAMPS[name](c); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.9)';   // 白いかざり
+  c.beginPath();
+  if (name === 'flower') c.arc(0, 0, .3, 0, 7);
+  else if (name === 'cat') { c.arc(-.3, .1, .1, 0, 7); c.moveTo(.4, .1); c.arc(.3, .1, .1, 0, 7); c.moveTo(.08, .38); c.arc(0, .38, .08, 0, 7); }
+  else if (name === 'crown') { c.arc(0, .35, .14, 0, 7); c.moveTo(-.4, .35); c.arc(-.5, .35, .1, 0, 7); c.moveTo(.6, .35); c.arc(.5, .35, .1, 0, 7); }
+  else if (name === 'butterfly') { c.ellipse(0, 0, .09, .7, 0, 0, 7); }
+  else if (name === 'gem') { c.moveTo(-.45, -.55); c.lineTo(-.1, -.55); c.lineTo(-.5, -.2); c.closePath(); }
+  else if (name === 'ribbon') { }
+  else { c.ellipse(-.38, -.32, .16, .1, -.6, 0, 7); }
+  c.fill(); c.restore();
+}
+function sparkle(c, x, y, r, col, rot) {
+  c.save(); c.translate(x, y); c.rotate(rot); c.fillStyle = col; c.beginPath();
+  for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, rr = i % 2 ? r * .28 : r; c.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+  c.closePath(); c.fill(); c.fillStyle = 'rgba(255,255,255,.95)'; c.beginPath(); c.arc(0, 0, r * .22, 0, 7); c.fill(); c.restore();
+}
+
+/* ---------- えがく ---------- */
+let stroke = null, phase = 0;
+const GRAD_LEN = 220;   // この長さ（cssピクセル）で、グラデーションが はしからはしまで進む
+/* 線の上での色：いったりきたりするので、色がとぎれない */
+function colorAtDist(d) { const u = (d / (GRAD_LEN * K)) % 2; return mix(A.stops, u <= 1 ? u : 2 - u); }
+function seg(ax, ay, bx, by) {
+  const s = stroke, len = Math.hypot(bx - ax, by - ay), w = A.size * K * (A.tool === 'marker' ? 1.5 : A.tool === 'eraser' ? 1.6 : 1);
+  if (A.tool === 'kira') {
+    s.acc += len; const gap = Math.max(10, A.size * 1.3) * K;
+    while (s.acc >= gap) { s.acc -= gap; const t = 1 - s.acc / Math.max(len, .001), x = ax + (bx - ax) * t, y = ay + (by - ay) * t, j = A.size * K * 1.2, r = (A.size * .5 + 4 + Math.random() * A.size * .9) * K;
+      const px = x + (Math.random() - .5) * j * 2, py = y + (Math.random() - .5) * j * 2, col = colorAtDist(s.dist + len * t), rot = Math.random() * 1.6;
+      sparkle(lc, px, py, r, col, rot); if (A.mirror) sparkle(lc, CW - px, py, r, col, -rot); }
+    s.dist += len; return;
+  }
+  const n = Math.max(1, Math.ceil(len / (3 * K)));
+  lc.lineCap = 'round'; lc.lineJoin = 'round'; lc.lineWidth = w;
+  for (let i = 0; i < n; i++) {
+    const x0 = ax + (bx - ax) * i / n, y0 = ay + (by - ay) * i / n, x1 = ax + (bx - ax) * (i + 1) / n, y1 = ay + (by - ay) * (i + 1) / n;
+    lc.strokeStyle = A.tool === 'eraser' ? '#fff' : colorAtDist(s.dist + len * (i + .5) / n);
+    lc.beginPath(); lc.moveTo(x0, y0); lc.lineTo(x1, y1); lc.stroke();
+    if (A.mirror) { lc.beginPath(); lc.moveTo(CW - x0, y0); lc.lineTo(CW - x1, y1); lc.stroke(); }
+  }
+  s.dist += len;
+}
+function down(e) {
+  if (stroke) return; e.preventDefault(); const p = pos(e);
+  if (A.tool === 'fill') { fill(Math.round(p.x), Math.round(p.y)); snap(); return; }
+  if (A.tool === 'stamp') { const r = (A.size * 1.6 + 14) * K; drawStamp(mc, A.stamp, p.x, p.y, r, A.stops); if (A.mirror) drawStamp(mc, A.stamp, CW - p.x, p.y, r, A.stops); snap(); return; }
+  try { wrap.setPointerCapture(e.pointerId); } catch {}
+  stroke = { id: e.pointerId, x: p.x, y: p.y, dist: phase, acc: 1e9 };
+  live.style.opacity = A.tool === 'marker' ? .5 : 1;
+  seg(p.x, p.y, p.x + .01, p.y + .01);
+}
+function move(e) {
+  if (!stroke || e.pointerId !== stroke.id) return; e.preventDefault();
+  for (const ev of e.getCoalescedEvents ? e.getCoalescedEvents() : [e]) { const p = pos(ev); if (Math.hypot(p.x - stroke.x, p.y - stroke.y) < .6 * K) continue; seg(stroke.x, stroke.y, p.x, p.y); stroke.x = p.x; stroke.y = p.y; }
+}
+function up(e) {
+  if (!stroke || e.pointerId !== stroke.id) return;
+  mc.globalAlpha = A.tool === 'marker' ? .5 : 1; mc.drawImage(live, 0, 0); mc.globalAlpha = 1; lc.clearRect(0, 0, CW, CH);
+  phase = stroke.dist % (GRAD_LEN * K * 2);   // つぎの線は、色のつづきから
+  stroke = null; snap();
+}
+wrap.addEventListener('pointerdown', down); wrap.addEventListener('pointermove', move); wrap.addEventListener('pointerup', up); wrap.addEventListener('pointercancel', up);
+wrap.addEventListener('contextmenu', (e) => e.preventDefault());
+
+/* ぬりつぶし：タップした所とつながった同じ色の場所を、ななめのグラデーションでぬる */
+function fill(sx, sy) {
+  if (sx < 0 || sy < 0 || sx >= CW || sy >= CH) return;
+  const img = mc.getImageData(0, 0, CW, CH), d = img.data, mask = new Uint8Array(CW * CH), i0 = (sy * CW + sx) * 4, r0 = d[i0], g0 = d[i0 + 1], b0 = d[i0 + 2], TOL = 60;
+  const same = (i) => Math.abs(d[i] - r0) + Math.abs(d[i + 1] - g0) + Math.abs(d[i + 2] - b0) <= TOL;
+  const st = [sx, sy]; let x0 = sx, x1 = sx, y0 = sy, y1 = sy;
+  while (st.length) {
+    const y = st.pop(), x = st.pop(); let l = x; while (l >= 0 && !mask[y * CW + l] && same((y * CW + l) * 4)) l--; l++;
+    let upOpen = false, dnOpen = false;
+    for (let c = l; c < CW && !mask[y * CW + c] && same((y * CW + c) * 4); c++) {
+      mask[y * CW + c] = 1; if (c < x0) x0 = c; if (c > x1) x1 = c; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      if (y > 0) { const o = !mask[(y - 1) * CW + c] && same(((y - 1) * CW + c) * 4); if (o && !upOpen) st.push(c, y - 1); upOpen = o; }
+      if (y < CH - 1) { const o = !mask[(y + 1) * CW + c] && same(((y + 1) * CW + c) * 4); if (o && !dnOpen) st.push(c, y + 1); dnOpen = o; }
+    }
+  }
+  /* 線のふちの うすい所まで ぬれるように、1ピクセル ひろげる */
+  const grow = new Uint8Array(mask);
+  for (let y = Math.max(1, y0); y <= Math.min(CH - 2, y1); y++) for (let x = Math.max(1, x0); x <= Math.min(CW - 2, x1); x++) if (mask[y * CW + x]) { grow[y * CW + x - 1] = grow[y * CW + x + 1] = grow[(y - 1) * CW + x] = grow[(y + 1) * CW + x] = 1; }
+  const span = Math.max(1, (x1 - x0) + (y1 - y0)), lut = []; for (let i = 0; i <= 255; i++) lut.push(mixRGB(A.stops, i / 255));
+  for (let y = Math.max(0, y0 - 1); y <= Math.min(CH - 1, y1 + 1); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(CW - 1, x1 + 1); x++) if (grow[y * CW + x]) {
+    const c = lut[Math.max(0, Math.min(255, Math.round(((x - x0) + (y - y0)) / span * 255)))], i = (y * CW + x) * 4; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255; }
+  mc.putImageData(img, 0, 0);
+}
+
+/* ---------- 画面のボタン ---------- */
+function press(box, el) { box.querySelectorAll('[aria-pressed]').forEach((b) => b.setAttribute('aria-pressed', String(b === el))); }
+function buildUI() {
+  const tools = $('tools');
+  for (const [id, name] of TOOLS) { const b = document.createElement('button'); b.className = 'tool'; b.type = 'button'; b.textContent = name; b.dataset.t = id; b.setAttribute('aria-pressed', String(A.tool === id));
+    b.onclick = () => { A.tool = id; tools.querySelectorAll('.tool:not(.tog)').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); document.body.classList.toggle('stamp', id === 'stamp'); $('sizeLab').textContent = id === 'stamp' ? '大きさ' : 'ふとさ'; }; tools.appendChild(b); }
+  const m = document.createElement('button'); m.className = 'tool tog'; m.type = 'button'; m.id = 'bMirror'; m.textContent = 'かがみ'; m.setAttribute('aria-pressed', 'false');
+  m.onclick = () => { A.mirror = !A.mirror; m.setAttribute('aria-pressed', String(A.mirror)); wrap.classList.toggle('mirror', A.mirror); }; tools.appendChild(m);
+  for (const s of SIZES) { const b = document.createElement('button'); b.className = 'sz'; b.type = 'button'; b.dataset.s = s; b.setAttribute('aria-label', 'ふとさ ' + s); b.setAttribute('aria-pressed', String(A.size === s));
+    b.innerHTML = `<i style="width:${Math.min(30, s * .7 + 3)}px;height:${Math.min(30, s * .7 + 3)}px"></i>`; b.onclick = () => { A.size = s; press($('sizes'), b); }; $('sizes').appendChild(b); }
+  renderColors(); renderStamps();
+}
+function renderStamps() {
+  const row = $('stampRow'); row.innerHTML = '<span class="lab" style="margin-left:6px">かたち</span>';
+  for (const name of Object.keys(STAMPS)) { const b = document.createElement('button'); b.className = 'st'; b.type = 'button'; b.dataset.n = name; b.setAttribute('aria-label', 'スタンプ ' + name); b.setAttribute('aria-pressed', String(A.stamp === name));
+    const c = document.createElement('canvas'); c.width = c.height = 72; drawStamp(c.getContext('2d'), name, 36, 36, 28, A.stops); b.appendChild(c);
+    b.onclick = () => { A.stamp = name; press(row, b); }; row.appendChild(b); }
+}
+function renderColors() {
+  const g = $('grads'), so = $('solids'); g.innerHTML = ''; so.innerHTML = '';
+  const add = (box, stops, label, grad) => { const b = document.createElement('button'); b.className = 'sw' + (grad ? ' g' : ''); b.type = 'button'; b.style.background = css(stops); b.title = label; b.setAttribute('aria-label', label);
+    b.setAttribute('aria-pressed', String(A.stops.join() === stops.join())); b.onclick = () => { A.stops = stops; document.querySelectorAll('#grads .sw, #solids .sw').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); renderStamps(); }; box.appendChild(b); };
+  customs.forEach((st, i) => add(g, st, 'じぶんのグラデーション ' + (i + 1), true));
+  GRADS.forEach(([n, st]) => add(g, st, n, true));
+  SOLIDS.forEach((c) => add(so, [c], c, false));
+}
+
+/* グラデーションを自分でつくる */
+let mkA = SOLIDS[1], mkB = SOLIDS[8];
+function renderMake() {
+  for (const [id, cur, set] of [['pickA', mkA, (c) => (mkA = c)], ['pickB', mkB, (c) => (mkB = c)]]) { const box = $(id); box.innerHTML = '';
+    SOLIDS.forEach((c) => { const b = document.createElement('button'); b.className = 'sw'; b.type = 'button'; b.style.background = c; b.setAttribute('aria-pressed', String(c === cur)); b.onclick = () => { set(c); renderMake(); }; box.appendChild(b); }); }
+  $('gPrev').style.background = css([mkA, mkB]);
+}
+$('bMake').onclick = () => { renderMake(); $('ovMake').classList.add('on'); };
+$('bMakeNo').onclick = () => $('ovMake').classList.remove('on');
+$('bMakeYes').onclick = () => { const st = [mkA, mkB]; customs = [st, ...customs.filter((c) => c.join() !== st.join())].slice(0, 6); store.set('customs', customs); A.stops = st; renderColors(); renderStamps(); $('ovMake').classList.remove('on'); $('grads').parentElement.scrollLeft = 0; };
+
+$('bClear').onclick = () => $('ovClear').classList.add('on');
+$('bClearNo').onclick = () => $('ovClear').classList.remove('on');
+$('bClearYes').onclick = () => { mc.fillStyle = '#fff'; mc.fillRect(0, 0, CW, CH); snap(); $('ovClear').classList.remove('on'); };
+
+/* ほぞん：共有できる端末は共有メニュー、できなければダウンロード。どちらもだめなら、絵を長おしで保存 */
+let saveBlob = null;
+$('bSave').onclick = () => main.toBlob((b) => { saveBlob = b; $('saveImg').src = URL.createObjectURL(b); $('saveMsg').textContent = '「ほぞんする」を おしてね。うまくいかないときは、絵を ながおしして ほぞんできるよ'; $('ovSave').classList.add('on'); }, 'image/png');
+$('bSaveClose').onclick = () => $('ovSave').classList.remove('on');
+$('bDl').onclick = async () => {
+  const name = 'oekaki-' + new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '') + '.png';
+  try { const f = new File([saveBlob], name, { type: 'image/png' }); if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f] }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(saveBlob); a.download = name; document.body.appendChild(a); a.click(); a.remove();
+};
+
+buildUI();
+requestAnimationFrame(() => requestAnimationFrame(initCanvas));
+window.__oekaki = { A, get size() { return [CW, CH, K]; }, mc, undo, mix, fill, GRADS };
+</script>
+</body>
+</html>

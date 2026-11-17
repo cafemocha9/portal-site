@@ -32,6 +32,7 @@ import {
   MapPinned,
   Music,
   Orbit,
+  Paintbrush,
   Palette,
   PawPrint,
   Pencil,
@@ -134,6 +135,7 @@ export const games = [
   { id: 'line-protocol', genre: 'board', title: '五目並べ', icon: Grid3x3, color: 'bg-teal-300', iconColor: 'text-teal-900', type: 'react', component: lazy(() => import('./games/line-protocol/Game.jsx')) },
 
   // --- のんびり・みんなで ---
+  { id: 'oekaki', genre: 'relax', title: 'ゆめいろ おえかき', icon: Paintbrush, color: 'bg-pink-200', iconColor: 'text-pink-800', type: 'html' },
   { id: 'illust-shiritori', genre: 'relax', title: 'イラストしりとり', icon: Pencil, color: 'bg-yellow-300', iconColor: 'text-yellow-900', type: 'html' },
   { id: 'kotori-niwa', genre: 'relax', title: 'ことりの庭', icon: Bird, color: 'bg-sky-200', iconColor: 'text-sky-900', type: 'html' },
 
