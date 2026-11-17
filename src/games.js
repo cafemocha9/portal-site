@@ -23,6 +23,7 @@ import {
   Disc3,
   DoorClosed,
   Flag,
+  FlaskConical,
   Footprints,
   Ghost,
   GraduationCap,
@@ -63,6 +64,7 @@ export const genres = [
   { id: 'learn', label: 'がくしゅう', icon: GraduationCap },
   { id: 'relax', label: 'のんびり・みんなで', icon: Sprout },
   { id: 'music', label: 'おと', icon: Music },
+  { id: 'trial', label: 'おためし', icon: FlaskConical },
 ]
 
 /**
@@ -108,7 +110,6 @@ export const games = [
   { id: 'breach', genre: 'strategy', title: 'BREACH', icon: Swords, color: 'bg-rose-300', iconColor: 'text-rose-900', type: 'react', component: lazy(() => import('./games/breach/Game.jsx')) },
 
   // --- けいえい ---
-  { id: 'roastery', genre: 'manage', title: '焙煎所経営シミュレーター', icon: Coffee, color: 'bg-amber-200', iconColor: 'text-amber-900', type: 'html' },
   { id: 'supermarket', genre: 'manage', title: 'スーパーマーケット経営記', icon: Store, color: 'bg-orange-100', iconColor: 'text-orange-800', type: 'html' },
 
   // --- パズル ---
@@ -135,6 +136,9 @@ export const games = [
   // --- おと ---
   { id: 'hazumu-rhythm', genre: 'music', title: 'はずむリズム', icon: Drum, color: 'bg-pink-200', iconColor: 'text-pink-900', type: 'html' },
   { id: 'tech-house-loop', genre: 'music', title: 'Tech House Loop', icon: Disc3, color: 'bg-zinc-300', iconColor: 'text-zinc-800', type: 'html' },
+
+  // --- おためし ---
+  { id: 'roastery', genre: 'trial', title: '焙煎所経営シミュレーター', icon: Coffee, color: 'bg-amber-200', iconColor: 'text-amber-900', type: 'html' },
 ]
 
 export const findGame = (id) => games.find((g) => g.id === id)
