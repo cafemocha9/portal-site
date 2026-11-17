@@ -25,6 +25,7 @@ import {
   Flag,
   FlaskConical,
   Footprints,
+  Gem,
   Ghost,
   GraduationCap,
   Grid3x3,
@@ -102,6 +103,7 @@ export const games = [
   { id: 'mystery-dungeon', genre: 'adventure', title: '不思議の迷宮', icon: Dices, color: 'bg-lime-300', iconColor: 'text-lime-900', type: 'react', component: lazy(() => import('./games/mystery-dungeon/Game.jsx')) },
 
   { id: 'hikari-meikyu', genre: 'adventure', title: 'ひかりの迷宮', icon: Sparkles, color: 'bg-amber-100', iconColor: 'text-amber-700', type: 'html' },
+  { id: 'hikari-shinso', genre: 'adventure', title: 'ひかりの迷宮 深層', icon: Gem, color: 'bg-indigo-200', iconColor: 'text-indigo-900', type: 'html' },
   { id: 'eighth-passage', genre: 'adventure', title: '第八通路', icon: Footprints, color: 'bg-yellow-200', iconColor: 'text-yellow-900', type: 'html' },
 
   // --- さくせん ---
