@@ -198,7 +198,9 @@ function colorAtDist(d) { const u = (d / (GRAD_LEN * K)) % 2; return mix(A.stops
 function seg(ax, ay, bx, by) {
   const s = stroke, len = Math.hypot(bx - ax, by - ay), w = A.size * K * (A.tool === 'marker' ? 1.5 : A.tool === 'eraser' ? 1.6 : 1);
   if (A.tool === 'kira') {
-    s.acc += len; const gap = Math.max(10, A.size * 1.3) * K;
+    const gap = Math.max(10, A.size * 1.3) * K;
+    // 1つ目はすぐ出す。速くなぞっても、1回で出す星は8つまで（固まらないように）
+    s.acc = s.acc < 0 ? gap + len : Math.min(s.acc + len, gap * 8);
     while (s.acc >= gap) { s.acc -= gap; const t = 1 - s.acc / Math.max(len, .001), x = ax + (bx - ax) * t, y = ay + (by - ay) * t, j = A.size * K * 1.2, r = (A.size * .5 + 4 + Math.random() * A.size * .9) * K;
       const px = x + (Math.random() - .5) * j * 2, py = y + (Math.random() - .5) * j * 2, col = colorAtDist(s.dist + len * t), rot = Math.random() * 1.6;
       sparkle(lc, px, py, r, col, rot); if (A.mirror) sparkle(lc, CW - px, py, r, col, -rot); }
@@ -219,7 +221,7 @@ function down(e) {
   if (A.tool === 'fill') { fill(Math.round(p.x), Math.round(p.y)); snap(); return; }
   if (A.tool === 'stamp') { const r = (A.size * 1.6 + 14) * K; drawStamp(mc, A.stamp, p.x, p.y, r, A.stops); if (A.mirror) drawStamp(mc, A.stamp, CW - p.x, p.y, r, A.stops); snap(); return; }
   try { wrap.setPointerCapture(e.pointerId); } catch {}
-  stroke = { id: e.pointerId, x: p.x, y: p.y, dist: phase, acc: 1e9 };
+  stroke = { id: e.pointerId, x: p.x, y: p.y, dist: phase, acc: -1 };   // acc<0：指をおいた所に1つ目の星を出す
   live.style.opacity = A.tool === 'marker' ? .5 : 1;
   seg(p.x, p.y, p.x + .01, p.y + .01);
 }
