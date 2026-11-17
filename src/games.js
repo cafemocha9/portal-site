@@ -28,6 +28,7 @@ import {
   Ghost,
   GraduationCap,
   Grid3x3,
+  MapPinned,
   Music,
   Orbit,
   Palette,
@@ -120,6 +121,7 @@ export const games = [
   { id: 'color-match', genre: 'puzzle', title: 'いろ あて', icon: Palette, color: 'bg-sky-300', iconColor: 'text-sky-800', type: 'html' },
 
   // --- ボードゲーム ---
+  { id: 'todofuken', genre: 'learn', title: '都道府県クイズ', icon: MapPinned, color: 'bg-teal-200', iconColor: 'text-teal-900', type: 'html' },
   { id: 'flag-quiz', genre: 'learn', title: '国旗クイズ', icon: Earth, color: 'bg-blue-200', iconColor: 'text-blue-900', type: 'html' },
   { id: 'chess-dojo', genre: 'learn', title: 'チェス作戦道場', icon: ChessKnight, color: 'bg-stone-300', iconColor: 'text-stone-800', type: 'html' },
   { id: 'chess', genre: 'board', title: 'チェス', icon: Crown, color: 'bg-yellow-200', iconColor: 'text-yellow-900', type: 'react', component: lazy(() => import('./games/chess/Game.jsx')) },
