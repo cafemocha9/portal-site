@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>神経衰弱</title>
+<style>
+  :root { --bg:#14532d; --bg2:#0f3d22; --ink:#1f2937; --paper:#fffdf7; --gold:#f2b631; --red:#d7263d; --p1:#2f6fde; --p2:#e4572e; }
+  * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+  html,body { height:100%; }
+  body { background:radial-gradient(ellipse at 50% 30%, #1b6b3a, var(--bg2)); color:#fff; overflow:hidden;
+    font-family:"Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans JP",system-ui,sans-serif; -webkit-user-select:none; user-select:none; }
+  button { font:inherit; color:inherit; border:0; background:none; cursor:pointer; touch-action:manipulation; }
+  .screen { display:none; height:100%; }
+  .screen.on { display:flex; flex-direction:column; }
+
+  /* 設定 */
+  #s-menu { overflow-y:auto; align-items:center; padding:20px 16px 28px; }
+  .panel { width:min(480px,100%); margin:auto; }
+  h1 { text-align:center; font-size:clamp(34px,10vw,48px); font-weight:900; letter-spacing:.12em; color:var(--gold); text-shadow:0 3px 0 rgba(0,0,0,.3); }
+  .lead { text-align:center; font-size:14px; opacity:.85; margin:6px 0 18px; }
+  .sec { font-size:13px; font-weight:800; opacity:.8; margin:16px 4px 6px; }
+  .seg { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+  .seg button { background:rgba(255,255,255,.12); border-radius:12px; padding:10px 4px; font-weight:800; font-size:15px; line-height:1.3; }
+  .seg button small { display:block; font-size:11px; font-weight:600; opacity:.75; }
+  .seg button[aria-pressed="true"] { background:var(--gold); color:#3b2a00; }
+  #row-cpu[hidden] { display:none; }
+  .start { width:100%; margin-top:22px; padding:15px; border-radius:16px; background:var(--red); font-weight:900; font-size:19px; box-shadow:0 5px 0 #8f1526; }
+  .start:active { transform:translateY(3px); box-shadow:0 2px 0 #8f1526; }
+  .rules { margin-top:18px; background:rgba(0,0,0,.22); border-radius:14px; padding:12px 14px; font-size:13px; line-height:1.8; }
+  .rules b { color:var(--gold); }
+
+  /* ゲーム */
+  .top { display:flex; align-items:center; gap:8px; padding:8px 10px; }
+  .pill { flex:1; display:flex; align-items:center; gap:8px; background:rgba(0,0,0,.25); border-radius:12px; padding:6px 10px; border:2px solid transparent; min-width:0; }
+  .pill.turn { border-color:var(--gold); background:rgba(0,0,0,.4); }
+  .pill i { width:12px; height:12px; border-radius:50%; flex:none; }
+  .pill span { font-size:13px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .pill b { margin-left:auto; white-space:nowrap; font-size:20px; font-variant-numeric:tabular-nums; }
+  .pill b small { font-size:11px; opacity:.7; }
+  .quit { width:40px; height:40px; border-radius:12px; background:rgba(0,0,0,.25); font-size:20px; font-weight:900; flex:none; }
+  #msg { text-align:center; font-size:14px; font-weight:800; min-height:22px; padding:0 8px; }
+  #board { flex:1; min-height:0; position:relative; margin:6px 8px 10px; }
+  .card { position:absolute; perspective:600px; transition:opacity .35s; }
+  .card .in { position:absolute; inset:0; transform-style:preserve-3d; transition:transform .32s; border-radius:8%/6%; }
+  .card.up .in, .card.gone .in { transform:rotateY(180deg); }
+  .face, .back { position:absolute; inset:0; border-radius:8%/6%; backface-visibility:hidden; -webkit-backface-visibility:hidden; box-shadow:0 2px 4px rgba(0,0,0,.35); }
+  .back { background:
+      repeating-linear-gradient(45deg, rgba(255,255,255,.14) 0 3px, transparent 3px 9px),
+      repeating-linear-gradient(-45deg, rgba(255,255,255,.14) 0 3px, transparent 3px 9px), #1e3a8a;
+    border:3px solid #fffdf7; }
+  .face { background:var(--paper); transform:rotateY(180deg); display:grid; place-items:center; color:var(--ink); }
+  .face.red { color:var(--red); }
+  .face .rk { position:absolute; top:4%; left:8%; font-weight:900; line-height:1; font-size:var(--fs); text-align:center; }
+  .face .rk svg { display:block; width:.75em; height:.75em; margin:.08em auto 0; }
+  .face > svg { width:46%; height:46%; }
+  .card.gone { opacity:.55; pointer-events:none; }
+  .card.gone .face { box-shadow:0 0 0 3px var(--own, var(--gold)); }
+  .card.hit .in { animation:hit .4s; }
+  @keyframes hit { 50% { transform:rotateY(180deg) scale(1.12); } }
+
+  /* 結果 */
+  #end { position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.6); padding:16px; z-index:5; }
+  #end.on { display:grid; }
+  #end .box { width:min(400px,100%); background:var(--paper); color:var(--ink); border-radius:20px; padding:22px 18px; text-align:center; }
+  #end h2 { font-size:30px; font-weight:900; }
+  #end p { margin-top:8px; font-weight:800; line-height:1.7; }
+  #end .rec { display:inline-block; margin-top:8px; padding:3px 12px; border-radius:99px; background:var(--gold); color:#3b2a00; font-size:13px; font-weight:900; }
+  #end .btns { display:grid; gap:8px; margin-top:16px; }
+  #end .btns button { padding:13px; border-radius:14px; font-weight:900; font-size:16px; background:#e9e4d6; }
+  #end .btns button.main { background:var(--red); color:#fff; }
+</style>
+</head>
+<body>
+
+<section class="screen on" id="s-menu">
+  <div class="panel">
+    <h1>神経衰弱</h1>
+    <p class="lead">おなじ数字のカードを 2枚そろえよう</p>
+    <div class="sec">あそびかた</div>
+    <div class="seg" id="o-mode">
+      <button type="button" data-v="solo">ひとりで<small>少ない手数をめざす</small></button>
+      <button type="button" data-v="cpu">CPUと対戦<small>交代でめくる</small></button>
+      <button type="button" data-v="two">ふたりで<small>1台で交代</small></button>
+    </div>
+    <div id="row-cpu">
+      <div class="sec">CPUの強さ</div>
+      <div class="seg" id="o-cpu">
+        <button type="button" data-v="1">よわい<small>よく忘れる</small></button>
+        <button type="button" data-v="2">ふつう<small>ときどき忘れる</small></button>
+        <button type="button" data-v="3">つよい<small>ほぼ忘れない</small></button>
+      </div>
+    </div>
+    <div class="sec">カードの枚数</div>
+    <div class="seg" id="o-size">
+      <button type="button" data-v="20">20枚<small>10ペア</small></button>
+      <button type="button" data-v="36">36枚<small>18ペア</small></button>
+      <button type="button" data-v="52">52枚<small>トランプ全部</small></button>
+    </div>
+    <button class="start" id="b-start" type="button">はじめる</button>
+    <div class="rules">
+      カードを2枚めくり、<b>数字がおなじ</b>ならペア成立。マークはちがってもOK。<br>
+      対戦では、そろえたら<b>もう一度</b>めくれる。はずれたら交代。<br>
+      めくられたカードの<b>場所と数字</b>をおぼえるのがコツ。
+    </div>
+  </div>
+</section>
+
+<section class="screen" id="s-game">
+  <div class="top">
+    <div class="pill" id="p0"><i style="background:var(--p1)"></i><span></span><b></b></div>
+    <div class="pill" id="p1"><i style="background:var(--p2)"></i><span></span><b></b></div>
+    <button class="quit" id="b-quit" type="button" aria-label="やめる">×</button>
+  </div>
+  <div id="msg"></div>
+  <div id="board"></div>
+</section>
+
+<div id="end"><div class="box">
+  <h2 id="e-title"></h2><p id="e-text"></p><span class="rec" id="e-rec" hidden>じこベスト！</span>
+  <div class="btns"><button class="main" id="b-again" type="button">もう一度</button><button id="b-menu" type="button">設定をかえる</button></div>
+</div></div>
+
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('shinkei:' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('shinkei:' + k, JSON.stringify(v)); } catch {} },
+};
+const SUIT = {
+  s: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C9 6.5 3 9.5 3 14a4.2 4.2 0 0 0 7.6 2.5C10.4 18.6 9.6 20.5 8 22h8c-1.6-1.5-2.4-3.4-2.6-5.5A4.2 4.2 0 0 0 21 14c0-4.5-6-7.5-9-12z"/></svg>',
+  h: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7.5-4.7-9.6-9.3C.9 8.3 2.6 4.5 6.3 4.5c2.2 0 3.9 1.3 5.7 3.4 1.8-2.1 3.5-3.4 5.7-3.4 3.7 0 5.4 3.8 3.9 7.2C19.5 16.3 12 21 12 21z"/></svg>',
+  d: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l8 10-8 10-8-10z"/></svg>',
+  c: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="7" r="4.3"/><circle cx="7" cy="13.5" r="4.3"/><circle cx="17" cy="13.5" r="4.3"/><path d="M12 12c-.2 4.5-1.2 8-3 10h6c-1.8-2-2.8-5.5-3-10z"/></svg>',
+};
+const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+const opt = { mode: store.get('mode', 'cpu'), cpu: store.get('cpu', 2), size: store.get('size', 20) };
+function syncOpts() {
+  for (const [id, k] of [['o-mode', 'mode'], ['o-cpu', 'cpu'], ['o-size', 'size']])
+    document.querySelectorAll('#' + id + ' button').forEach((b) => b.setAttribute('aria-pressed', String(String(opt[k]) === b.dataset.v)));
+  $('row-cpu').hidden = opt.mode !== 'cpu';
+}
+for (const [id, k] of [['o-mode', 'mode'], ['o-cpu', 'cpu'], ['o-size', 'size']])
+  document.querySelectorAll('#' + id + ' button').forEach((b) => (b.onclick = () => { opt[k] = k === 'mode' ? b.dataset.v : +b.dataset.v; store.set(k, opt[k]); syncOpts(); }));
+syncOpts();
+
+/* ---------- 音 ---------- */
+let ac = null;
+function beep(seq) {
+  try { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); if (ac.state !== 'running') ac.resume(); } catch { return; }
+  let t = ac.currentTime + 0.01;
+  for (const [f, d, type] of seq) {
+    const o = ac.createOscillator(), g = ac.createGain(); o.type = type || 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.15, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + d + 0.05); t += d * 0.6;
+  }
+}
+const SFX = { flip: [[520, 0.06, 'triangle']], ok: [[784, 0.14], [1047, 0.25]], ng: [[220, 0.2, 'triangle']], end: [[523, 0.18], [659, 0.18], [784, 0.18], [1047, 0.4]] };
+
+/* ---------- デッキ ---------- */
+/* 20枚＝A〜10を2枚ずつ、36枚＝A〜9を4枚ずつ、52枚＝全部 */
+function makeDeck(size) {
+  let cards = [];
+  if (size === 20) for (let r = 0; r < 10; r++) { const [a, b] = shuffle(['s', 'h', 'd', 'c']); cards.push([r, a], [r, b]); }
+  else for (let r = 0; r < (size === 36 ? 9 : 13); r++) for (const s of ['s', 'h', 'd', 'c']) cards.push([r, s]);
+  return shuffle(cards).map(([rank, suit], id) => ({ id, rank, suit, state: 'down', owner: -1, el: null }));
+}
+
+/* ---------- 進行 ---------- */
+let G = null, timers = [];
+const later = (fn, ms) => { const g = G; timers.push(setTimeout(() => { if (G === g) fn(); }, ms)); };
+function start() {
+  timers.forEach(clearTimeout); timers = [];
+  const names = opt.mode === 'solo' ? ['あなた'] : opt.mode === 'cpu' ? ['あなた', 'CPU'] : ['1P', '2P'];
+  G = { mode: opt.mode, size: opt.size, level: opt.cpu, cards: makeDeck(opt.size), players: names.map((n) => ({ name: n, score: 0 })), turn: 0, open: [], lock: false, moves: 0, t0: 0, memory: new Map(), over: false };
+  $('end').classList.remove('on');
+  document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('on', s.id === 's-game'));
+  const board = $('board'); board.innerHTML = '';
+  for (const c of G.cards) {
+    const el = document.createElement('button'); el.className = 'card'; el.type = 'button'; el.setAttribute('aria-label', 'カード');
+    const red = c.suit === 'h' || c.suit === 'd';
+    el.innerHTML = `<div class="in"><div class="back"></div><div class="face${red ? ' red' : ''}"><span class="rk">${RANKS[c.rank]}${SUIT[c.suit]}</span>${SUIT[c.suit]}</div></div>`;
+    el.onclick = () => { if (!G.lock && !isCpuTurn()) flip(c); };
+    c.el = el; board.appendChild(el);
+  }
+  hud(); say(); layout();
+}
+const isCpuTurn = () => G.mode === 'cpu' && G.turn === 1;
+function layout() {
+  if (!G) return;
+  const board = $('board'), W = board.clientWidth, H = board.clientHeight, n = G.cards.length, gap = n > 36 ? 4 : 6;
+  let best = { cw: 0 };
+  for (let cols = 2; cols <= n; cols++) {
+    const rows = Math.ceil(n / cols), cw = Math.min((W - gap * (cols - 1)) / cols, ((H - gap * (rows - 1)) / rows) * 5 / 7);
+    if (cw > best.cw) best = { cw, cols, rows };
+  }
+  const cw = Math.floor(best.cw), ch = Math.floor(cw * 7 / 5);
+  const ox = (W - (cw * best.cols + gap * (best.cols - 1))) / 2, oy = (H - (ch * best.rows + gap * (best.rows - 1))) / 2;
+  G.cards.forEach((c, i) => {
+    const s = c.el.style; s.width = cw + 'px'; s.height = ch + 'px';
+    s.left = ox + (i % best.cols) * (cw + gap) + 'px'; s.top = oy + Math.floor(i / best.cols) * (ch + gap) + 'px';
+    s.setProperty('--fs', Math.max(9, cw * 0.3) + 'px');
+  });
+}
+addEventListener('resize', layout);
+if (window.ResizeObserver) new ResizeObserver(layout).observe($('board'));
+
+function hud() {
+  const solo = G.mode === 'solo';
+  $('p1').style.display = solo ? 'none' : '';
+  G.players.forEach((p, i) => {
+    const el = $('p' + i); el.classList.toggle('turn', !solo && G.turn === i && !G.over);
+    el.querySelector('span').textContent = p.name;
+    el.querySelector('b').innerHTML = solo ? `${G.moves}<small> 手</small>　${p.score}<small> / ${G.size / 2} ペア</small>` : `${p.score}<small> ペア</small>`;
+  });
+}
+function say(t) { $('msg').textContent = t || (G.mode === 'solo' ? 'カードを2枚めくろう' : G.players[G.turn].name + ' の番'); }
+
+function flip(c) {
+  if (G.over || c.state !== 'down' || G.open.length >= 2) return false;
+  if (!G.t0) G.t0 = Date.now();
+  c.state = 'up'; c.el.classList.add('up'); G.open.push(c); beep(SFX.flip);
+  remember(c);
+  if (G.open.length === 2) { G.lock = true; G.moves++; later(judge, 650); }
+  return true;
+}
+/* CPUの記憶：めくられたカードを、強さに応じた確率でおぼえる */
+function remember(c) {
+  if (G.mode !== 'cpu') return;
+  const p = [0, 0.35, 0.7, 0.97][G.level];
+  if (Math.random() < p) G.memory.set(c.id, c.rank);
+}
+function judge() {
+  const [a, b] = G.open; G.open = [];
+  if (a.rank === b.rank) {
+    const col = G.turn === 0 ? 'var(--p1)' : 'var(--p2)';
+    for (const c of [a, b]) { c.state = 'gone'; c.owner = G.turn; c.el.classList.add('gone', 'hit'); c.el.style.setProperty('--own', col); G.memory.delete(c.id); }
+    G.players[G.turn].score++; beep(SFX.ok); hud();
+    if (G.cards.every((c) => c.state === 'gone')) { finish(); return; }
+    say(G.mode === 'solo' ? 'ペア成立！' : 'ペア成立！ ' + G.players[G.turn].name + ' がもう一度');
+    G.lock = false; if (isCpuTurn()) later(cpuMove, 800);
+  } else {
+    beep(SFX.ng); say('ざんねん…');
+    later(() => {
+      for (const c of [a, b]) { c.state = 'down'; c.el.classList.remove('up'); }
+      // よわいCPUは、時間がたつと少しずつ忘れる
+      if (G.mode === 'cpu' && G.level < 3) for (const id of [...G.memory.keys()]) if (Math.random() < (G.level === 1 ? 0.12 : 0.04)) G.memory.delete(id);
+      if (G.players.length > 1) G.turn = 1 - G.turn;
+      G.lock = false; hud(); say();
+      if (isCpuTurn()) later(cpuMove, 800);
+    }, 750);
+  }
+}
+/* CPUの手：おぼえているペアがあれば取る。なければ知らないカードをめくり、相方をおぼえていれば取る */
+function cpuMove() {
+  if (G.over || !isCpuTurn()) return;
+  const down = G.cards.filter((c) => c.state === 'down'), known = down.filter((c) => G.memory.has(c.id));
+  let first = null, second = null;
+  outer: for (let i = 0; i < known.length; i++) for (let j = i + 1; j < known.length; j++) if (known[i].rank === known[j].rank) { first = known[i]; second = known[j]; break outer; }
+  if (!first) { const unknown = down.filter((c) => !G.memory.has(c.id)); first = (unknown.length ? unknown : down)[Math.floor(Math.random() * (unknown.length ? unknown.length : down.length))]; }
+  G.lock = true; flip(first);
+  later(() => {
+    if (!second) second = known.find((c) => c !== first && c.rank === first.rank);
+    if (!second) {
+      const rest = G.cards.filter((c) => c.state === 'down');
+      const unknown = rest.filter((c) => !G.memory.has(c.id));
+      const pool = G.level >= 2 && unknown.length ? unknown : rest;
+      second = pool[Math.floor(Math.random() * pool.length)];
+    }
+    flip(second);
+  }, 700);
+}
+function finish() {
+  G.over = true; G.lock = true; hud(); beep(SFX.end);
+  const sec = Math.round((Date.now() - G.t0) / 1000), tm = Math.floor(sec / 60) + '分' + String(sec % 60).padStart(2, '0') + '秒';
+  let title, text, rec = false;
+  if (G.mode === 'solo') {
+    const key = 'best:' + G.size, prev = store.get(key, null);
+    if (!prev || G.moves < prev) { store.set(key, G.moves); rec = true; }
+    title = 'クリア！'; text = `${G.moves}手・${tm}<br>（最少は ${G.size / 2}手。ベスト ${rec ? G.moves : prev}手）`;
+  } else {
+    const [a, b] = G.players;
+    title = a.score === b.score ? 'ひきわけ' : (a.score > b.score ? a.name : b.name) + ' の勝ち！';
+    text = `${a.name} ${a.score}ペア　―　${b.score}ペア ${b.name}<br>${tm}`;
+  }
+  $('e-title').textContent = title; $('e-text').innerHTML = text; $('e-rec').hidden = !rec;
+  later(() => $('end').classList.add('on'), 700);
+}
+function toMenu() { timers.forEach(clearTimeout); timers = []; G = null; $('end').classList.remove('on'); document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('on', s.id === 's-menu')); }
+$('b-start').onclick = start; $('b-again').onclick = start; $('b-menu').onclick = toMenu; $('b-quit').onclick = toMenu;
+
+window.__shinkei = { get G() { return G; }, opt, start, flip, makeDeck };
+</script>
+</body>
+</html>
