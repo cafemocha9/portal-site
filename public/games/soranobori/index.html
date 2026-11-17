@@ -104,7 +104,11 @@ dl dt{color:var(--dim)} dl dd{font-weight:900;text-align:right}
 
   <div class="veil" id="title">
     <div class="panel">
-      <div><h1>そら<span>のぼり</span></h1><p class="sub">足場から足場へ跳んで、高さ300mのてっぺんを目指す。落ちたら、落ちた所からまた登る。</p></div>
+      <div><h1>そら<span>のぼり</span></h1><p class="sub">足場から足場へ跳んで、てっぺんを目指す。落ちたら、落ちた所からまた登る。</p></div>
+      <div class="seg" id="course">
+        <button type="button" data-c="0" aria-pressed="true">333m<small>東京タワーと同じ高さ</small></button>
+        <button type="button" data-c="1" aria-pressed="false">634m<small>東京スカイツリーと同じ高さ</small></button>
+      </div>
       <div class="seg" id="mode">
         <button type="button" data-m="normal" aria-pressed="true">ふつう<small>チェックポイントに戻れる</small></button>
         <button type="button" data-m="pure" aria-pressed="false">いっぽんぎ<small>戻る手段なし</small></button>
@@ -129,7 +133,7 @@ dl dt{color:var(--dim)} dl dd{font-weight:900;text-align:right}
   <div class="veil" id="result" hidden>
     <div class="panel">
       <div><h1><span>登頂</span></h1><p class="sub" id="resS"></p></div>
-      <dl><dt>タイム</dt><dd id="rTime"></dd><dt>大きく落ちた回数</dt><dd id="rFall"></dd><dt>モード</dt><dd id="rMode"></dd></dl>
+      <dl><dt>タイム</dt><dd id="rTime"></dd><dt>大きく落ちた回数</dt><dd id="rFall"></dd><dt>コース</dt><dd id="rMode"></dd></dl>
       <button class="go" id="again" type="button">もう一度登る</button>
       <button class="ghost" id="rTitle" type="button">タイトルへ</button>
     </div>
@@ -142,12 +146,17 @@ dl dt{color:var(--dim)} dl dd{font-weight:900;text-align:right}
 /* Rules, course generation and physics. No DOM and no rendering in here, so the same code runs in the automated tests. */
 const Core=(function(){
 'use strict';
-const R=.35,H=1.7,SPEED=7.5,JV=9.6,BV=19,STEP=.32,LEDGE=1.1,TOPY=300,LIM=80;
+const R=.35,H=1.7,SPEED=7.5,JV=9.6,BV=19,STEP=.32,LEDGE=1.1,LIM=80;
+let TOPY=333,SPACE=261;
 const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
-const ZONES=[{name:'ガラクタ町',y0:0,diff:.6},{name:'工事現場',y0:45,diff:.68},{name:'空中都市',y0:100,diff:.75},{name:'雲の国',y0:165,diff:.8},{name:'宇宙',y0:235,diff:.82}];
+/* zone heights are written for a 300 m tower and stretched to the course height */
+const ZBASE=[{name:'ガラクタ町',y0:0,diff:.6},{name:'工事現場',y0:45,diff:.68},{name:'空中都市',y0:100,diff:.75},{name:'雲の国',y0:165,diff:.8},{name:'宇宙',y0:235,diff:.82}];
+let ZONES=[];
+function setCourse(top){TOPY=top;const f=top/300;ZONES=ZBASE.map(z=>Object.assign({},z,{y0:Math.round(z.y0*f)}));SPACE=ZONES[4].y0;}
+setCourse(333);
 function zoneAt(y){let z=0;for(let i=1;i<ZONES.length;i++)if(y>=ZONES[i].y0)z=i;return z;}
 /* gravity eases from 26 to 17 on the way into space */
-function gravAt(y){return 26-9*clamp((y-228)/12,0,1);}
+function gravAt(y){return 26-9*clamp((y-SPACE+7)/12,0,1);}
 function rng(seed){let a=seed>>>0;return()=>{a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 /* how far the centre travels in a jump that lands dh higher */
 function reach(dh,g,v0){const d=v0*v0-2*g*dh;return d<0?0:SPEED*(v0+Math.sqrt(d))/g;}
@@ -202,7 +211,7 @@ function makeLevel(seed){
     for(const k of p){r-=k[1];if(r<=0)return k[0];}return p[0][0];
   }
   function place(o){
-    const top0=ex.top,z=zoneAt(top0),g=gravAt(top0),HR=top0>220?4.7:3.7;
+    const top0=ex.top,z=zoneAt(top0),g=gravAt(top0),HR=top0>SPACE-15?4.7:3.7;
     for(let t=0;t<(o.tries||70);t++){
       const kind=o.kind||pick(z,o.thick),K=KINDS[kind];
       let w=U(K.w[0],K.w[1]),h=U(K.h[0],K.h[1]),d=U(K.d[0],K.d[1]);
@@ -217,6 +226,9 @@ function makeLevel(seed){
       if(mv){x+=mv.ax*mv.amp;y+=mv.ay*mv.amp;zz+=mv.az*mv.amp;}
       const b=mk(kind,x,y,zz,w/2,h/2,d/2,{type:o.type||'static',node:nodes.length,sw,move:mv,cp:!!o.cp});
       const c=bounds(b);if(K.xt)c.y1+=K.xt;
+      /* a platform just overhead must not hang over the edge you jump from, or you hit your head on it */
+      const pv=nodes[nodes.length-1],pc=bounds(pv),ap=JV*JV/(2*g);
+      if(c.y0>pc.y1-.05&&c.y0-pc.y1<H+ap+.3){const gx=Math.max(c.x0-pc.x1,pc.x0-c.x1,0),gz=Math.max(c.z0-pc.z1,pc.z0-c.z1,0);if(Math.hypot(gx,gz)<.8)continue;}
       if(!free(c,HR))continue;
       boxes.push(b);nodes.push(b);obst.push(c);
       corr.push(seg(ex.x,ex.z,b.bx,b.bz,Math.min(top0,top0+dh)+.05,Math.max(top0,c.y1)+HR));
@@ -237,18 +249,19 @@ function makeLevel(seed){
   const snap=()=>({b:boxes.length,n:nodes.length,o:obst.length,c:corr.length,d:drafts.length,ex,lastA});
   const back=s=>{boxes.length=s.b;nodes.length=s.n;obst.length=s.o;corr.length=s.c;drafts.length=s.d;ex=s.ex;lastA=s.lastA;};
 
-  for(let guard=0;guard<1200;guard++){
+  for(let guard=0;guard<3000;guard++){
     const top=ex.top,z=zoneAt(top),g=gravAt(top),apex=JV*JV/(2*g),dhMax=apex-.42;
-    const norm=()=>{const b=place({dh:top>4&&rnd()<.09?[-1.1,-.1]:[dhMax*.35,dhMax]});if(!b)throw new Error('course generation failed at node '+nodes.length);
+    const room=TOPY-top;
+    const norm=()=>{const hi=Math.min(dhMax,room-dhMax*.5),b=place({dh:top>4&&rnd()<.09?[-1.1,-.1]:[Math.min(dhMax*.35,hi*.6),hi]})||place({dh:[-.8,hi*.5],tries:200});if(!b)throw new Error('course generation failed at node '+nodes.length);
       if(b.kind==='cloud'&&!prevCr&&rnd()<.45){b.type='crumble';prevCr=true;}else prevCr=false;};
-    if(top>=TOPY-.9){if(!place({kind:'goal',dh:[.5,.8],gap:[.8,1.5],tries:300}))throw new Error('goal placement failed');break;}
+    if(room<=dhMax*.95){if(!place({kind:'goal',dh:[room,room],gap:[.8,1.5],tries:300}))throw new Error('goal placement failed');break;}
     const cross=zi<4&&top>=ZONES[zi+1].y0,limit=zi<4?ZONES[zi+1].y0-8:TOPY-10;
     if(cross||(top-lastCp>=30&&top<limit)){
       if(!place({kind:'pad',dh:[.5,.9],gap:[.8,1.6],cp:true,tries:300}))throw new Error('rest pad placement failed at '+nodes.length);
       if(cross)zi++;lastCp=ex.top;cool=2;prevCr=false;continue;
     }
     let spec='';
-    if(cool>0)cool--;else{const p=SP[z];let r=rnd();for(const k of['m','f','l','b','d']){if(p[k]){if(r<p[k]){spec=k;break;}r-=p[k];}}}
+    if(cool>0)cool--;else if(room>30){const p=SP[z];let r=rnd();for(const k of['m','f','l','b','d']){if(p[k]){if(r<p[k]){spec=k;break;}r-=p[k];}}}
     if(prevCr&&(spec==='f'||spec==='l'))spec='';
     if(!spec){norm();continue;}
     const s=snap();let ok=false;
@@ -398,11 +411,11 @@ function bot(W,ti,mem){
   if(P.grounded&&P.ground){
     let c=P.ground;mem.hop=null;if(c.node===ti)return inp;if(c.parent)c=c.parent;
     const dh=top-P.y,g=gravAt(P.y),apex=JV*JV/(2*g),e=nearest(t,P.x,P.z,0),de=Math.hypot(e.x-P.x,e.z-P.z);
-    let r=reach(dh,g,JV)*.8-.3;if(dh>apex-.05)r=dh<=apex+LEDGE-.15?1.2:-1;if((t.move||c.move)&&dh>apex-.35)r=-1;if(t.via)r=-1;
+    let r=reach(dh,g,JV)*.8-.3;if(dh>apex-.05)r=dh<=apex+LEDGE-.15?1.2:-1;if((t.move||c.move)&&dh>apex-.35)r=-1;if(t.move&&t.move.ay&&dh>1.2)r=-1;if(t.via)r=-1;
     const sx=clamp(aim.x,c.x-c.hx-.2,c.x+c.hx+.2)-P.x,sz=clamp(aim.z,c.z-c.hz-.2,c.z+c.hz+.2)-P.z,sd=Math.hypot(sx,sz);
     if(de<=r){inp.jp=true;inp.mx=dx/dist;inp.mz=dz/dist;}
     else if(sd>.12){const k=Math.min(1,sd*3);inp.mx=sx/sd*k;inp.mz=sz/sd*k;
-      mem.stuck=Math.hypot(P.vx,P.vz)<1?(mem.stuck||0)+1:0;if(mem.stuck>30){inp.jp=true;mem.stuck=0;mem.hop=c.ex||null;}}
+      mem.stuck=Math.hypot(P.vx,P.vz)<1&&!c.move?(mem.stuck||0)+1:0;if(mem.stuck>30){inp.jp=true;mem.stuck=0;mem.hop=c.ex||null;}}
     else if((t.via||r>=0)&&!t.move&&!c.move){inp.jp=true;inp.mx=dx/dist;inp.mz=dz/dist;}
     return inp;
   }
@@ -411,7 +424,7 @@ function bot(W,ti,mem){
   if(dist>.08){const k=Math.min(1,dist*2.5);inp.mx=dx/dist*k;inp.mz=dz/dist*k;}
   return inp;
 }
-return{R,H,SPEED,JV,BV,TOPY,LIM,ZONES,zoneAt,gravAt,reach,makeLevel,world,step,toNode,bot,clamp};
+return{R,H,SPEED,JV,BV,LIM,get TOPY(){return TOPY;},get ZONES(){return ZONES;},setCourse,zoneAt,gravAt,reach,makeLevel,world,step,toNode,bot,clamp};
 })();
 /*CORE-END*/
 
@@ -419,13 +432,13 @@ return{R,H,SPEED,JV,BV,TOPY,LIM,ZONES,zoneAt,gravAt,reach,makeLevel,world,step,t
 'use strict';
 const $=id=>document.getElementById(id);
 if(!window.THREE){$('title').querySelector('.sub').textContent='3D描画ライブラリを読み込めませんでした。通信状態を確認して開き直してください。';$('start').disabled=true;return;}
-const {clamp,ZONES,TOPY}=Core,TAU=Math.PI*2,SEED=20261115,TS=1/120;
+const {clamp}=Core,TAU=Math.PI*2,TS=1/120;
+const COURSES=[{top:333,seed:20261115,name:'333m',note:'東京タワーと同じ高さ'},{top:634,seed:20261117,name:'634m',note:'東京スカイツリーと同じ高さ'}];
+let course=0;
 const lin=c=>new THREE.Color(c).convertSRGBToLinear();
 function rng(seed){let a=seed>>>0;return()=>{a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 
-let W;
-try{W=Core.world(SEED);}catch(e){$('title').querySelector('.sub').textContent='コースを作れませんでした（'+e.message+'）。開き直してください。';$('start').disabled=true;return;}
-const P=W.P,L=W.L;
+let W,P,L;
 
 /* ================= renderer ================= */
 const cv=$('cv'),game=$('game');
@@ -435,7 +448,7 @@ catch(e){$('title').querySelector('.sub').textContent='この端末では3D描�
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
 renderer.outputEncoding=THREE.sRGBEncoding;
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x9ad4f6);scene.fog=new THREE.Fog(0x9ad4f6,70,300);
-const camera=new THREE.PerspectiveCamera(60,1,.2,2400);
+const camera=new THREE.PerspectiveCamera(60,1,.3,2400);
 scene.add(new THREE.HemisphereLight(0xffffff,0x8a93a8,.78));
 const sun=new THREE.DirectionalLight(0xfff1dc,.62);sun.position.set(40,90,30);scene.add(sun);
 
@@ -447,12 +460,12 @@ function geo(g,G,sx,sy,sz,c,x,y,z,e){const m=new THREE.Mesh(G,M(c,e));m.scale.se
 const texs={};
 function label(text,bg,fg,w,h){
   const k=text+bg+fg;if(texs[k])return texs[k];
-  const c=document.createElement('canvas');c.width=w||256;c.height=h||96;const g=c.getContext('2d');
+  const c=document.createElement('canvas');c.width=w||256;c.height=h||128;const g=c.getContext('2d');
   g.fillStyle=bg;g.fillRect(0,0,c.width,c.height);g.fillStyle=fg;g.textAlign='center';g.textBaseline='middle';
   const lines=text.split('\n');let size=c.height/lines.length*.62;g.font='900 '+size+'px sans-serif';
   for(const ln of lines){const mw=g.measureText(ln).width;if(mw>c.width*.9){size*=c.width*.9/mw;g.font='900 '+size+'px sans-serif';}}
   lines.forEach((ln,i)=>g.fillText(ln,c.width/2,c.height*(i+.5)/lines.length+2));
-  const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;return texs[k]=t;
+  const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;t.anisotropy=4;return texs[k]=t;
 }
 const planeG=new THREE.PlaneGeometry(1,1);
 function board(g,text,bg,fg,w,h,x,y,z,ry){const m=new THREE.Mesh(planeG,new THREE.MeshBasicMaterial({map:label(text,bg,fg)}));m.scale.set(w,h,1);m.position.set(x,y,z);m.rotation.y=ry;g.add(m);return m;}
@@ -466,8 +479,8 @@ function build(b){
   const hl=lx?b.hx:b.hz,hs=lx?b.hz:b.hx;
   switch(b.kind){
   case'crate':{const c=pk([0xb98552,0xc79a63,0xa87443]);q(g,w,h,d,c);
-    for(const sx of[-1,1])for(const sz of[-1,1])q(g,.14,h+.02,.14,0x7a5230,sx*(b.hx-.05),-.01,sz*(b.hz-.05));
-    q(g,w+.04,.14,.14,0x7a5230,0,b.hy-.09,b.hz-.05);q(g,w+.04,.14,.14,0x7a5230,0,b.hy-.09,-b.hz+.05);q(g,w+.04,.14,d+.04,0x7a5230,0,-b.hy+.07,0);break;}
+    for(const sx of[-1,1])for(const sz of[-1,1])q(g,.16,h+.04,.16,0x7a5230,sx*(b.hx-.05),0,sz*(b.hz-.05));
+    q(g,w+.04,.14,.14,0x7a5230,0,b.hy-.1,b.hz-.05);q(g,w+.04,.14,.14,0x7a5230,0,b.hy-.1,-b.hz+.05);q(g,w+.04,.14,d+.04,0x7a5230,0,-b.hy+.085,0);break;}
   case'container':{const c=pk([0xd9483b,0x2f7fc1,0x3aa66b,0xe0a030,0x8a5fc1]);q(g,w,h,d,c);
     for(let a=-hl+.4;a<hl-.2;a+=.62)A(.1,h*.86,hs*2+.07,0x172033,a,0,0).material=M(0x333a4a);
     A(.08,h*.9,hs*2*.9,0xdfe4ea,hl+.02,0,0);A(.1,h*.6,.08,0x8d95a3,hl+.07,0,.25);A(.1,h*.6,.08,0x8d95a3,hl+.07,0,-.25);break;}
@@ -477,20 +490,20 @@ function build(b){
       m.position.set(lx?sa*hl*.62:ss*(hs-.1),-b.hy+.12,lx?ss*(hs-.1):sa*hl*.62);}
     A(.08,.2,.4,0xfff2b0,hl+.02,.05,hs*.6,1);A(.08,.2,.4,0xfff2b0,hl+.02,.05,-hs*.6,1);A(.08,.18,.4,0xff4d5e,-hl-.02,.05,hs*.6,1);A(.08,.18,.4,0xff4d5e,-hl-.02,.05,-hs*.6,1);break;}
   case'sofa':{const c=pk([0x8a5fc1,0x3f8f8a,0xd9485f,0x4a6fb5]);q(g,w,h,d,c);A(hl*2,.7,.44,c,0,b.hy+.35,-hs+.22);
-    A(.05,.04,hs*2-.5,0x172033,0,b.hy+.005,.22).material=M(0x2a2f40);A(hl*2-.2,.2,.1,0x2a2f40,0,-b.hy+.1,hs-.02);break;}
+    A(.05,.04,hs*2-.5,0x172033,0,b.hy+.005,.22).material=M(0x2a2f40);A(hl*2-.2,.2,.1,0x2a2f40,0,-b.hy+.115,hs-.02);break;}
   case'fridge':{q(g,w,h,d,0xeef1f4);q(g,w+.03,.05,d+.03,0x9aa3b0,0,h*.12,0);q(g,.07,h*.3,.07,0x8d95a3,b.hx*.75,-h*.1,b.hz+.05);q(g,.07,h*.14,.07,0x8d95a3,b.hx*.75,h*.24,b.hz+.05);break;}
   case'pallet':{const n=5;for(let i=0;i<n;i++)q(g,w/n-.08,h*.4,d,0xc79a63,-b.hx+(i+.5)*w/n,b.hy-h*.2,0);
     for(const s of[-1,0,1])q(g,w,h*.6,.2,0x9a7447,0,-b.hy+h*.3,s*(b.hz-.12));break;}
   case'girder':{const c=pk([0xd9483b,0xf2c230,0xe07030]);A(hl*2,.12,hs*2,c,0,b.hy-.06,0);A(hl*2,.12,hs*2,c,0,-b.hy+.06,0);A(hl*2,h-.24,hs*.5,c,0,0,0);
-    for(const s of[-1,1])A(.3,h-.24,hs*2*.85,0x7a2a22,s*(hl-.3),0,0).material=M(0x5a3a30);break;}
+    for(const s of[-1,1])A(.3,h-.27,hs*2*.85,0x7a2a22,s*(hl-.3),0,0).material=M(0x5a3a30);break;}
   case'slab':{q(g,w,h,d,0xb9b9b4);for(const s of[-.6,0,.6]){q(g,.5,.06,.06,0x6b4a35,b.hx+.2,0,s*b.hz);q(g,.5,.06,.06,0x6b4a35,-b.hx-.2,0,s*b.hz);}break;}
   case'scaffold':{q(g,w,h,d,0xd9b382);for(const sx of[-1,1])for(const sz of[-1,1])q(g,.09,2.6,.09,0x8d95a3,sx*(b.hx-.1),-b.hy-1.3,sz*(b.hz-.1));
-    q(g,w,.07,.07,0x8d95a3,0,-b.hy-1.4,b.hz-.1);q(g,w,.07,.07,0x8d95a3,0,-b.hy-1.4,-b.hz+.1);q(g,w+.06,.08,.08,0xf2c230,0,b.hy-.04,b.hz);q(g,w+.06,.08,.08,0xf2c230,0,b.hy-.04,-b.hz);break;}
+    q(g,w,.07,.07,0x8d95a3,0,-b.hy-1.4,b.hz-.1);q(g,w,.07,.07,0x8d95a3,0,-b.hy-1.4,-b.hz+.1);q(g,w+.06,.08,.08,0xf2c230,0,b.hy-.025,b.hz);q(g,w+.06,.08,.08,0xf2c230,0,b.hy-.025,-b.hz);break;}
   case'roof':{const c=pk([0x8d97a8,0xa39a90,0x7f8aa0,0xb0a89c]);q(g,w,h,d,c);
     for(let y=b.hy-1.2;y>-b.hy+.6;y-=1.7)q(g,w+.06,.7,d+.06,r()<.6?0xffe9a0:0x3a4a6a,0,y,0,true).material=M(r()<.55?0xffe9a0:0x3a4a6a,r()<.5);
-    q(g,w+.2,.16,d+.2,0x5a6272,0,b.hy-.08,0);break;}
+    q(g,w+.2,.16,d+.2,0x5a6272,0,b.hy-.065,0);break;}
   case'sign':{const c=pk([0xff4fa3,0x4de3ff,0xffe14d,0x7dff8a]),tx=pk(['OPEN','24H','CAFE','HOTEL','まめ屋','SALE','ラーメン']);q(g,w,h,d,0x232838);
-    A(hl*2-.2,.1,hs*2+.06,c,0,b.hy-.05,0,true);
+    A(hl*2-.2,.1,hs*2+.06,c,0,b.hy-.035,0,true);
     if(lx){board(g,tx,'#232838','#'+c.toString(16).padStart(6,'0'),w*.9,h*.72,0,-.05,b.hz+.02,0);board(g,tx,'#232838','#'+c.toString(16).padStart(6,'0'),w*.9,h*.72,0,-.05,-b.hz-.02,Math.PI);}
     else{board(g,tx,'#232838','#'+c.toString(16).padStart(6,'0'),d*.9,h*.72,b.hx+.02,-.05,0,Math.PI/2);board(g,tx,'#232838','#'+c.toString(16).padStart(6,'0'),d*.9,h*.72,-b.hx-.02,-.05,0,-Math.PI/2);}
     break;}
@@ -501,33 +514,43 @@ function build(b){
   case'island':{q(g,w,.26,d,0x6fbf5a,0,b.hy-.13,0);q(g,w*.98,h-.26,d*.98,0x8a6242,0,-.13,0);
     const p=geo(g,pyrG,w*.98,2.4+r()*1.5,d*.98,0x73503a,0,0,0);p.rotation.set(Math.PI,Math.PI/4,0);p.position.y=-b.hy-p.scale.y/2+.02;break;}
   case'rainbow':{const cs=[0xff4d5e,0xff9d2e,0xffe14d,0x5fd36a,0x4da3ff,0x9b6bff];cs.forEach((c,i)=>A(hl*2,h,hs*2/6,c,0,0,-hs+(i+.5)*hs/3));break;}
-  case'panel':{q(g,w,h,d,0x2a4a9a);for(let a=-hl+.5;a<hl;a+=1)A(.05,h+.02,hs*2,0x9fc0ff,a,0,0);A(hl*2,h+.02,.05,0x9fc0ff,0,0,0);
+  case'panel':{q(g,w,h,d,0x2a4a9a);for(let a=-hl+.5;a<hl;a+=1)A(.05,h+.02,hs*2-.04,0x9fc0ff,a,0,0);A(hl*2-.04,h+.04,.05,0x9fc0ff,0,0,0);
     A(1.1,.7,1.1,0xe0b040,0,-b.hy-.35,0);A(.08,.5,.08,0xdfe4ea,0,-b.hy-.95,0);break;}
   case'asteroid':{q(g,w,h,d,0x8a8480);for(let i=0;i<4;i++){const s=.8+r()*1.2,m=q(g,s,s*.7,s,pk([0x7a746f,0x96908a,0x6b6660]),(r()*2-1)*b.hx*.9,-b.hy*.2-r()*b.hy*.9,(r()*2-1)*b.hz*.9);m.rotation.set(r()*2,r()*2,r()*2);}
     q(g,.5,.05,.5,0x6b6660,(r()-.5)*b.hx,b.hy+.005,(r()-.5)*b.hz);break;}
   case'module':{q(g,w,h,d,0xeef1f4);A(.5,h+.04,hs*2+.04,0x2f7fc1,-hl*.4,0,0);A(.25,h*.9,hs*2*.9,0xe0b040,hl+.1,0,0);A(.25,h*.9,hs*2*.9,0xe0b040,-hl-.1,0,0);
     A(.7,.5,.06,0xffe9a0,hl*.3,.2,hs+.02,1);A(.7,.5,.06,0xffe9a0,hl*.3,.2,-hs-.02,1);break;}
   case'lift':{const sp=b.y>220,c=sp?0x4de3ff:0xf2c230;q(g,w,h,d,c,0,0,0,sp);
-    for(const s of[-1,1]){q(g,w+.02,h+.02,.22,0x232838,0,0,s*(b.hz-.11));q(g,.22,h+.02,d+.02,0x232838,s*(b.hx-.11),0,0);}
+    for(const s of[-1,1]){q(g,w+.02,h+.02,.22,0x232838,0,0,s*(b.hz-.1));q(g,.22,h+.05,d+.04,0x232838,s*(b.hx-.09),0,0);}
     q(g,.4,.14,.4,0xff7a2a,0,-b.hy-.07,0,true);break;}
-  case'bounce':{q(g,w,h*.5,d,0x232838,0,b.hy-h*.25,0);q(g,w*.84,.06,d*.84,0xff4fa3,0,b.hy+.001,0,true);q(g,w*.4,.07,d*.4,0xffffff,0,b.hy+.002,0);
+  case'bounce':{q(g,w,h*.5,d,0x232838,0,b.hy-h*.25,0);q(g,w*.84,.06,d*.84,0xff4fa3,0,b.hy+.001,0,true);q(g,w*.4,.07,d*.4,0xffffff,0,b.hy+.02,0);
     for(const sx of[-1,1])for(const sz of[-1,1])q(g,.14,h*.5,.14,0x8d95a3,sx*(b.hx-.12),-b.hy+h*.25,sz*(b.hz-.12));break;}
-  case'pad':{const z=Core.zoneAt(b.y+b.hy+.5),c=PADC[z];q(g,w,h,d,c);q(g,w+.1,.2,d+.1,0x232838,0,-b.hy+.1,0);
-    for(let i=0;i<9;i++)for(const s of[-1,1])q(g,w/9,.02,.5,i%2?0x232838:0xfffdf6,-b.hx+(i+.5)*w/9,b.hy+.011,s*(b.hz-.25));
+  case'pad':{const z=Core.zoneAt(b.y+b.hy+.5),c=PADC[z];q(g,w,h,d,c);q(g,w+.1,.2,d+.1,0x232838,0,-b.hy+.115,0);
+    for(let i=0;i<9;i++)for(const s of[-1,1])q(g,w/9,.02,.5,i%2?0x232838:0xfffdf6,-b.hx+(i+.5)*w/9,b.hy+.016,s*(b.hz-.25));
     const px=-b.hx+.7,pz=-b.hz+.7;q(g,.1,3.2,.1,0xdfe4ea,px,b.hy+1.6,pz);b.flag=q(g,1,.6,.05,0x9aa3b0,px+.55,b.hy+2.8,pz);
     q(g,.1,1.6,.1,0x6b4a35,b.hx-1.2,b.hy+.8,-b.hz+.7);
-    board(g,ZONES[z].name+'\n'+Math.round(b.y+b.hy)+'m','#fffdf6','#172033',2.6,1.2,b.hx-1.2,b.hy+2,-b.hz+.76,0).material=new THREE.MeshBasicMaterial({map:label(ZONES[z].name+'\n'+Math.round(b.y+b.hy)+'m','#fffdf6','#172033',256,128)});
+    board(g,Core.ZONES[z].name+'\n'+Math.round(b.y+b.hy)+'m','#fffdf6','#172033',2.6,1.2,b.hx-1.2,b.hy+2,-b.hz+.76,0).material=new THREE.MeshBasicMaterial({map:label(Core.ZONES[z].name+'\n'+Math.round(b.y+b.hy)+'m','#fffdf6','#172033',256,128)});
     break;}
-  case'goal':{q(g,w,h,d,0xffc928);for(let i=0;i<5;i++)q(g,w-i*1.9,.02,d-i*1.9,i%2?0xffc928:0xffe38a,0,b.hy+.011+i*.002,0);q(g,w+.2,.3,d+.2,0xfffdf6,0,-b.hy+.15,0);
+  case'goal':{q(g,w,h,d,0xffc928);for(let i=0;i<5;i++)q(g,w-.1-i*1.9,.02,d-.1-i*1.9,i%2?0xffc928:0xffe38a,0,b.hy+.016+i*.016,0);q(g,w+.2,.3,d+.2,0xfffdf6,0,-b.hy+.165,0);
     const s=new THREE.Mesh(new THREE.OctahedronGeometry(1.6,0),M(0xfff2b0,true));s.position.y=b.hy+5.5;g.add(s);b.star=s;
     q(g,.14,4.4,.14,0xdfe4ea,0,b.hy+2.2,-3.6);q(g,1.8,1,.06,0xff7a2a,.95,b.hy+3.8,-3.6);break;}
   }
   return g;
 }
-const world=new THREE.Group();scene.add(world);
-for(const b of L.boxes){
-  if(b.kind==='ground'||b.kind==='x')continue;
-  b.mesh=build(b);b.mesh.position.set(b.x,b.y,b.z);world.add(b.mesh);
+let world=new THREE.Group();scene.add(world);
+function buildWorld(ci){
+  const C=COURSES[ci];Core.setCourse(C.top);
+  let nw;try{nw=Core.world(C.seed);}catch(e){$('title').querySelector('.sub').textContent='コースを作れませんでした（'+e.message+'）。開き直してください。';$('start').disabled=true;return false;}
+  world.traverse(o=>{if(o.material&&o.material.map&&!o.material._keep){o.material.dispose();}if(o.geometry&&o.geometry._own)o.geometry.dispose();});
+  scene.remove(world);world=new THREE.Group();scene.add(world);
+  course=ci;W=nw;P=W.P;L=W.L;
+  for(const b of L.boxes){
+    if(b.kind==='ground'||b.kind==='x')continue;
+    b.mesh=build(b);b.mesh.position.set(b.x,b.y,b.z);b.mesh.userData.kind=b.kind;world.add(b.mesh);
+  }
+  buildClouds();buildDrafts();railMarks();
+  safe={x:P.x,y:P.y,z:P.z};
+  return true;
 }
 /* ground, far town, clouds, stars, moon */
 (function(){
@@ -535,7 +558,7 @@ for(const b of L.boxes){
   const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d');
   g.fillStyle='#7fc46a';g.fillRect(0,0,256,256);g.fillStyle='#76bb62';for(let i=0;i<4;i++)for(let j=0;j<4;j++)if((i+j)%2)g.fillRect(i*64,j*64,64,64);
   for(let i=0;i<700;i++){g.fillStyle=r()<.5?'rgba(255,255,255,.08)':'rgba(0,50,20,.1)';g.fillRect(r()*256,r()*256,2,2);}
-  const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(60,60);
+  const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(60,60);t.anisotropy=renderer.capabilities.getMaxAnisotropy();
   const gr=new THREE.Mesh(new THREE.PlaneGeometry(1800,1800),new THREE.MeshLambertMaterial({map:t}));gr.rotation.x=-Math.PI/2;scene.add(gr);
   const fence=new THREE.Mesh(new THREE.RingGeometry(Core.LIM*1.39,Core.LIM*1.43,4,1),new THREE.MeshBasicMaterial({color:lin(0xfffdf6),side:THREE.DoubleSide}));
   fence.rotation.set(-Math.PI/2,0,Math.PI/4);fence.position.y=.03;scene.add(fence);
@@ -547,34 +570,42 @@ for(const b of L.boxes){
   for(let i=0;i<tn;i++){const a=r()*TAU,R=88+r()*34,k=1+r();m.compose(v.set(Math.cos(a)*R,1.2*k,Math.sin(a)*R),qq,s.set(.7*k,2.4*k,.7*k));trunk.setMatrixAt(i,m);
     m.compose(v.set(Math.cos(a)*R,3.6*k,Math.sin(a)*R),qq,s.set(4.4*k,4.6*k,4.4*k));leaf.setMatrixAt(i,m);leaf.setColorAt(i,lin([0x2f8f4e,0x3fa55a,0x57b86a][i%3]));}
   scene.add(trunk,leaf);
-  const cn=60,cl=new THREE.InstancedMesh(icoG,new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.92}),cn*3);let ci=0;
-  for(let i=0;i<cn;i++){const a=r()*TAU,R=70+r()*230,y=150+r()*95,x=Math.cos(a)*R,z=Math.sin(a)*R;
-    for(let j=0;j<3;j++){m.compose(v.set(x+(j-1)*11,y+r()*4,z+r()*8),qq,s.set(16+r()*12,8+r()*5,12+r()*8));cl.setMatrixAt(ci++,m);}}
-  scene.add(cl);
 })();
+/* the cloud sea sits in the cloud zone of the chosen course */
+const cloudM=new THREE.MeshBasicMaterial({color:0xffffff});cloudM._keep=true;
+function buildClouds(){
+  const r=rng(9),f=Core.TOPY/300,cn=Math.round(60*f),cl=new THREE.InstancedMesh(icoG,cloudM,cn*3),m=new THREE.Matrix4(),v=new THREE.Vector3(),s=new THREE.Vector3(),qq=new THREE.Quaternion();let ci=0;
+  for(let i=0;i<cn;i++){const a=r()*TAU,R=70+r()*230,y=(150+r()*95)*f,x=Math.cos(a)*R,z=Math.sin(a)*R;
+    for(let j=0;j<3;j++){m.compose(v.set(x+(j-1)*11,y+r()*4,z+r()*8),qq,s.set(16+r()*12,8+r()*5,12+r()*8));cl.setMatrixAt(ci++,m);}}
+  world.add(cl);
+}
 const starsM=new THREE.PointsMaterial({color:0xffffff,size:2.2,sizeAttenuation:false,transparent:true,opacity:0,fog:false,depthWrite:false});
+const sky3=new THREE.Group();scene.add(sky3);
 (function(){const r=rng(4),p=new Float32Array(900*3);for(let i=0;i<900;i++){const a=r()*TAU,u=r()*1.6-.6,q2=Math.sqrt(1-u*u);p[i*3]=Math.cos(a)*q2*1500;p[i*3+1]=u*1500;p[i*3+2]=Math.sin(a)*q2*1500;}
-  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(p,3));const s=new THREE.Points(g,starsM);s.frustumCulled=false;scene.add(s);})();
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(p,3));const s=new THREE.Points(g,starsM);s.frustumCulled=false;sky3.add(s);})();
 const moonM=new THREE.MeshBasicMaterial({color:lin(0xfff6d8),fog:false,transparent:true,opacity:.35});
-const moon=new THREE.Mesh(new THREE.SphereGeometry(70,24,16),moonM);moon.position.set(-420,640,-520);scene.add(moon);
+const moon=new THREE.Mesh(new THREE.SphereGeometry(70,24,16),moonM);moon.position.set(-420,500,-520);sky3.add(moon);
 
 /* updraft columns */
 const draftFx=[];
+function buildDrafts(){
+draftFx.length=0;
 for(const d of L.drafts){
-  const h=d.y1-d.y0,col=new THREE.Mesh(new THREE.CylinderGeometry(d.r,d.r,h,20,1,true),new THREE.MeshBasicMaterial({color:lin(0x9fe8ff),transparent:true,opacity:.13,side:THREE.DoubleSide,depthWrite:false}));
-  col.position.set(d.x,d.y0+h/2,d.z);scene.add(col);
-  const ring=geo(scene,cylG,d.r*2,.08,d.r*2,0x4de3ff,d.x,d.y0+1.02,d.z,true);
+  const h=d.y1-d.y0,cg=new THREE.CylinderGeometry(d.r,d.r,h,20,1,true);cg._own=true;const col=new THREE.Mesh(cg,new THREE.MeshBasicMaterial({color:lin(0x9fe8ff),transparent:true,opacity:.13,side:THREE.DoubleSide,depthWrite:false}));
+  col.position.set(d.x,d.y0+h/2,d.z);world.add(col);
+  const ring=geo(world,cylG,d.r*2,.08,d.r*2,0x4de3ff,d.x,d.y0+1.02,d.z,true);
   const st=[],r=rng(Math.floor(d.x*97+d.z*31)+7);
-  for(let i=0;i<16;i++){const a=r()*TAU,rr=r()*d.r*.9,m=q(scene,.07,1.1+r(),.07,0xffffff,d.x+Math.cos(a)*rr,0,d.z+Math.sin(a)*rr,true);st.push({m,o:r()*h,s:7+r()*5});}
+  for(let i=0;i<16;i++){const a=(i+r()*.6)/16*TAU,rr=(.25+r()*.65)*d.r,m=q(world,.07,1.1+r(),.07,0xffffff,d.x+Math.cos(a)*rr,0,d.z+Math.sin(a)*rr,true);st.push({m,o:r()*h,s:7+r()*5});}
   draftFx.push({d,h,st,col,ring});
+}
 }
 
 /* ================= the climber ================= */
 const hero=new THREE.Group(),body=new THREE.Group();hero.add(body);scene.add(hero);
-q(body,.52,.56,.3,0xff7a2a,0,1,0);q(body,.4,.14,.2,0xe0621a,0,.8,.16);q(body,.36,.42,.17,0x2f5fa8,0,1.03,-.23);q(body,.5,.16,.3,0x2a2f40,0,.7,0);
+q(body,.52,.56,.3,0xff7a2a,0,1,0);q(body,.4,.14,.2,0xe0621a,0,.82,.16);q(body,.36,.42,.19,0x2f5fa8,0,1.03,-.22);q(body,.56,.16,.34,0x2a2f40,0,.7,0);
 const head=new THREE.Group();head.position.y=1.5;body.add(head);
 geo(head,icoG,.42,.42,.42,0xf2c9a0);q(head,.45,.17,.45,0x2f5fa8,0,.17,0);q(head,.1,.1,.1,0xfffdf6,0,.3,0);q(head,.07,.09,.04,0x172033,.09,.02,.2);q(head,.07,.09,.04,0x172033,-.09,.02,.2);
-function limb(x,y,len,c,c2,wd){const p=new THREE.Group();p.position.set(x,y,0);q(p,wd,len,wd,c,0,-len/2,0);q(p,wd+.02,.14,wd+.04,c2,0,-len+.05,.02);body.add(p);return p;}
+function limb(x,y,len,c,c2,wd){const p=new THREE.Group();p.position.set(x,y,0);q(p,wd,len,wd,c,0,-len/2,0);q(p,wd+.03,.14,wd+.07,c2,0,-len+.05,.02);body.add(p);return p;}
 const armL=limb(.34,1.24,.5,0xff7a2a,0xf2c9a0,.14),armR=limb(-.34,1.24,.5,0xff7a2a,0xf2c9a0,.14),legL=limb(.14,.66,.62,0x2a2f40,0xfffdf6,.18),legR=limb(-.14,.66,.62,0x2a2f40,0xfffdf6,.18);
 const shadow=new THREE.Mesh(new THREE.CircleGeometry(.5,18),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:.3,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}));
 shadow.rotation.x=-Math.PI/2;scene.add(shadow);
@@ -607,13 +638,16 @@ const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').m
 const coarse=window.matchMedia&&matchMedia('(pointer: coarse)').matches;
 game.classList.add(coarse?'touch':'mouse');
 window.addEventListener('touchstart',()=>{game.classList.add('touch');game.classList.remove('mouse');},{once:true,passive:true});
-let best={};try{best=JSON.parse(localStorage.getItem('soranobori-best'))||{};}catch(e){best={};}
-function saveBest(){try{localStorage.setItem('soranobori-best',JSON.stringify(best));}catch(e){}}
-let saved=null;try{saved=JSON.parse(localStorage.getItem('soranobori-save'));}catch(e){saved=null;}
-let safe={x:P.x,y:P.y,z:P.z},saveT=0;
-function snapshot(){return{mode,cp:P.cp,x:safe.x,y:safe.y,z:safe.z,time,falls:P.falls,maxY:P.maxY};}
-function persist(){saved=snapshot();try{localStorage.setItem('soranobori-save',JSON.stringify(saved));}catch(e){}}
-function clearSave(){saved=null;try{localStorage.removeItem('soranobori-save');}catch(e){}}
+let best={};try{best=JSON.parse(localStorage.getItem('soranobori-best2'))||{};}catch(e){best={};}
+function saveBest(){try{localStorage.setItem('soranobori-best2',JSON.stringify(best));}catch(e){}}
+const bk=()=>course+'-'+mode,myBest=()=>best[bk()]||(best[bk()]={});
+/* one saved climb per course */
+let saves={};try{saves=JSON.parse(localStorage.getItem('soranobori-save2'))||{};}catch(e){saves={};}
+const writeSaves=()=>{try{localStorage.setItem('soranobori-save2',JSON.stringify(saves));}catch(e){}};
+let safe={x:0,y:0,z:0},saveT=0;
+function snapshot(){return{course,mode,cp:P.cp,x:safe.x,y:safe.y,z:safe.z,time,falls:P.falls,maxY:P.maxY};}
+function persist(){saves[course]=snapshot();writeSaves();}
+function clearSave(){delete saves[course];writeSaves();}
 const fmt=t=>{const m=Math.floor(t/60),s=t-m*60;return m+':'+(s<10?'0':'')+s.toFixed(1);};
 
 function resetWorld(){
@@ -640,8 +674,10 @@ function toTitle(){
 }
 function menu(){
   document.querySelectorAll('#mode button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.m===mode)));
-  const c=$('cont');c.hidden=!saved;if(saved)c.textContent='つづきから（'+(+saved.y).toFixed(0)+'m・'+(saved.mode==='pure'?'いっぽんぎ':'ふつう')+'）';
-  const b=best[mode]||{};
+  document.querySelectorAll('#course button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.c===course)));
+  const sv=saves[course],c=$('cont');c.hidden=!sv;if(sv)c.textContent='つづきから（'+(+sv.y).toFixed(0)+'m・'+(sv.mode==='pure'?'いっぽんぎ':'ふつう')+'）';
+  $('start').textContent=COURSES[course].name+'をはじめから登る';
+  const b=best[bk()]||{};
   $('rec').innerHTML=b.h?('この端末の記録　最高 <b>'+b.h.toFixed(1)+'m</b>'+(b.t?'　登頂 <b>'+fmt(b.t)+'</b>':'')):'';
 }
 function pause(){if(state!=='play')return;state='pause';$('pause').hidden=false;persist();snd.air(0);}
@@ -653,9 +689,9 @@ function toCp(){
 }
 function win(){
   state='win';snd.air(0);snd.jingle([523,659,784,1047,1319,1568],.12,'triangle',.14);
-  const b=best[mode]||(best[mode]={});b.h=TOPY;const rec=!b.t||time<b.t;if(rec)b.t=time;saveBest();clearSave();
-  $('resS').textContent='高さ'+TOPY+'mのてっぺんに立った。'+(rec?'この端末の最速記録。':'');
-  $('rTime').textContent=fmt(time);$('rFall').textContent=P.falls+'回';$('rMode').textContent=mode==='pure'?'いっぽんぎ':'ふつう';
+  const b=myBest();b.h=Core.TOPY;const rec=!b.t||time<b.t;if(rec)b.t=time;saveBest();clearSave();
+  $('resS').textContent='高さ'+Core.TOPY+'mのてっぺんに立った。'+(rec?'この端末の最速記録。':'');
+  $('rTime').textContent=fmt(time);$('rFall').textContent=P.falls+'回';$('rMode').textContent=COURSES[course].name+'・'+(mode==='pure'?'いっぽんぎ':'ふつう');
   setTimeout(()=>{if(state==='win'){$('result').hidden=false;$('hud').hidden=true;}},2600);
 }
 let toastT=0,bannerT=0;
@@ -741,10 +777,11 @@ function rayHit(ox,oy,oz,dx,dy,dz,max){
   }
   return t;
 }
+/* heights for a 300 m tower, stretched to the course */
 const SKY=[[0,0x9ad4f6],[45,0x86c7f0],[100,0xf6c08a],[150,0xf09a7a],[172,0x8fb8ee],[225,0x5a7fd0],[250,0x1a2350],[300,0x070a1c]];
 const skyA=new THREE.Color(),skyB=new THREE.Color();
 function sky(y){
-  let i=0;while(i<SKY.length-2&&y>SKY[i+1][0])i++;
+  y*=300/Core.TOPY;let i=0;while(i<SKY.length-2&&y>SKY[i+1][0])i++;
   const k=clamp((y-SKY[i][0])/(SKY[i+1][0]-SKY[i][0]),0,1);skyA.set(SKY[i][1]);skyB.set(SKY[i+1][1]);
   /* clear colour and fog are both applied after colour encoding, so they take the colour as written */
   scene.background.copy(skyA).lerp(skyB,k);scene.fog.color.copy(scene.background);
@@ -761,14 +798,14 @@ function updateCam(dt){
   camera.lookAt(cam.tx,cam.ty,cam.tz);
 }
 const railFill=$('rail').querySelector('i'),railBest=$('rail').querySelector('b');
-for(let i=1;i<ZONES.length;i++){const s=document.createElement('s');s.style.bottom=(ZONES[i].y0/TOPY*100)+'%';$('rail').appendChild(s);}
+function railMarks(){$('rail').querySelectorAll('s').forEach(e=>e.remove());for(let i=1;i<Core.ZONES.length;i++){const s=document.createElement('s');s.style.bottom=(Core.ZONES[i].y0/Core.TOPY*100)+'%';$('rail').appendChild(s);}}
 let hudT=0;
 function hud(dt){
   hudT-=dt;if(hudT>0)return;hudT=.08;
   const y=Math.max(0,P.y);$('alt').innerHTML=y.toFixed(1)+'<small>m</small>';
-  const b=best[mode]||{};
+  const b=best[bk()]||{};
   $('stats').textContent=fmt(time)+'　落下 '+P.falls+'回'+(b.h?'　最高 '+b.h.toFixed(0)+'m':'');
-  railFill.style.height=clamp(y/TOPY*100,0,100)+'%';railBest.style.bottom=clamp((b.h||0)/TOPY*100,0,100)+'%';
+  railFill.style.height=clamp(y/Core.TOPY*100,0,100)+'%';railBest.style.bottom=clamp((b.h||0)/Core.TOPY*100,0,100)+'%';
 }
 
 /* ================= per-frame visuals ================= */
@@ -798,7 +835,8 @@ function visuals(dt){
   /* air */
   if(P.vy<-20&&frameN%2===0)emit(P.x+(Math.random()-.5)*5,P.y-2+Math.random()*3,P.z+(Math.random()-.5)*5,0,14,0,.35,0xffffff,.12,0);
   if(P.inDraft&&frameN%3===0)emit(P.x+(Math.random()-.5),P.y,P.z+(Math.random()-.5),0,5,0,.4,0x9fe8ff,.14,0);
-  snd.air(state==='play'?clamp(.012+P.y/TOPY*.05+Math.max(0,-P.vy-12)*.006+(P.inDraft?.08:0),0,.22):0);
+  snd.air(state==='play'?clamp(.012+P.y/Core.TOPY*.05+Math.max(0,-P.vy-12)*.006+(P.inDraft?.08:0),0,.22):0);
+  sky3.position.copy(camera.position);
   sky(camera.position.y);
 }
 
@@ -814,24 +852,25 @@ function frame(now){
     if(state==='play'){
       time+=dt;
       const z=Core.zoneAt(P.y);
-      if(P.grounded&&z!==lastZone){if(z>lastZone)banner(ZONES[z].name,'第'+(z+1)+'エリア　'+ZONES[z].y0+'m〜');lastZone=z;$('zone').textContent=ZONES[z].name;}
+      if(P.grounded&&z!==lastZone){if(z>lastZone)banner(Core.ZONES[z].name,'第'+(z+1)+'エリア　'+Core.ZONES[z].y0+'m〜');lastZone=z;$('zone').textContent=Core.ZONES[z].name;}
       if(P.grounded&&P.ground&&P.ground.type==='static'&&P.stun<=0){safe.x=P.x;safe.y=P.y;safe.z=P.z;}
-      const b=best[mode]||(best[mode]={});if(P.maxY>(b.h||0)+.5){b.h=P.maxY;}
+      const b=myBest();if(P.maxY>(b.h||0)+.5){b.h=P.maxY;}
       saveT+=dt;if(saveT>4||persistFlag){saveT=0;persistFlag=false;persist();saveBest();}
     }
     updateCam(dt);hud(dt);
   }else if(state==='title'){
-    const a=now*.00012;camera.position.set(Math.cos(a)*46,20,Math.sin(a)*46);camera.lookAt(0,26,0);
+    const a=now*.00012;camera.position.set(Math.cos(a)*46,20,Math.sin(a)*46);camera.lookAt(0,26,0);sky3.position.copy(camera.position);
   }
   if(state!=='pause'){visuals(dt);stepParts(dt);}
   renderer.render(scene,camera);
 }
 
 /* ================= menus ================= */
+$('course').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||state!=='title'||+b.dataset.c===course)return;buildWorld(+b.dataset.c);menu();});
 $('mode').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;mode=b.dataset.m;menu();});
 const kick=()=>{snd.init();if(snd.ctx&&snd.ctx.state==='suspended')snd.ctx.resume();};
 $('start').onclick=()=>{kick();clearSave();begin(null);};
-$('cont').onclick=()=>{kick();begin(saved);};
+$('cont').onclick=()=>{kick();begin(saves[course]);};
 $('again').onclick=()=>{kick();begin(null);};
 $('rTitle').onclick=toTitle;$('pQuit').onclick=toTitle;
 $('bPause').onclick=pause;$('resume').onclick=resume;$('bCp').onclick=toCp;$('pCp').onclick=toCp;
@@ -842,11 +881,13 @@ $('help').innerHTML=(coarse
   :'<b>WASD</b>か矢印キーで移動、<b>スペース</b>でジャンプ（長押しで高く跳ぶ）。<b>ドラッグ</b>かQ・Eで視点、ホイールで距離。Rでチェックポイントへ、Pで一時停止。')
   +'<br><b>ふちつかみ</b>：跳びながら壁に向かって進むと、少し高い足場のふちに手をかけてよじ登る。'
   +'<br><b>しかけ</b>：黄色い床は動く。ピンクの床は大きく跳ねる。灰色がかった雲は乗ると崩れる。水色の光の柱は体を上へ運ぶ。宇宙では体が軽くなる。'
+  +'<br><b>コース</b>：333mは東京タワー、634mは東京スカイツリーと同じ高さ。634mは約2倍の長さで、エリアの幅もそれぞれ約2倍になる。'
   +'<br>旗のある広い足場がチェックポイント。「ふつう」ではいつでもそこへ戻れる。進み具合はこの端末に自動で残る。';
 
 /*HOOK*/
 function start(d){
   resize();
+  const ci=d&&(d.course===0||d.course===1)?d.course:0;if(!buildWorld(ci))return;
   if(d&&d.mode)mode=d.mode==='pure'?'pure':'normal';
   if(d&&d.playing&&isFinite(d.x))begin(d);else menu();
   requestAnimationFrame(frame);
