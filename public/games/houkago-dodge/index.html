@@ -1,21 +1,129 @@
 <!doctype html>
-<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#152c32"><title>放課後ドッジ！｜ひとりでも、ふたりでも</title><meta name="description" content="内野3人・外野3人のチームで遊ぶレトロドッジボール。1人対戦・2人対戦に対応。"><link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTIiIGZpbGw9IiMxODMxMzciLz48Y2lyY2xlIGN4PSIzMiIgY3k9IjMyIiByPSIyMiIgZmlsbD0iI2ZmZGE2NiIvPjxwYXRoIGQ9Ik0xMCAzMmg0NE0zMiAxMGMtMTcgMTYtMTcgMjggMCA0NE0zMiAxMGMxNyAxNiAxNyAyOCAwIDQ0IiBmaWxsPSJub25lIiBzdHJva2U9IiMxODMxMzciIHN0cm9rZS13aWR0aD0iMyIvPjwvc3ZnPgo="><style>:root{color-scheme:light;--ink:#183137;--paper:#faf8ee;--red:#d94936;--blue:#2778a5;--yellow:#ffda66}*{box-sizing:border-box}body{margin:0;background:#eff0e9;color:var(--ink);font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;font-size:16px}main{max-width:1200px;margin:auto;padding:26px 36px 20px}button,select{font:inherit;color:inherit}button{cursor:pointer}button:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #efa921;outline-offset:4px}header{display:flex;align-items:center;justify-content:space-between;margin-bottom:23px;gap:20px}.brand{display:flex;align-items:center;gap:13px;color:inherit;text-decoration:none}.ball-icon{display:grid;place-items:center;width:48px;height:48px;border:3px solid var(--ink);border-radius:50%;background:var(--yellow);font-size:30px;box-shadow:3px 3px 0 var(--ink)}.brand small{font-size:11px;letter-spacing:2px;font-weight:800}h1{margin:3px 0 0;font-size:30px;letter-spacing:-1px;line-height:1.1;font-weight:900}h1 span{color:var(--red)}.header-actions{display:flex;align-items:center;gap:9px}.tag{font-size:13px;background:var(--ink);color:white;padding:8px 12px;border-radius:5px}.header-actions button{font-size:14px;background:transparent;border:1px solid #c7cfca;border-radius:5px;padding:9px 12px}.header-actions button:disabled{opacity:.4;cursor:default}.game-shell{border:3px solid var(--ink);border-radius:10px;overflow:hidden;box-shadow:0 6px 0 #cbd0c5;background:var(--ink)}.scoreboard{display:flex;justify-content:space-between;align-items:center;background:var(--paper);padding:16px 28px 13px}.team{width:34%}.red{color:var(--red)}.blue{color:var(--blue)}.team.blue{text-align:right}.player-label{font-weight:900;font-size:15px;display:flex;align-items:center;gap:12px}.team.blue .player-label{justify-content:flex-end}.player-label b{font-size:19px}.hearts{font-size:27px;letter-spacing:6px;line-height:1.4;white-space:nowrap}.hearts .empty{opacity:.18}.power{height:6px;background:#e4e3d6;margin:3px 0 7px;max-width:220px;border-radius:2px;overflow:hidden}.blue .power{margin-left:auto}.power span{display:block;background:currentColor;height:100%;width:0%;transition:width .08s}.team small{font-size:12px;color:#627273}.match{text-align:center;min-width:130px}.match>span{font-size:12px;font-weight:900;letter-spacing:2px}.match>strong{font-family:monospace;display:block;font-size:47px;line-height:1.12}.match>div{font-size:16px;font-weight:800;letter-spacing:2px}.match b{font-size:11px;color:#778680}.match div>span:first-child{color:var(--red)}.match div>span:last-child{color:var(--blue)}.arena{position:relative;background:#e6b77d}canvas{display:block;width:100%;height:auto;image-rendering:pixelated;touch-action:none}.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#17323232;backdrop-filter:blur(1px)}.overlay.hidden{display:none}.start-card{padding:26px 36px 22px;background:#fffced;border:3px solid var(--ink);border-radius:5px;text-align:center;box-shadow:7px 7px 0 #173232b8;max-width:94%}.eyebrow{font-size:12px;font-weight:800;letter-spacing:1px}.start-card h2{font-size:30px;font-weight:900;margin:10px 0}.start-card p{font-size:14px;line-height:1.8;margin:8px 0 17px}.settings{display:flex;gap:15px;justify-content:center;margin-bottom:16px}.settings label{font-size:14px;font-weight:bold}.settings select{display:block;margin-top:6px;background:white;padding:6px 22px 6px 10px;border:1px solid #c6c9bb;border-radius:4px;font-size:14px}.start{width:100%;border:2px solid var(--ink);border-radius:4px;background:var(--yellow);padding:12px 24px;font-size:19px;font-weight:900;box-shadow:0 4px 0 var(--ink)}.start:hover{background:#ffe899;transform:translateY(-1px)}.start span{padding-left:22px}.start-card>small{display:block;margin-top:14px;font-size:12px;color:#637472}#announcement{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:var(--ink);padding:8px 20px;border-radius:4px;color:white;font-weight:900;font-size:18px;white-space:nowrap;pointer-events:none}#announcement:empty{display:none}.court-footer{display:flex;justify-content:space-between;padding:11px 20px;color:#ebeee4;font-size:12px;gap:12px}.court-footer>span:first-child{color:var(--yellow)}.instructions{display:grid;grid-template-columns:1fr .95fr 1fr;gap:24px;margin-top:27px}.control-title{display:flex;align-items:center;gap:8px}.badge{background:currentColor;border-radius:3px;font-size:0;padding:5px 6px}.badge::first-line{font-size:0}.badge:after{content:'1P';font-size:13px;color:#fff;font-weight:900}.blue .badge:after{content:'2P'}.control-title h2{font-size:17px;margin:0}.control-title small{font-size:11px;color:#7b8984;margin-left:auto}.key-row{display:flex;align-items:center;justify-content:space-around;text-align:center;margin-top:15px;gap:5px}.key-row>span{display:block}kbd{display:inline-grid;place-items:center;background:#fffdf6;border:1px solid #bbc4bd;border-bottom:3px solid #bbc4bd;border-radius:4px;width:26px;height:25px;font:700 14px monospace;margin:2px;color:var(--ink)}kbd.action-key{width:40px;height:43px;font-size:22px}.key-row em{display:block;color:#516663;font-style:normal;font-size:12px;margin-top:6px}.tip{padding:0 18px;border-left:1px solid #cdd4cb;border-right:1px solid #cdd4cb}.tip>span{font-size:12px;font-weight:900;color:#a16418}.tip h2{font-size:18px;margin:7px 0}.tip p{font-size:13px;line-height:1.9;margin:0}.tip small{font-size:11px;color:#74847a}footer{display:flex;justify-content:space-between;margin-top:26px;color:#78847d;font-size:12px}.touch{display:none;margin-top:15px;flex-wrap:wrap;gap:5px}.touch button{touch-action:none;user-select:none;min-width:35px;min-height:40px;background:#fffdf6;color:inherit;border:1px solid currentColor;border-radius:4px;font-size:14px}.touch button:active{background:#ffe594}@media(pointer:coarse){.touch{display:flex}}@media(max-width:800px){main{padding:18px 14px}.brand small{font-size:9px;letter-spacing:1px}h1{font-size:23px}.ball-icon{width:39px;height:39px}.tag{display:none}.header-actions{gap:5px}.header-actions button{padding:8px;font-size:12px}.scoreboard{padding:10px 15px}.player-label b{font-size:15px}.hearts{font-size:21px;letter-spacing:3px}.instructions{gap:12px;grid-template-columns:1fr 1fr}.tip{grid-column:1 / -1;grid-row:2;border:0;border-top:1px solid #cdd4cb;padding:14px 0}.start-card{padding:15px 22px}.start-card h2{font-size:24px}.start-card p{font-size:12px;margin:6px 0 10px}.eyebrow{font-size:11px}.start{font-size:16px;padding:9px}.start-card>small{margin-top:10px;font-size:10px}.settings{margin-bottom:10px}.court-footer{font-size:10px;padding:9px 12px}.court-footer>span:last-child{display:none}.control-title small{display:none}footer{font-size:10px}.match>strong{font-size:36px}.match{min-width:90px}}@media(max-width:500px){header{gap:8px}.brand{gap:8px}.ball-icon{display:none}.header-actions button{font-size:11px}.arena{min-height:300px}canvas{height:300px;object-fit:cover}.start-card h2{font-size:21px}.start-card p{font-size:12px}.settings label{font-size:12px}.team small{font-size:10px}.player-label{gap:5px;font-size:12px}.player-label b{font-size:13px}.hearts{font-size:19px}.match>span{font-size:10px}.match>div{font-size:12px}.court-footer #hint{max-width:68%;text-align:right}.key-row em{font-size:11px}footer span:last-child{display:none}}@media(prefers-reduced-motion:reduce){*{transition:none!important}}
-[hidden]{display:none!important}.badge{background:var(--red);color:#fff;font-size:13px;font-weight:900}.blue .badge{background:var(--blue)}.badge::first-line{font-size:13px}.badge:after{display:none}@media(max-width:500px){header{flex-wrap:wrap;align-items:center;margin-bottom:16px}.brand small{white-space:nowrap;font-size:9px}.brand h1{white-space:nowrap}.header-actions{margin-left:auto}.scoreboard{padding:10px 8px}.team{width:33%;min-width:0}.player-label{display:block;white-space:nowrap;font-size:10px}.player-label b{font-size:12px}.hearts{font-size:17px;letter-spacing:0}.match{min-width:65px}.match>strong{font-size:32px}.team small{display:block;line-height:1.4;min-height:28px}.arena{min-height:340px;display:flex;align-items:center}canvas{height:auto;object-fit:contain}.start-card{padding:15px;max-width:94%}.start-card h2{font-size:20px}.start-card>small{font-size:10px}.settings{gap:12px}.court-footer{font-size:10px;gap:6px}.court-footer>span:first-child{white-space:nowrap}.control-title h2{font-size:14px}}
-.mode-choices{display:flex;gap:8px;margin:14px 0}.mode-choices button{flex:1;border:2px solid #bac6bb;border-radius:4px;background:transparent;font-size:14px;font-weight:800;padding:9px 12px;white-space:nowrap}.mode-choices button[aria-pressed=true]{background:var(--ink);color:#fff;border-color:var(--ink)}.menu-button{border:0;border-bottom:1px solid #9daaa0;background:none;font-size:13px;margin-top:13px;padding:4px 2px}.cpu-help{font-size:14px;line-height:1.9;margin:20px 0;color:#516663}.start-card{max-height:100%;overflow:auto}@media(max-width:800px){.mode-choices{margin:10px 0}.mode-choices button{font-size:13px;padding:8px}.start-card h2{margin:6px 0}}@media(max-width:500px){.arena{min-height:410px}.mode-choices{gap:6px}.mode-choices button{font-size:12px;padding:8px 5px}.cpu-help{font-size:12px}}
-.start-card{padding:16px 24px}.start-card h2{font-size:25px;margin:6px 0}.start-card p{margin:6px 0 12px}.mode-choices{margin:10px 0}.start{padding:10px 20px}.start-card>small{margin-top:11px}@media(max-width:800px){.arena{min-height:390px;display:flex;align-items:center}.start-card{padding:15px 20px}}@media(max-width:500px){.arena{min-height:410px}.start-card{padding:15px}.start-card h2{font-size:20px}}
-.hearts{display:flex;gap:8px;letter-spacing:0;margin:5px 0;line-height:1.3}.team.blue .hearts{justify-content:flex-end}.member-hp{display:flex;align-items:center;gap:4px;border:1px solid transparent;border-radius:4px;padding:3px 5px;font-size:15px}.member-hp b{font-size:11px}.member-hp i{font-style:normal;opacity:.18}.member-hp.current{border-color:currentColor;background:#fffdf6}.member-hp.out{opacity:.35}.member-hp>span{white-space:nowrap}.team small{min-height:18px}.tip small{line-height:1.8}@media(max-width:900px){.hearts{gap:2px}.member-hp{padding:3px 2px;font-size:12px;gap:2px}}@media(max-width:500px){.hearts{gap:2px}.member-hp{display:block;text-align:center;font-size:10px;padding:2px}.member-hp b{display:block;font-size:10px}.team small{font-size:9px;min-height:26px}.court-footer #hint{font-size:9px}.tip h2{font-size:17px}}
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#152c32"><title>放課後ドッジ！</title>
+<style>
+:root{color-scheme:light;--ink:#183137;--paper:#faf8ee;--red:#d94936;--blue:#2778a5;--yellow:#ffda66;--court:#e7ba82}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+body{display:flex;flex-direction:column;background:var(--ink);color:var(--ink);font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:none}
+button,select{font:inherit;color:inherit}button{cursor:pointer;border:0;background:none;touch-action:manipulation}
+[hidden]{display:none!important}
+
+/* ---- 上の細いスコア帯：左右にチーム、まん中に時計 ---- */
+#hud{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;padding:6px max(10px,env(safe-area-inset-right)) 6px max(10px,env(safe-area-inset-left));background:var(--paper);border-bottom:3px solid var(--ink)}
+.team{min-width:0;display:grid;gap:3px}
+.team.blue{justify-items:end}
+.tname{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:900;white-space:nowrap}
+.tname i{font-style:normal;color:#fff;border-radius:3px;padding:1px 5px;font-size:11px}
+.red .tname i{background:var(--red)} .blue .tname i{background:var(--blue)}
+.red{color:var(--red)} .blue{color:var(--blue)}
+.hearts{display:flex;gap:4px}
+.member-hp{display:flex;align-items:center;gap:2px;border:1.5px solid transparent;border-radius:4px;padding:1px 4px;font-size:13px;line-height:1.2;white-space:nowrap}
+.member-hp b{font-size:10px}.member-hp i{font-style:normal;opacity:.2}
+.member-hp.current{border-color:currentColor;background:#fff}
+.member-hp.out{opacity:.3}
+.power{width:min(150px,100%);height:5px;background:#e4e3d6;border-radius:2px;overflow:hidden}
+.power span{display:block;height:100%;width:0;background:currentColor;transition:width .08s}
+.team small{display:none}
+@media (max-width:520px){.member-hp b{display:none}.sysbtns{gap:3px}.match div:not(.sysbtns){font-size:9px}.member-hp{font-size:10px;padding:0 1px;gap:1px}.hearts{gap:1px}.tname{font-size:11px}.match strong{font-size:24px}.sysbtns button{font-size:9px;padding:2px 5px}#hud{gap:4px;padding-left:6px;padding-right:6px}}
+@media (max-height:480px){#hud{padding-top:3px;padding-bottom:3px}.match{display:grid;grid-template-columns:auto auto;column-gap:8px;align-items:center}.match #round{grid-column:1}.match strong{grid-column:2;grid-row:1/3;font-size:28px}.match div:not(.sysbtns){grid-column:1}.sysbtns{grid-column:1/3}.power{height:4px}}
+.match{text-align:center;line-height:1}
+.match #round{display:block;font-size:10px;font-weight:900;letter-spacing:1px}
+.match strong{display:block;font-family:ui-monospace,monospace;font-size:30px;line-height:1.05}
+.match div{font-size:11px;font-weight:900;letter-spacing:1px;white-space:nowrap}
+.match div span:first-child{color:var(--red)} .match div span:last-child{color:var(--blue)} .match div b{color:#889;font-size:9px}
+.sysbtns{display:flex;gap:6px;justify-content:center;margin-top:3px}
+.sysbtns button{font-size:11px;font-weight:800;border:1.5px solid #c7cfca;border-radius:99px;padding:3px 9px;background:#fff}
+.sysbtns button:disabled{opacity:.35}
+
+/* ---- コートと操作 ---- */
+#stage{flex:1;min-height:0;position:relative;background:var(--court);overflow:hidden}
+#court{position:absolute;display:block;image-rendering:pixelated;touch-action:none}
+#announcement{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:6px 16px;border-radius:4px;font-weight:900;font-size:16px;white-space:nowrap;pointer-events:none;z-index:3}
+#announcement:empty{display:none}
+
+/* 操作レイヤー：コートの上に重ねる。スティックは指をおいた所が中心になる */
+#pad{position:absolute;inset:0;z-index:4;display:none}
+body.touch.playing #pad{display:block}
+.zone{position:absolute;top:0;bottom:0;touch-action:none}
+.stick{position:absolute;width:128px;height:128px;margin:-64px 0 0 -64px;border-radius:50%;background:rgba(24,49,55,.16);border:3px solid rgba(24,49,55,.35);pointer-events:none;transition:opacity .15s}
+.stick b{position:absolute;left:50%;top:50%;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;background:rgba(255,255,255,.88);border:3px solid rgba(24,49,55,.6);box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.stick.idle{opacity:.55}
+.zone.red .stick b{border-color:var(--red)} .zone.blue .stick b{border-color:var(--blue)}
+.act{position:absolute;border-radius:50%;display:grid;place-items:center;font-weight:900;color:#fff;border:3px solid rgba(255,255,255,.9);box-shadow:0 3px 0 rgba(0,0,0,.25);touch-action:none;line-height:1.15;text-align:center}
+.act.throw{width:96px;height:96px;font-size:16px}
+.act.jump{width:68px;height:68px;font-size:13px;background:rgba(24,49,55,.72)}
+.act.on{transform:scale(.92);filter:brightness(1.25)}
+.red .act.throw{background:rgba(217,73,54,.88)} .blue .act.throw{background:rgba(39,120,165,.88)}
+.act small{display:block;font-size:10px;opacity:.9}
+.act.charging{box-shadow:0 0 0 6px rgba(255,218,102,.85)}
+
+/* ---- はじめ・おやすみ・結果のカード（画面全体の上に出す） ---- */
+#overlay{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;padding:12px;background:rgba(23,50,50,.45);overflow-y:auto}
+#overlay.hidden{display:none}
+.start-card{width:min(440px,100%);margin:auto;padding:16px 18px;background:#fffced;border:3px solid var(--ink);border-radius:8px;text-align:center;box-shadow:6px 6px 0 rgba(23,50,50,.7)}
+.eyebrow{font-size:11px;font-weight:800;letter-spacing:1px}
+.start-card h2{font-size:24px;font-weight:900;margin:6px 0}
+.start-card p{font-size:13px;line-height:1.7;margin:4px 0 10px}
+.mode-choices{display:flex;gap:8px;margin:10px 0}
+.mode-choices button{flex:1;border:2px solid #bac6bb;border-radius:6px;font-size:14px;font-weight:800;padding:9px 6px;white-space:nowrap}
+.mode-choices button[aria-pressed=true]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.settings{display:flex;gap:12px;justify-content:center;margin-bottom:12px;flex-wrap:wrap}
+.settings label{font-size:13px;font-weight:bold}
+.settings select{display:block;margin-top:4px;background:#fff;padding:6px 10px;border:1px solid #c6c9bb;border-radius:4px;font-size:14px}
+.start{width:100%;border:2px solid var(--ink);border-radius:6px;background:var(--yellow);padding:12px;font-size:18px;font-weight:900;box-shadow:0 4px 0 var(--ink)}
+.start-card>small{display:block;margin-top:10px;font-size:12px;color:#637472;line-height:1.6}
+.menu-button{border-bottom:1px solid #9daaa0;font-size:13px;margin-top:12px;padding:4px 2px}
+.howto{margin-top:12px;padding-top:10px;border-top:1px dashed #cdd4cb;font-size:12px;line-height:1.8;color:#455;text-align:left}
+.howto b{color:var(--ink)}
+kbd{display:inline-block;min-width:20px;padding:0 4px;border:1px solid #bbc4bd;border-bottom-width:2px;border-radius:3px;background:#fff;font:700 11px ui-monospace,monospace;text-align:center}
+body.touch .keys{display:none} body:not(.touch) .touchhelp{display:none}
+#rotate{display:none;font-size:12px;font-weight:800;color:#a16418;margin-top:8px}
+body.touch.portrait #rotate{display:block}
+@media (max-height:480px){.start-card{width:min(620px,100%);padding:10px 14px}.eyebrow,#overlayText{display:none}.start-card h2{font-size:19px;margin:0 0 4px}
+ .mode-choices{margin:6px 0}.mode-choices button{padding:7px 6px}.settings{margin-bottom:8px}.settings select{display:inline-block;margin:0 0 0 6px;padding:4px 8px}
+ .start{padding:9px;font-size:16px}.start-card>small{margin-top:6px}.howto{margin-top:6px;padding-top:6px;font-size:11px;line-height:1.6}}
 </style></head>
-<body><main>
-<header><a class="brand" href="" aria-label="放課後ドッジ！ ホーム"><span class="ball-icon">✦</span><div><small>AFTER SCHOOL DODGEBALL</small><h1>放課後ドッジ<span>！</span></h1></div></a><div class="header-actions"><span class="tag" id="modeTag">ひとりで対戦</span><button id="sound" aria-pressed="false">♪ 音 OFF</button><button id="pause" disabled>Ⅱ おやすみ</button></div></header>
-<section class="game-shell" aria-label="ドッジボールゲーム">
-<div class="scoreboard"><div class="team red"><span class="player-label">1P <b>あかチーム</b></span><div class="hearts" id="hp0" aria-label="あかチーム 体力5">♥♥♥♥♥</div><div class="power"><span id="power0"></span></div><small id="status0">F で投げる / キャッチ</small></div><div class="match"><span id="round">ROUND 01</span><strong id="timer">60</strong><div><span id="wins0">○ ○</span><b> VS </b><span id="wins1">○ ○</span></div></div><div class="team blue"><span class="player-label"><b>あおチーム</b> <span id="bluePlayer">CPU</span></span><div class="hearts" id="hp1" aria-label="あおチーム 体力5">♥♥♥♥♥</div><div class="power"><span id="power1"></span></div><small id="status1">K で投げる / キャッチ</small></div></div>
-<div class="arena"><canvas id="court" width="960" height="480" aria-label="赤と青、それぞれ内野3人・外野3人のコート。ボールに近い内野を操作します。"></canvas><div id="announcement" aria-live="polite"></div>
-<div class="overlay" id="overlay"><div class="start-card"><span class="eyebrow" id="eyebrow">内野3人 ＋ 外野3人のチーム戦</span><h2 id="overlayTitle">さあ、ドッジしよう！</h2><p id="overlayText">ボールに近い内野を自動でえらぶよ。<br>相手の内野を全員アウトにしよう！</p><div class="mode-choices" id="modeChoices" role="group" aria-label="あそぶ人数"><button id="soloMode" aria-pressed="true">ひとりで あそぶ</button><button id="duoMode" aria-pressed="false">ふたりで あそぶ</button></div><div class="settings" id="settings"><label class="red">1P あか <select id="assist0" aria-label="あかチームの操作の難しさ"><option value="easy">やさしい</option><option value="normal">ふつう</option></select></label><label class="blue" id="humanBlueSetting" hidden>2P あお <select id="assist1" aria-label="あおチームの操作の難しさ"><option value="easy">やさしい</option><option value="normal">ふつう</option></select></label><label class="blue" id="cpuSetting">コンピューター<select id="cpuLevel" aria-label="コンピューターの強さ"><option value="easy">やさしい</option><option value="normal">ふつう</option></select></label></div><button class="start" id="start">ひとりで スタート <span>▶</span></button><small id="startHint">あなたは赤。青はコンピューターが動かすよ。</small><button id="menu" class="menu-button" hidden>タイトルへもどる</button></div></div></div>
-<div class="court-footer"><span>● 校庭コート</span><span id="hint">リングの選手を操作 ／ 外野は自動で投げるよ</span><span>2ラウンド先取</span></div>
-</section>
-<section class="instructions" aria-label="操作方法"><article class="control red"><div class="control-title"><span class="badge">1P</span><h2>あかチーム</h2><small>キーボードの左側</small></div><div class="key-row"><span><kbd>W</kbd><br><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><em>いどう</em></span><span><kbd class="action-key">F</kbd><em>投げる / キャッチ</em></span><span><kbd class="action-key">G</kbd><em>ジャンプ</em></span></div><div class="touch" data-player="0"><button data-code="KeyW" aria-label="あか 上">↑</button><button data-code="KeyA" aria-label="あか 左">←</button><button data-code="KeyS" aria-label="あか 下">↓</button><button data-code="KeyD" aria-label="あか 右">→</button><button data-code="KeyF">投 / 取</button><button data-code="KeyG">跳</button></div></article><article class="tip"><span>内野3人 ＋ 外野3人</span><h2>リングの選手を操作！</h2><p>ボールに近い内野へ自動で切り替え。<br>ほかの内野2人と外野3人は自動。<br>投げるボタン長押し → 必殺シュート！</p><small>内野は1人♥3つ。全員アウトで負け。<br>90秒で残り体力を比べ、2ラウンド先取！</small></article><article class="control blue"><div class="control-title"><span class="badge" id="blueBadge">CPU</span><h2>あおチーム</h2><small id="blueSideHint">コンピューター</small></div><p id="cpuHelp" class="cpu-help">青の内野3人・外野3人は自動。<br>あなたは赤のリングの選手を操作！</p><div id="manualBlue" hidden><div class="key-row"><span><kbd>↑</kbd><br><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd><em>いどう</em></span><span><kbd class="action-key">K</kbd><em>投げる / キャッチ</em></span><span><kbd class="action-key">L</kbd><em>ジャンプ</em></span></div><div class="touch" data-player="1"><button data-code="ArrowUp" aria-label="あお 上">↑</button><button data-code="ArrowLeft" aria-label="あお 左">←</button><button data-code="ArrowDown" aria-label="あお 下">↓</button><button data-code="ArrowRight" aria-label="あお 右">→</button><button data-code="KeyK">投 / 取</button><button data-code="KeyL">跳</button></div></div></article></section>
-<footer><span>宿題のあとに、もうひと勝負。</span><span>ESC でおやすみ ・ 音はボタンで ON</span></footer>
-</main><script>'use strict';
+<body>
+<header id="hud">
+  <div class="team red"><span class="tname"><i>1P</i>あか</span><div class="hearts" id="hp0"></div><div class="power"><span id="power0"></span></div><small id="status0"></small></div>
+  <div class="match"><span id="round">ROUND 01</span><strong id="timer">60</strong><div><span id="wins0">○ ○</span><b> VS </b><span id="wins1">○ ○</span></div>
+    <div class="sysbtns"><button id="pause" disabled>おやすみ</button><button id="sound" aria-pressed="false">音 OFF</button></div></div>
+  <div class="team blue"><span class="tname">あお<i id="bluePlayer">CPU</i></span><div class="hearts" id="hp1"></div><div class="power"><span id="power1"></span></div><small id="status1"></small></div>
+</header>
+
+<main id="stage">
+  <canvas id="court" width="960" height="480" aria-label="赤と青、それぞれ内野3人・外野3人のコート"></canvas>
+  <div id="announcement" aria-live="polite"></div>
+  <div id="pad">
+    <div class="zone red" id="z0" data-team="0"><div class="stick idle"><b></b></div><button class="act jump" data-code="KeyG" type="button">ジャンプ</button><button class="act throw" data-code="KeyF" type="button">なげる<small>とる</small></button></div>
+    <div class="zone blue" id="z1" data-team="1"><div class="stick idle"><b></b></div><button class="act jump" data-code="KeyL" type="button">ジャンプ</button><button class="act throw" data-code="KeyK" type="button">なげる<small>とる</small></button></div>
+  </div>
+</main>
+
+<div id="overlay"><div class="start-card">
+  <span class="eyebrow" id="eyebrow">内野3人 ＋ 外野3人のチーム戦</span>
+  <h2 id="overlayTitle">さあ、ドッジしよう！</h2>
+  <p id="overlayText"></p>
+  <div class="mode-choices" id="modeChoices" role="group" aria-label="あそぶ人数"><button id="soloMode" aria-pressed="true">ひとりで あそぶ</button><button id="duoMode" aria-pressed="false">ふたりで あそぶ</button></div>
+  <div class="settings" id="settings">
+    <label class="red">1P あか<select id="assist0"><option value="easy">やさしい</option><option value="normal">ふつう</option></select></label>
+    <label class="blue" id="humanBlueSetting" hidden>2P あお<select id="assist1"><option value="easy">やさしい</option><option value="normal">ふつう</option></select></label>
+    <label class="blue" id="cpuSetting">コンピューター<select id="cpuLevel"><option value="easy">やさしい</option><option value="normal">ふつう</option></select></label>
+  </div>
+  <button class="start" id="start">ひとりで スタート</button>
+  <small id="startHint"></small>
+  <p id="rotate">スマホを よこにすると、大きく あそべるよ</p>
+  <button id="menu" class="menu-button" hidden>タイトルへもどる</button>
+  <div class="howto" id="howto">
+    <div class="touchhelp"><b>左の指</b>：画面をなぞって いどう ／ <b>右の指</b>：なげる・とる、ジャンプ<br>なげるを ながおし → 必殺シュート！<br><span id="duoHelp" hidden>ふたりのときは、1Pが左はし、2Pが右はしを つかうよ</span></div>
+    <div class="keys"><b class="red">1P</b> <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> いどう <kbd>F</kbd> なげる/とる <kbd>G</kbd> ジャンプ<br><b class="blue">2P</b> <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> いどう <kbd>K</kbd> なげる/とる <kbd>L</kbd> ジャンプ　<kbd>ESC</kbd> おやすみ</div>
+  </div>
+</div></div>
+<div hidden><span id="modeTag"></span><span id="blueBadge"></span><span id="blueSideHint"></span><div id="manualBlue"></div><p id="cpuHelp"></p></div>
+<script>
+'use strict';
 (() => {
 const $=id=>document.getElementById(id),canvas=$('court'),ctx=canvas.getContext('2d');
 const W=960,H=480,keys=new Set(),colors=['#da4835','#287fac'],actions=['KeyF','KeyK'],jumps=['KeyG','KeyL'];
@@ -51,7 +159,7 @@ function selectPlayers(){for(let t=0;t<2;t++){
  selected[t]=ball.owner&&!ball.owner.out&&ball.owner.team===t?ball.owner:nearest(members);
 }}
 function stopInputs(){keys.clear();pressedBy=[null,null];for(const p of [...players,...outfield]){p.charging=false;p.charge=0;}}
-function newMatch(){cpuLevel=$('cpuLevel').value;wins=[0,0];round=1;resetRound();mode='play';$('overlay').classList.add('hidden');$('pause').disabled=false;$('pause').textContent='Ⅱ おやすみ';say('内野3人＋外野3人！ スタート');beep(600,.16);}
+function newMatch(){cpuLevel=$('cpuLevel').value;wins=[0,0];round=1;resetRound();mode='play';$('overlay').classList.add('hidden');$('pause').disabled=false;$('pause').textContent='おやすみ';say('内野3人＋外野3人！ スタート');beep(600,.16);}
 function updateHud(){for(let t=0;t<2;t++){
  const p=selected[t],members=players.filter(p=>p.team===t);
  $('hp'+t).innerHTML=members.map(p=>'<span class="member-hp '+(p===selected[t]?'current ':'')+(p.hp===0?'out':'')+'"><b>'+ (p.slot+1)+'</b><span>'+ '♥'.repeat(p.hp)+'<i>'+'♥'.repeat(3-p.hp)+'</i></span></span>').join('');
@@ -92,16 +200,16 @@ function finish(){
  $('eyebrow').textContent=lastWinner<0?'いい勝負！':done?'きょうのチャンピオン！':'ナイスゲーム！';
  $('overlayTitle').textContent=lastWinner<0?'ひきわけ！':(lastWinner?'あお':'あか')+'チームの勝ち！';
  $('overlayText').textContent=done?'もう一度あそんで、リベンジしよう！':lastWinner<0?'このラウンドをもう一度あそぼう。':'残った内野の体力：あか '+red+' ／ あお '+blue;
- $('settings').hidden=!done;$('modeChoices').hidden=true;$('menu').hidden=false;$('start').textContent=done?'もういちど あそぶ ▶':'つぎのラウンドへ ▶';$('startHint').textContent='あか '+wins[0]+' − '+wins[1]+' あお';$('overlay').classList.remove('hidden');$('pause').disabled=true;beep(760,.3,'triangle');
+ $('settings').hidden=!done;$('modeChoices').hidden=true;$('menu').hidden=false;$('start').textContent=done?'もういちど あそぶ':'つぎのラウンドへ';$('startHint').textContent='あか '+wins[0]+' − '+wins[1]+' あお';$('overlay').classList.remove('hidden');$('pause').disabled=true;beep(760,.3,'triangle');
 }
-function pause(){if(mode==='play'){mode='paused';stopInputs();$('eyebrow').textContent='ちょっとひとやすみ';$('overlayTitle').textContent='おやすみ中';$('overlayText').textContent='準備ができたら、つづけよう。';$('modeChoices').hidden=true;$('menu').hidden=false;$('settings').hidden=true;$('start').textContent='つづける ▶';$('startHint').textContent='ESC キーでもつづけられるよ';$('overlay').classList.remove('hidden');$('pause').textContent='▶ つづける';}else if(mode==='paused'){mode='play';$('overlay').classList.add('hidden');$('pause').textContent='Ⅱ おやすみ';}}
+function pause(){if(mode==='play'){mode='paused';stopInputs();$('eyebrow').textContent='ちょっとひとやすみ';$('overlayTitle').textContent='おやすみ中';$('overlayText').textContent='準備ができたら、つづけよう。';$('modeChoices').hidden=true;$('menu').hidden=false;$('settings').hidden=true;$('start').textContent='つづける';$('startHint').textContent='ESC キーでもつづけられるよ';$('overlay').classList.remove('hidden');$('pause').textContent='つづける';}else if(mode==='paused'){mode='play';$('overlay').classList.add('hidden');$('pause').textContent='おやすみ';}}
 $('start').addEventListener('click',()=>{beep(520,.1);if(mode==='paused'){pause();return;}if(mode==='result'&&!wins.some(n=>n>=2)){if(lastWinner>=0)round++;resetRound();take(alive((round-1)%2)[0]);mode='play';$('overlay').classList.add('hidden');$('pause').disabled=false;say('ラウンド '+round+' スタート！');}else newMatch();});
-$('pause').addEventListener('click',pause);$('sound').addEventListener('click',()=>{sound=!sound;$('sound').textContent=sound?'♪ 音 ON':'♪ 音 OFF';$('sound').setAttribute('aria-pressed',String(sound));beep();});
+$('pause').addEventListener('click',pause);$('sound').addEventListener('click',()=>{sound=!sound;$('sound').textContent=sound?'音 ON':'音 OFF';$('sound').setAttribute('aria-pressed',String(sound));beep();});
 const gameKeys=['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight',...actions,...jumps];
 window.addEventListener('keydown',e=>{if(e.target instanceof HTMLSelectElement)return;if(e.code==='Escape'){e.preventDefault();if(!e.repeat)pause();return;}if(gameKeys.includes(e.code)){e.preventDefault();press(e.code);}});window.addEventListener('keyup',e=>release(e.code));window.addEventListener('blur',()=>{if(mode==='play')pause();else stopInputs();});document.addEventListener('visibilitychange',()=>{if(document.hidden&&mode==='play')pause();});
 document.querySelectorAll('[data-code]').forEach(el=>{el.addEventListener('pointerdown',e=>{e.preventDefault();el.setPointerCapture(e.pointerId);press(el.dataset.code);});for(const event of ['pointerup','pointercancel','lostpointercapture'])el.addEventListener(event,()=>release(el.dataset.code));});
-function chooseMode(value){playMode=value;const solo=value==='solo';$('soloMode').setAttribute('aria-pressed',String(solo));$('duoMode').setAttribute('aria-pressed',String(!solo));$('humanBlueSetting').hidden=solo;$('cpuSetting').hidden=!solo;$('bluePlayer').textContent=solo?'CPU':'2P';$('blueBadge').textContent=solo?'CPU':'2P';$('blueSideHint').textContent=solo?'コンピューター':'キーボードの右側';$('manualBlue').hidden=solo;$('cpuHelp').hidden=!solo;$('modeTag').textContent=solo?'ひとりで対戦':'ふたりで対戦';$('start').textContent=solo?'ひとりで スタート ▶':'ふたりで スタート ▶';$('startHint').textContent=solo?'あなたは赤。リングのついた内野を操作！':'ボールに近い内野を操作。ほかの選手は自動！';resetRound();}
-function titleScreen(){mode='start';wins=[0,0];round=1;stopInputs();$('eyebrow').textContent='内野3人 ＋ 外野3人のチーム戦';$('overlayTitle').textContent='さあ、ドッジしよう！';$('overlayText').innerHTML='ボールに近い内野を自動でえらぶよ。<br>相手の内野を全員アウトにしよう！';$('modeChoices').hidden=false;$('settings').hidden=false;$('menu').hidden=true;$('pause').disabled=true;$('pause').textContent='Ⅱ おやすみ';$('announcement').textContent='';$('overlay').classList.remove('hidden');chooseMode(playMode);}
+function chooseMode(value){playMode=value;const solo=value==='solo';$('soloMode').setAttribute('aria-pressed',String(solo));$('duoMode').setAttribute('aria-pressed',String(!solo));$('humanBlueSetting').hidden=solo;$('cpuSetting').hidden=!solo;$('bluePlayer').textContent=solo?'CPU':'2P';$('blueBadge').textContent=solo?'CPU':'2P';$('blueSideHint').textContent=solo?'コンピューター':'キーボードの右側';$('manualBlue').hidden=solo;$('cpuHelp').hidden=!solo;$('modeTag').textContent=solo?'ひとりで対戦':'ふたりで対戦';$('start').textContent=solo?'ひとりで スタート':'ふたりで スタート';$('startHint').textContent=solo?'あなたは赤。リングのついた内野を操作！':'ボールに近い内野を操作。ほかの選手は自動！';resetRound();}
+function titleScreen(){mode='start';wins=[0,0];round=1;stopInputs();$('eyebrow').textContent='内野3人 ＋ 外野3人のチーム戦';$('overlayTitle').textContent='さあ、ドッジしよう！';$('overlayText').innerHTML='ボールに近い内野を自動でえらぶよ。<br>相手の内野を全員アウトにしよう！';$('modeChoices').hidden=false;$('settings').hidden=false;$('menu').hidden=true;$('pause').disabled=true;$('pause').textContent='おやすみ';$('announcement').textContent='';$('overlay').classList.remove('hidden');chooseMode(playMode);}
 $('soloMode').addEventListener('click',()=>chooseMode('solo'));$('duoMode').addEventListener('click',()=>chooseMode('duo'));$('menu').addEventListener('click',titleScreen);
 function move(p,dx,dy,speed,dt){const n=Math.hypot(dx,dy)||1;p.walking=!!(dx||dy);if(p.stun<=0){p.x+=dx/n*speed*dt;p.y+=dy/n*speed*dt;}if(!p.out){p.x=clamp(p.x,p.team?509:165,p.team?795:451);p.y=clamp(p.y,225,383);}else if(p.slot===0){p.x=p.homeX;p.y=clamp(p.y,230,383);}else{p.x=clamp(p.x,p.team?175:530,p.team?430:785);p.y=p.homeY;}}
 function moveToward(p,x,y,speed,dt){move(p,Math.abs(x-p.x)>7?Math.sign(x-p.x):0,Math.abs(y-p.y)>7?Math.sign(y-p.y):0,speed,dt);}
@@ -180,6 +288,91 @@ if(!p.out&&selected[i]===p){ctx.strokeStyle=colors[i];ctx.lineWidth=3;ctx.beginP
 function drawBall(){for(let i=0;i<ball.trail.length;i++){const t=ball.trail[i];ctx.globalAlpha=(i/ball.trail.length)*.5;rect(t.x-6,t.y-6,12,12,ball.power?'#fff1a1':'#fff7d9');}ctx.globalAlpha=1;const held=ball.owner;const z=held?.jump>0?Math.sin((.7-held.jump)/.7*Math.PI)*62:0;ctx.fillStyle='#705c3c';ctx.globalAlpha=.18;ctx.beginPath();ctx.ellipse(ball.x,ball.y+22,10,4,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;ctx.save();ctx.translate(Math.round(ball.x),Math.round(ball.y-z));if(ball.shot)ctx.rotate(clock*12);rect(-7,-10,14,20,'#273b36');rect(-10,-7,20,14,'#273b36');rect(-7,-7,14,14,ball.power?'#ffdc55':'#f8df9d');rect(-7,-7,6,6,'#fff8de');rect(1,-7,5,14,'#e0803d');rect(-7,1,14,3,'#ac6338');ctx.restore();}
 function render(){ctx.clearRect(0,0,W,H);drawCourt();[...players,...outfield].sort((a,b)=>a.y-b.y).forEach(p=>drawPlayer(p,p.team));drawBall();for(const p of particles){ctx.globalAlpha=Math.min(1,p.life*3);rect(p.x,p.y,5,5,p.color);}ctx.globalAlpha=1;ctx.textAlign='center';ctx.font='bold 19px sans-serif';for(const t of texts){ctx.globalAlpha=Math.min(1,t.life*3);ctx.lineWidth=4;ctx.strokeStyle='#fff5da';ctx.strokeText(t.s,t.x,t.y);ctx.fillStyle=t.color;ctx.fillText(t.s,t.x,t.y);}ctx.globalAlpha=1;}
 function frame(t){const delta=previous?Math.min(.05,(t-previous)/1000):0;previous=t;accumulator+=delta;while(accumulator>=1/120){update(1/120);accumulator-=1/120;}render();requestAnimationFrame(frame);}
+/* ===== 画面の組み立てとタッチ操作（ゲームの中身はそのまま） ===== */
+const stage=$('stage'),padEl=$('pad'),zones=[$('z0'),$('z1')];
+const DIRS=[['KeyA','KeyD','KeyW','KeyS'],['ArrowLeft','ArrowRight','ArrowUp','ArrowDown']];
+const sticks=[0,1].map(t=>({el:zones[t].querySelector('.stick'),knob:zones[t].querySelector('.stick b'),id:null,ox:0,oy:0,held:new Set(),home:[0,0]}));
+let lay={portrait:false};
+function place(el,x,y){el.style.left=x+'px';el.style.top=y+'px';}
+function layout(){
+  const sw=stage.clientWidth,sh=stage.clientHeight;if(!sw||!sh)return;
+  const touch=document.body.classList.contains('touch'),duo=playMode==='duo';
+  // たて長の画面：コートを横いっぱいにして、すぐ下に操作の場所をとる（目と指を近くに）
+  const portrait=touch&&sh>sw*.75;
+  let cw,ch,cx,cy;
+  if(portrait){cw=sw;ch=sw/2;const ctrl=Math.min(230,Math.max(170,sh-ch));cy=Math.max(0,sh-ctrl-ch);cx=0;}
+  else{const smin=touch?(Math.min(sw,sh)<430?118:150):0,s=Math.min(sw/960,sh/480,(sw-2*smin)/960);cw=960*s;ch=480*s;cx=(sw-cw)/2;cy=(sh-ch)/2;}
+  Object.assign(canvas.style,{left:cx+'px',top:cy+'px',width:cw+'px',height:ch+'px'});
+  $('announcement').style.top=(cy+8)+'px';
+  document.body.classList.toggle('portrait',portrait);
+  const side=cx;                                  // コートの左右の余白
+  const useSide=!portrait&&side>=118;             // 余白があれば、操作はそこへ（選手にかぶらない）
+  const top=portrait?cy+ch:0,h=sh-top,small=Math.min(sw,sh)<430;
+  const tight=duo&&portrait,B=tight?70:small?78:96,J=tight?54:small?58:68,R=tight?46:small?54:64,m=small?10:18;
+  zones[1].hidden=!duo;
+  const zw=duo?sw/2:sw;
+  zones.forEach((z,t)=>Object.assign(z.style,{top:top+'px',height:h+'px',left:(t?sw/2:0)+'px',width:zw+'px'}));
+  zones.forEach((z,t)=>{
+    const th=z.querySelector('.throw'),jp=z.querySelector('.jump'),s=sticks[t];
+    th.style.width=th.style.height=B+'px';jp.style.width=jp.style.height=J+'px';jp.style.fontSize=(J<62?11:13)+'px';th.style.fontSize=(B<80?14:16)+'px';
+    s.el.style.width=s.el.style.height=R*2+'px';s.el.style.margin=-R+'px 0 0 '+(-R)+'px';
+    const right=duo?!!t:false;                    // このチームの「外がわ」が右か
+    let thX,thY,jpX,jpY,hx,hy;
+    if(useSide&&duo){
+      // ふたり・横向き：それぞれの外がわの余白に、上にボタン、下にスティック
+      const cxm=right?zw-side/2:side/2;
+      thX=cxm-B/2+(right?-J/2-4:J/2+4)*0;thY=m;jpX=right?cxm-B/2-J-6:cxm+B/2+6;jpY=m+B-J;
+      if(right?jpX<zw-side+2:jpX+J>side-2){jpX=cxm-J/2;jpY=m+B+8;}
+      hx=cxm;hy=h-R-m;
+      s.minX=right?zw-side:0;s.maxX=right?zw:side;
+    }else if(useSide){
+      // ひとり・横向き：左の余白にスティック、右の余白にボタン
+      const rc=sw-side/2;thX=rc-B/2;thY=h-B-m-10;jpX=rc-J/2;jpY=thY-J-14;
+      hx=side/2;hy=h-R-m-10;s.minX=0;s.maxX=side+40;
+    }else{
+      // 余白がないとき（たて向き・タブレット）：画面の下のすみ
+      if(duo){thX=right?m:zw-B-m;thY=h-B-m-4;jpX=thX+(B-J)/2;jpY=thY-J-10;}
+      else{thX=zw-B-m;thY=h-B-m-6;jpX=thX-J-12;jpY=h-J-m-B*.55;}
+      hx=right?zw-R-m-6:R+m+6;hy=h-R-m-6;
+      s.minX=right?zw*.45:0;s.maxX=right?zw:zw*(duo?.55:.6);
+    }
+    place(th,thX,thY);place(jp,jpX,jpY);s.home=[hx,hy];if(s.id===null)place(s.el,hx,hy);
+  });
+  lay={portrait,top,h,useSide};
+}
+function setDir(t,dx,dy){
+  const s=sticks[t],len=Math.hypot(dx,dy),want=new Set();
+  if(len>14){const nx=dx/len,ny=dy/len;if(nx<-.38)want.add(DIRS[t][0]);if(nx>.38)want.add(DIRS[t][1]);if(ny<-.38)want.add(DIRS[t][2]);if(ny>.38)want.add(DIRS[t][3]);}
+  for(const c of s.held)if(!want.has(c)){release(c);s.held.delete(c);}
+  for(const c of want)if(!s.held.has(c)){keys.delete(c);press(c);s.held.add(c);}
+  const k=Math.min(1,len/46);s.knob.style.transform=len?`translate(${dx/len*k*40}px,${dy/len*k*40}px)`:'';
+}
+function stickOff(t){const s=sticks[t];setDir(t,0,0);s.id=null;s.el.classList.add('idle');place(s.el,...s.home);}
+zones.forEach((z,t)=>{
+  z.addEventListener('pointerdown',e=>{if(e.target.closest('.act'))return;const s=sticks[t],r=z.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
+    if(s.id!==null||x<s.minX||x>s.maxX)return;e.preventDefault();try{z.setPointerCapture(e.pointerId);}catch{}
+    s.id=e.pointerId;s.ox=x;s.oy=y;place(s.el,x,y);s.el.classList.remove('idle');});
+  z.addEventListener('pointermove',e=>{const s=sticks[t];if(e.pointerId!==s.id)return;const r=z.getBoundingClientRect();let dx=e.clientX-r.left-s.ox,dy=e.clientY-r.top-s.oy;
+    // 指が遠くへ行ったら、スティックの中心もついてくる
+    const len=Math.hypot(dx,dy);if(len>60){s.ox+=dx/len*(len-60);s.oy+=dy/len*(len-60);place(s.el,s.ox,s.oy);dx=e.clientX-r.left-s.ox;dy=e.clientY-r.top-s.oy;}
+    setDir(t,dx,dy);});
+  for(const ev of ['pointerup','pointercancel','lostpointercapture'])z.addEventListener(ev,e=>{if(e.pointerId===sticks[t].id)stickOff(t);});
+});
+document.querySelectorAll('.act').forEach(b=>{b.addEventListener('pointerdown',()=>b.classList.add('on'));for(const ev of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(ev,()=>b.classList.remove('on'));b.addEventListener('contextmenu',e=>e.preventDefault());});
+function setTouch(){if(!document.body.classList.contains('touch')){document.body.classList.add('touch');layout();}}
+if(matchMedia('(pointer: coarse)').matches)document.body.classList.add('touch');
+addEventListener('touchstart',setTouch,{passive:true});
+addEventListener('resize',layout);if(window.ResizeObserver)new ResizeObserver(layout).observe(stage);
+let lastMode='',lastPlay='';
+(function watch(){
+  if(mode!==lastMode){document.body.classList.toggle('playing',mode==='play');if(mode!=='play'){stickOff(0);stickOff(1);}lastMode=mode;}
+  if(playMode!==lastPlay){lastPlay=playMode;$('duoHelp').hidden=playMode!=='duo';layout();}
+  for(let t=0;t<2;t++)zones[t].querySelector('.throw').classList.toggle('charging',!!(selected[t]&&selected[t].charging));
+  requestAnimationFrame(watch);
+})();
+layout();
+window.__dodge={get mode(){return mode},get playMode(){return playMode},get selected(){return selected},get ball(){return ball},keys,layout};
+
 titleScreen();requestAnimationFrame(frame);
 })();
 </script></body></html>
