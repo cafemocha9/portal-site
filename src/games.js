@@ -38,6 +38,7 @@ import {
   Sparkles,
   Rocket,
   Rotate3d,
+  Scroll,
   Shield,
   Sprout,
   Store,
@@ -79,6 +80,7 @@ export const games = [
   { id: 'rush-kart', genre: 'race', title: 'ラッシュカート', icon: Flag, color: 'bg-red-300', iconColor: 'text-red-800', type: 'html' },
 
   // --- アクション ---
+  { id: 'sumimaru', genre: 'action', title: 'すみまる絵巻', icon: Scroll, color: 'bg-stone-200', iconColor: 'text-stone-900', type: 'html' },
   { id: 'neon-hop', genre: 'action', title: 'NEON HOP', icon: Music, color: 'bg-pink-300', iconColor: 'text-pink-900', type: 'html' },
   { id: 'neon-survivor', genre: 'action', title: 'NEON SURVIVOR', icon: Zap, color: 'bg-lime-200', iconColor: 'text-lime-900', type: 'html' },
   { id: 'danmaku', genre: 'action', title: '幻想弾幕', icon: Crosshair, color: 'bg-purple-300', iconColor: 'text-purple-900', type: 'html' },
