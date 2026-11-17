@@ -9,7 +9,7 @@
   * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
   html,body { height:100%; overflow:hidden; background:var(--paper); color:var(--ink);
     font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; touch-action:none; }
-  canvas { position:fixed; inset:0; display:block; }
+  canvas { position:fixed; left:0; top:0; width:100%; height:100%; display:block; }
   button { font:inherit; color:inherit; border:0; background:none; cursor:pointer; touch-action:manipulation; }
   .screen { position:fixed; inset:0; display:none; align-items:center; justify-content:center; padding:18px; overflow-y:auto; z-index:5; background:rgba(243,234,215,.92); }
   .screen.on { display:flex; }
@@ -45,6 +45,12 @@
   .pb svg { width:30px; height:30px; }
   #bI.on, #bJ.on { filter:brightness(1.35); }
   #bL { left:14px; } #bR { left:100px; } #bI { right:104px; bottom:10px; background:#1f1c1a; color:var(--paper); border-color:var(--paper); } #bJ { right:14px; bottom:34px; width:84px; height:84px; background:var(--shu); color:var(--paper); border-color:var(--paper); }
+  @media (orientation: landscape) {
+    #pad { height:76px; }
+    .pb { width:60px; height:60px; bottom:8px; font-size:13px; opacity:.9; }
+    #bL { left:max(14px,env(safe-area-inset-left)); } #bR { left:calc(max(14px,env(safe-area-inset-left)) + 72px); }
+    #bJ { width:66px; height:66px; bottom:8px; right:max(14px,env(safe-area-inset-right)); } #bI { bottom:8px; right:calc(max(14px,env(safe-area-inset-right)) + 78px); }
+  }
 </style>
 </head>
 <body>
@@ -306,11 +312,17 @@ setInterval(bgm, 100);
 const cv = $('cv'), g = cv.getContext('2d');
 let W = 0, H = 0, DPR = 1, scale = 1, oy = 0;
 function resize() {
-  DPR = Math.min(2, window.devicePixelRatio || 1); W = innerWidth; H = innerHeight; cv.width = W * DPR; cv.height = H * DPR;
-  const pad = document.body.classList.contains('touch') && H > W ? 132 : 0;  // 縦向きのときだけ、ボタンの分をあける
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  // 画面の実際の大きさ（端末の画素の細かさに関係なく）に合わせる
+  W = document.documentElement.clientWidth || innerWidth; H = document.documentElement.clientHeight || innerHeight;
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  // タッチ端末では、操作ボタンが主人公にかぶらないよう下をあける（縦向きは広く、横向きはせまく）
+  const pad = !document.body.classList.contains('touch') ? 0 : H > W ? 132 : 62;
   scale = Math.min((H - pad) / VH, W / (TS * 12)); oy = Math.max(0, (H - pad - VH * scale) / 2);
 }
-addEventListener('resize', resize);
+addEventListener('resize', resize); addEventListener('orientationchange', () => setTimeout(resize, 200));
+if (window.visualViewport) visualViewport.addEventListener('resize', resize);
+if (window.ResizeObserver) new ResizeObserver(resize).observe(document.documentElement);
 const hash = (n) => { const x = Math.sin(n * 127.1) * 43758.5453; return x - Math.floor(x); };
 function ridge(wx, seed, amp, base) { return base + amp * (Math.sin(wx * .004 + seed) + .5 * Math.sin(wx * .011 + seed * 2.3) + .25 * Math.sin(wx * .027 + seed)); }
 
