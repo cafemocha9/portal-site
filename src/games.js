@@ -36,6 +36,7 @@ import {
   Paintbrush,
   Palette,
   PawPrint,
+  Piano,
   Pencil,
   Pickaxe,
   Rat,
@@ -43,8 +44,10 @@ import {
   Sparkles,
   Rocket,
   Rotate3d,
+  Scissors,
   Scroll,
   Shield,
+  Siren,
   Sprout,
   Store,
   Swords,
@@ -88,6 +91,7 @@ export const games = [
   // --- アクション ---
   { id: 'teppen-pickel', genre: 'action', title: 'てっぺんピッケル', icon: MountainSnow, color: 'bg-cyan-100', iconColor: 'text-cyan-900', type: 'html' },
   { id: 'sumimaru', genre: 'action', title: 'すみまる絵巻', icon: Scroll, color: 'bg-stone-200', iconColor: 'text-stone-900', type: 'html' },
+  { id: 'nigekiri-city', genre: 'action', title: 'にげきれシティ', icon: Siren, color: 'bg-violet-200', iconColor: 'text-violet-900', type: 'html' },
   { id: 'neon-hop', genre: 'action', title: 'NEON HOP', icon: Music, color: 'bg-pink-300', iconColor: 'text-pink-900', type: 'html' },
   { id: 'neon-survivor', genre: 'action', title: 'NEON SURVIVOR', icon: Zap, color: 'bg-lime-200', iconColor: 'text-lime-900', type: 'html' },
   { id: 'danmaku', genre: 'action', title: '幻想弾幕', icon: Crosshair, color: 'bg-purple-300', iconColor: 'text-purple-900', type: 'html' },
@@ -137,11 +141,13 @@ export const games = [
 
   // --- のんびり・みんなで ---
   { id: 'oekaki', genre: 'relax', title: 'ゆめいろ おえかき', icon: Paintbrush, color: 'bg-pink-200', iconColor: 'text-pink-800', type: 'html' },
+  { id: 'chokichoki', genre: 'relax', title: 'チョキチョキびようしつ', icon: Scissors, color: 'bg-rose-100', iconColor: 'text-rose-800', type: 'html' },
   { id: 'illust-shiritori', genre: 'relax', title: 'イラストしりとり', icon: Pencil, color: 'bg-yellow-300', iconColor: 'text-yellow-900', type: 'html' },
   { id: 'kotori-niwa', genre: 'relax', title: 'ことりの庭', icon: Bird, color: 'bg-sky-200', iconColor: 'text-sky-900', type: 'html' },
 
   // --- おと ---
   { id: 'hazumu-rhythm', genre: 'music', title: 'はずむリズム', icon: Drum, color: 'bg-pink-200', iconColor: 'text-pink-900', type: 'html' },
+  { id: 'hibiki-piano', genre: 'music', title: 'ひびきピアノ', icon: Piano, color: 'bg-indigo-100', iconColor: 'text-indigo-900', type: 'html' },
   { id: 'tech-house-loop', genre: 'music', title: 'Tech House Loop', icon: Disc3, color: 'bg-zinc-300', iconColor: 'text-zinc-800', type: 'html' },
 
   // --- おためし ---
