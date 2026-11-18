@@ -24,6 +24,7 @@ import {
   DoorClosed,
   Flag,
   FlaskConical,
+  Filter,
   Footprints,
   Gem,
   Ghost,
@@ -153,6 +154,7 @@ export const games = [
   // --- おためし ---
   { id: 'pokapoka-island', genre: 'trial', title: 'ぽかぽか島ぐらし', icon: TreePalm, color: 'bg-emerald-300', iconColor: 'text-emerald-900', type: 'html' },
   { id: 'roastery', genre: 'trial', title: '焙煎所経営シミュレーター', icon: Coffee, color: 'bg-amber-200', iconColor: 'text-amber-900', type: 'html' },
+  { id: 'dripper-sim', genre: 'trial', title: 'ドリッパー抽出シミュレーター', icon: Filter, color: 'bg-amber-100', iconColor: 'text-amber-900', type: 'html' },
 ]
 
 export const findGame = (id) => games.find((g) => g.id === id)

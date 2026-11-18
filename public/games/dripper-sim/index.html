@@ -1,0 +1,246 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>ドリッパー抽出シミュレーター</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: instrument panel — controls column beside readouts, stacks to one column on phones */
+:root{
+  --bg:#f5f6f4;--panel:#ffffff;--fg:#1d211f;--muted:#5c635f;--line:#dde1dd;--track:#e9ece9;
+  --accent:#2f5d50;--under:#c98a12;--ok:#2f8f6a;--over:#c4473d;--bitter:#5b4fb8;--body:#8a6a4a;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141716;--panel:#1c201e;--fg:#e8ebe9;--muted:#a3aba6;--line:#2e3431;--track:#2a2f2c;
+  --accent:#7fc4ae;--under:#e0a63a;--ok:#4fb88d;--over:#e2675d;--bitter:#9a8ff0;--body:#c9a27a;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141716;--panel:#1c201e;--fg:#e8ebe9;--muted:#a3aba6;--line:#2e3431;--track:#2a2f2c;
+  --accent:#7fc4ae;--under:#e0a63a;--ok:#4fb88d;--over:#e2675d;--bitter:#9a8ff0;--body:#c9a27a;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.7;padding-inline:16px;padding-block:24px 40px}
+.wrap{max-width:1020px;margin:0 auto;display:grid;gap:20px}
+header h1{font-size:clamp(22px,4vw,30px);font-weight:700;margin:0;letter-spacing:.02em;text-wrap:balance}
+header p{margin:4px 0 0;color:var(--muted);max-width:62ch}
+.grid{display:grid;gap:20px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:860px){.grid{grid-template-columns:minmax(0,5fr) minmax(0,6fr);align-items:start}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;display:grid;gap:14px;min-width:0}
+.label{font-size:12px;letter-spacing:.08em;color:var(--muted);font-weight:500}
+.ctl{display:grid;gap:2px}
+.ctl .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.ctl .name{font-weight:500}
+.ctl .val{font-family:var(--f-mono);font-size:14px;color:var(--accent)}
+.ctl .hint{font-size:12px;color:var(--muted)}
+input[type=range]{width:100%;accent-color:var(--accent);height:28px}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg label{flex:1;min-width:72px;text-align:center;border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:14px;cursor:pointer}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label:has(input:checked){border-color:var(--accent);color:var(--accent);font-weight:500}
+.seg label:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.presets{display:flex;flex-wrap:wrap;gap:8px}
+button{font:inherit;font-size:13px;background:transparent;color:var(--fg);border:1px solid var(--line);border-radius:999px;padding:6px 14px;cursor:pointer}
+button:hover{border-color:var(--accent);color:var(--accent)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.stat{border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.stat .n{font-family:var(--f-mono);font-size:24px;font-weight:500;font-variant-numeric:tabular-nums}
+.stat .s{font-size:12px;color:var(--muted)}
+.verdict{border-left:3px solid var(--accent);padding:2px 0 2px 12px;font-weight:500}
+svg text{font-family:var(--f-mono);font-size:11px;fill:var(--muted)}
+svg text.jp{font-family:var(--f-body)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.bars{display:grid;gap:9px}
+.bar{display:grid;grid-template-columns:4em minmax(0,1fr) 2.2em;align-items:center;gap:10px;font-size:14px}
+.bar .t{height:10px;background:var(--track);border-radius:5px;overflow:hidden}
+.bar .f{height:100%;border-radius:5px;transition:width .25s}
+.bar .v{font-family:var(--f-mono);text-align:right;font-variant-numeric:tabular-nums}
+.basis{display:grid;gap:8px;font-size:13px;color:var(--muted)}
+.basis h2{font-size:14px;color:var(--fg);margin:0;font-weight:700}
+.basis ul{margin:0;padding-left:1.2em;display:grid;gap:4px;max-width:78ch}
+.basis a{color:var(--accent)}
+@media (prefers-reduced-motion:reduce){.bar .f{transition:none}}
+</style>
+
+<div class="wrap">
+<header>
+  <h1>ドリッパー抽出シミュレーター</h1>
+  <p>レシピを変えると、抽出時間・収率・濃度と、そこから予測される味がどう動くかを確認できます。味の計算は官能評価の研究結果に合わせてあります。</p>
+</header>
+
+<div class="grid">
+<section class="panel" aria-label="レシピ">
+  <div class="label">レシピ</div>
+  <div class="ctl"><span class="name">焙煎度</span>
+    <div class="seg" role="radiogroup" aria-label="焙煎度">
+      <label><input type="radio" name="roast" id="r0" value="0">浅煎り</label>
+      <label><input type="radio" name="roast" id="r1" value="1" checked>中煎り</label>
+      <label><input type="radio" name="roast" id="r2" value="2">深煎り</label>
+    </div></div>
+  <div class="two">
+    <div class="ctl"><div class="top"><span class="name">粉量</span><span class="val" id="o-dose"></span></div>
+      <input type="range" id="dose" min="10" max="30" step="1" value="15" aria-label="粉量"></div>
+    <div class="ctl"><div class="top"><span class="name">湯量</span><span class="val" id="o-water"></span></div>
+      <input type="range" id="water" min="150" max="500" step="10" value="240" aria-label="湯量"></div>
+  </div>
+  <div class="ctl"><div class="top"><span class="name">湯温</span><span class="val" id="o-temp"></span></div>
+    <input type="range" id="temp" min="80" max="100" step="1" value="92" aria-label="湯温"><span class="hint">成分が溶け出す速さを変える。味への影響は収率と濃度を通じて現れる</span></div>
+  <div class="ctl"><div class="top"><span class="name">挽き目（粒径）</span><span class="val" id="o-grind"></span></div>
+    <input type="range" id="grind" min="300" max="1200" step="50" value="700" aria-label="挽き目"><span class="hint">細かいほど溶け出しが速く、湯の抜けは遅くなる</span></div>
+  <div class="ctl"><div class="top"><span class="name">注ぐ高さ</span><span class="val" id="o-height"></span></div>
+    <input type="range" id="height" min="2" max="30" step="1" value="10" aria-label="注ぐ高さ"><span class="hint">高いほど粉層がよく混ざる。20cmを超えると水流が水滴に割れ、効果が落ちる</span></div>
+  <div class="ctl"><div class="top"><span class="name">注湯回数（蒸らし後）</span><span class="val" id="o-pours"></span></div>
+    <input type="range" id="pours" min="1" max="5" step="1" value="3" aria-label="注湯回数"><span class="hint">回数が多いほど撹拌が増え、抽出時間も少し延びる</span></div>
+  <div class="ctl"><span class="name">ドリッパー形状</span>
+    <div class="seg" role="radiogroup" aria-label="ドリッパー形状">
+      <label><input type="radio" name="shape" id="s0" value="0" checked>円錐</label>
+      <label><input type="radio" name="shape" id="s1" value="1">フラット</label>
+    </div></div>
+  <div class="ctl"><div class="top"><span class="name">穴の大きさ</span><span class="val" id="o-hole"></span></div>
+    <input type="range" id="hole" min="1" max="5" step="1" value="4" aria-label="穴の大きさ"><span class="hint">小さいとドリッパー側で湯が絞られ、抽出時間が延びる</span></div>
+  <div class="label" style="margin-top:4px">プリセット</div>
+  <div class="presets">
+    <button id="p0" type="button">円錐の標準</button>
+    <button id="p1" type="button">フラットの標準</button>
+    <button id="p2" type="button">浅煎りを高温で</button>
+    <button id="p3" type="button">深煎りを低温で</button>
+    <button id="p4" type="button">過抽出の例</button>
+  </div>
+</section>
+
+<section class="panel" aria-label="結果">
+  <div class="stats">
+    <div class="stat"><div class="s">抽出時間</div><div class="n" id="time"></div><div class="s">蒸らし後、落ちきりまで</div></div>
+    <div class="stat"><div class="s">均一性（収率のばらつき）</div><div class="n" id="sd"></div><div class="s">小さいほど均一</div></div>
+    <div class="stat"><div class="s">抽出収率</div><div class="n" id="ey"></div><div class="s">目安 18〜22%</div></div>
+    <div class="stat"><div class="s">濃度 TDS</div><div class="n" id="tds"></div><div class="s">目安 1.15〜1.45%</div></div>
+  </div>
+  <div class="verdict" id="verdict"></div>
+  <div>
+    <div class="label" style="margin-bottom:8px">予測される味（0〜100）</div>
+    <div class="bars" id="bars"></div>
+  </div>
+  <div>
+    <div class="label">抽出コントロールチャート</div>
+    <svg id="chart" viewBox="0 0 400 250" width="100%" role="img" aria-label="抽出収率と濃度のチャート上の現在位置"></svg>
+  </div>
+  <div>
+    <div class="label">粉層内の収率の分布</div>
+    <svg id="dist" viewBox="0 0 400 130" width="100%" role="img" aria-label="粉層内の抽出収率の分布曲線"></svg>
+    <div class="legend"><span><i style="background:var(--under)"></i>未抽出（〜18%）</span><span><i style="background:var(--ok)"></i>適正</span><span><i style="background:var(--over)"></i>過抽出（22%〜）</span></div>
+  </div>
+</section>
+</div>
+
+<section class="panel basis">
+  <h2>モデルの根拠</h2>
+  <ul>
+    <li>味は濃度（TDS）と収率から計算します。酸味は濃いほど強く、収率が上がると弱まります。苦味と渋みは主に濃度で決まります。甘味は薄く、苦味や渋みが少ないほど感じやすくなります（<a href="https://sca.coffee/sca-news/25/issue-13/towards-a-new-brewing-chart-xpj8t">SCA／UC Davis 新しい抽出チャート</a>）。</li>
+    <li>湯温は味を直接変えず、溶け出す速さだけを変えます。濃度と収率をそろえると、87〜93℃の差は訓練されたパネルでもほぼ識別できませんでした（<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC7536440">Batali ほか 2020</a>）。</li>
+    <li>円錐はフラットより濃く出ます。同条件の比較で、円錐寄りの形状は濃度が高く、浅煎りで柑橘・酸味、深煎りで苦味が強まりました（<a href="https://dailycoffeenews.com/2019/10/17/science-shows-differences-between-flat-bottom-and-semi-conical-filter-brews">Frost ほか 2019 の紹介記事</a>）。</li>
+    <li>注ぐ高さは粉層の混ざり方を変えます。高いほど水流が粉を掘り返して抽出が進み、高すぎると水流が水滴に割れて効果が落ちます（<a href="https://penntoday.upenn.edu/news/penn-sas-physics-better-cup-coffee">ペンシルベニア大学 2025</a>）。</li>
+    <li>溶け出しは2段階で計算します。粒の表面と微粉から速く出る分と、粒の内部からゆっくり拡散する分です。粒径が小さいほど速い分が増えます。</li>
+    <li>推定にとどまる部分：抽出時間の係数、円錐とフラットの均一性の差、成分ごとの溶け出す順番の係数は、理論と一般的な実測値に合わせた仮定です。バイパス、蒸らしの出来、豆の個体差、ミルの粒度分布は計算に入れていません。実際の抽出時間やTDSの実測値があれば、それに合わせて係数を調整できます。</li>
+  </ul>
+</section>
+</div>
+
+<script id="model">
+const ROAST=[{Emax:27,kf:.92,acid:1.3,bit:.75,ast:.9,sw:1.05},{Emax:29,kf:1,acid:1,bit:1,ast:1,sw:1},{Emax:30.5,kf:1.1,acid:.65,bit:1.4,ast:1.1,sw:.85}];
+const HOLE=[100,55,25,8,0];
+const K20=0.0063;
+function invNorm(p){const q=p<.5?p:1-p,t=Math.sqrt(-2*Math.log(q));const z=t-(2.515517+0.802853*t+0.010328*t*t)/(1+1.432788*t+0.189269*t*t+0.001308*t*t*t);return p<.5?-z:z;}
+const ZS=Array.from({length:41},(_,i)=>invNorm((i+.5)/41));
+const mean=a=>a.reduce((s,x)=>s+x,0)/a.length;
+function model(p){
+  const R=ROAST[p.roast];
+  const hF=p.height<=20?0.7+0.6*p.height/20:Math.max(0.6,1.3-0.04*(p.height-20));
+  const A=hF*(0.8+0.1*(p.pours-1));
+  const gr=700/p.grind;
+  const clog=1+0.25*Math.max(0,A-1)*Math.pow(gr,1.5);
+  const Tbed=135*Math.pow(gr,1.1)*Math.pow(p.water/240,0.6)*Math.pow(p.dose/15,0.3)*(p.flat?0.8:1)*clog;
+  const T=Tbed+10*(p.pours-1)+HOLE[p.hole-1];
+  const te=0.8*T;
+  const tF=Math.exp(22000/8.314*(1/365.15-1/(p.temp+273.15)));
+  const k1=0.05*tF*A*R.kf,k2=K20*Math.pow(gr,0.3)*tF*Math.sqrt(A)*R.kf;
+  const phi=Math.min(.3,0.12*Math.sqrt(gr));
+  const f=phi+(1-phi)*(1-Math.pow(1-50/p.grind,3));
+  const sig=(p.flat?.2:.3)+0.015*Math.max(0,p.height-20)+0.25*Math.max(0,(450-p.grind)/450)+0.3*Math.max(0,0.9-A);
+  const es=ZS.map(z=>{const t=te*Math.exp(sig*z-sig*sig/2);return R.Emax*(f*(1-Math.exp(-k1*t))+(1-f)*(1-Math.exp(-k2*t)));});
+  const ey=mean(es),sd=Math.sqrt(mean(es.map(e=>(e-ey)*(e-ey))));
+  const bev=p.water-2*p.dose,tds=ey*p.dose/bev;
+  const conc=(p.dose/bev)/(15/210);
+  const F=r=>mean(es.map(e=>1-Math.pow(1-e/R.Emax,r)));
+  const I=(c,K)=>100*(1-Math.exp(-c/K));
+  const sour=I(R.acid*F(2.5)*conc,1.98),bitter=I(R.bit*F(.9)*conc,1.195),astr=I(R.ast*F(.4)*conc,1.14);
+  const sweet=Math.max(0,Math.min(100,R.sw*(100-.55*bitter-.35*sour-.8*astr)));
+  const body=I(tds,1.6);
+  return {T,ey,sd,tds,es,sour,sweet,bitter,astr,body,A};
+}
+</script>
+<script>
+const $=id=>document.getElementById(id);
+const BARS=[['酸味','sour','--under'],['甘味','sweet','--ok'],['苦味','bitter','--bitter'],['渋み','astr','--over'],['ボディ','body','--body']];
+$('bars').innerHTML=BARS.map(b=>`<div class="bar"><span>${b[0]}</span><div class="t"><div class="f" id="b-${b[1]}" style="background:var(${b[2]})"></div></div><span class="v" id="v-${b[1]}"></span></div>`).join('');
+const hL=['極小','小','中','大','極大'];
+const grindName=d=>d<450?'細挽き':d<650?'中細挽き':d<850?'中挽き':d<1050?'中粗挽き':'粗挽き';
+const PRE=[
+ {roast:1,dose:15,water:240,temp:92,grind:700,height:10,pours:3,flat:0,hole:4},
+ {roast:1,dose:15,water:240,temp:92,grind:700,height:10,pours:3,flat:1,hole:3},
+ {roast:0,dose:15,water:240,temp:96,grind:600,height:15,pours:4,flat:0,hole:4},
+ {roast:2,dose:16,water:220,temp:84,grind:750,height:6,pours:2,flat:0,hole:4},
+ {roast:1,dose:15,water:240,temp:98,grind:350,height:25,pours:5,flat:0,hole:2}];
+function setP(p){['dose','water','temp','grind','height','pours','hole'].forEach(k=>$(k).value=p[k]);$('r'+p.roast).checked=true;$('s'+p.flat).checked=true;up();}
+PRE.forEach((p,i)=>$('p'+i).addEventListener('click',()=>setP(p)));
+function read(){return{roast:+document.querySelector('input[name=roast]:checked').value,flat:+document.querySelector('input[name=shape]:checked').value,
+  dose:+$('dose').value,water:+$('water').value,temp:+$('temp').value,grind:+$('grind').value,height:+$('height').value,pours:+$('pours').value,hole:+$('hole').value};}
+function verdict(m){
+  const s=m.tds<1.15?'薄め':m.tds>1.55?'かなり濃い':m.tds>1.45?'濃いめ':'';
+  let e;
+  if(m.ey<18)e='未抽出寄りで、酸味が先に立ち、後味が短い';
+  else if(m.ey>22)e='過抽出寄りで、苦味と渋みが後に残る';
+  else e=m.sd>2.2?'収率は適正だが、ムラが大きく酸味と渋みが同居しやすい':'収率は適正で、酸味・甘味・苦味のバランスが取りやすい';
+  return (s?s+'。':'')+e+'。';
+}
+function up(){
+  const p=read(),m=model(p);
+  $('o-dose').textContent=p.dose+'g';$('o-water').textContent=p.water+'g（1:'+(p.water/p.dose).toFixed(1)+'）';
+  $('o-temp').textContent=p.temp+'℃';$('o-grind').textContent=p.grind+'µm '+grindName(p.grind);
+  $('o-height').textContent=p.height+'cm';$('o-pours').textContent=p.pours+'回';$('o-hole').textContent=hL[p.hole-1];
+  const sec=Math.round(m.T);$('time').textContent=Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0');
+  $('ey').textContent=m.ey.toFixed(1)+'%';$('tds').textContent=m.tds.toFixed(2)+'%';$('sd').textContent='±'+m.sd.toFixed(1)+'%';
+  $('verdict').textContent=verdict(m);
+  BARS.forEach(b=>{const v=Math.max(0,Math.min(100,m[b[1]]));$('b-'+b[1]).style.width=v+'%';$('v-'+b[1]).textContent=Math.round(v);});
+  drawChart(p,m);drawDist(m);
+}
+function drawChart(p,m){
+  const x0=14,x1=26,y0=.8,y1=2;
+  const X=e=>44+(e-x0)/(x1-x0)*340,Y=t=>214-(t-y0)/(y1-y0)*200;
+  const cx=Math.max(x0,Math.min(x1,m.ey)),cy=Math.max(y0,Math.min(y1,m.tds));
+  const bev=p.water-2*p.dose,r=p.dose/bev;
+  let h='';
+  for(let e=14;e<=26;e+=2)h+=`<line x1="${X(e)}" y1="14" x2="${X(e)}" y2="214" style="stroke:var(--line)"/><text x="${X(e)}" y="228" text-anchor="middle">${e}</text>`;
+  for(let t=.8;t<=2.001;t+=.2)h+=`<line x1="44" y1="${Y(t)}" x2="384" y2="${Y(t)}" style="stroke:var(--line)"/><text x="38" y="${Y(t)+4}" text-anchor="end">${t.toFixed(1)}</text>`;
+  h+=`<rect x="${X(18)}" y="${Y(1.45)}" width="${X(22)-X(18)}" height="${Y(1.15)-Y(1.45)}" style="fill:var(--ok);fill-opacity:.14;stroke:var(--ok)"/>`;
+  h+=`<text class="jp" x="50" y="28">酸味が強い</text><text class="jp" x="378" y="28" text-anchor="end">苦味・渋みが強い</text><text class="jp" x="50" y="208">甘く感じやすい</text><text class="jp" x="378" y="208" text-anchor="end">紅茶のように軽い</text>`;
+  const ya=Math.max(y0,Math.min(y1,x0*r)),yb=Math.max(y0,Math.min(y1,x1*r));
+  h+=`<line x1="${X(ya/r)}" y1="${Y(ya)}" x2="${X(yb/r)}" y2="${Y(yb)}" style="stroke:var(--muted);stroke-dasharray:4 3"/>`;
+  h+=`<circle cx="${X(cx)}" cy="${Y(cy)}" r="7" style="fill:var(--accent);stroke:var(--panel);stroke-width:2"/>`;
+  h+=`<text class="jp" x="214" y="245" text-anchor="middle">抽出収率 %（横）／濃度 TDS %（縦）　破線＝現在の粉と湯の比率</text>`;
+  $('chart').innerHTML=h;
+}
+function drawDist(m){
+  const X=e=>24+(e-10)/20*352,bw=.75,pts=[];let mx=0;
+  for(let e=10;e<=30.001;e+=.2){let d=0;m.es.forEach(v=>{d+=Math.exp(-Math.pow((e-v)/bw,2)/2);});pts.push([e,d]);if(d>mx)mx=d;}
+  const Y=d=>106-d/mx*88;
+  const seg=(lo,hi,c)=>{const s=pts.filter(q=>q[0]>=lo-.001&&q[0]<=hi+.001);if(s.length<2)return'';
+    return `<path d="M${X(s[0][0])},106 `+s.map(q=>`L${X(q[0]).toFixed(1)},${Y(q[1]).toFixed(1)}`).join(' ')+` L${X(s[s.length-1][0])},106 Z" style="fill:var(${c});fill-opacity:.22;stroke:var(${c});stroke-width:2"/>`;};
+  const tk=[10,14,18,22,26,30].map(e=>`<text x="${X(e)}" y="122" text-anchor="middle">${e}%</text>`).join('');
+  const mxp=Math.max(10,Math.min(30,m.ey));
+  $('dist').innerHTML=`<line x1="24" y1="106" x2="376" y2="106" style="stroke:var(--line)"/>`+seg(10,18,'--under')+seg(18,22,'--ok')+seg(22,30,'--over')+
+    `<line x1="${X(mxp)}" y1="12" x2="${X(mxp)}" y2="106" style="stroke:var(--muted);stroke-dasharray:3 3"/>`+tk;
+}
+document.querySelectorAll('input').forEach(i=>i.addEventListener('input',up));up();
+</script>
+
+</body></html>
