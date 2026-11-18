@@ -30,6 +30,7 @@ import {
   GraduationCap,
   Grid3x3,
   MapPinned,
+  MountainSnow,
   Music,
   Orbit,
   Paintbrush,
@@ -85,6 +86,7 @@ export const games = [
   { id: 'rush-kart', genre: 'race', title: 'ラッシュカート', icon: Flag, color: 'bg-red-300', iconColor: 'text-red-800', type: 'html' },
 
   // --- アクション ---
+  { id: 'teppen-pickel', genre: 'action', title: 'てっぺんピッケル', icon: MountainSnow, color: 'bg-cyan-100', iconColor: 'text-cyan-900', type: 'html' },
   { id: 'sumimaru', genre: 'action', title: 'すみまる絵巻', icon: Scroll, color: 'bg-stone-200', iconColor: 'text-stone-900', type: 'html' },
   { id: 'neon-hop', genre: 'action', title: 'NEON HOP', icon: Music, color: 'bg-pink-300', iconColor: 'text-pink-900', type: 'html' },
   { id: 'neon-survivor', genre: 'action', title: 'NEON SURVIVOR', icon: Zap, color: 'bg-lime-200', iconColor: 'text-lime-900', type: 'html' },
@@ -100,7 +102,6 @@ export const games = [
 
   // --- ぼうけん・つくる ---
   { id: 'craftbox', genre: 'adventure', title: 'CraftBox', icon: Pickaxe, color: 'bg-green-300', iconColor: 'text-green-900', type: 'html' },
-  { id: 'pokapoka-island', genre: 'adventure', title: 'ぽかぽか島ぐらし', icon: TreePalm, color: 'bg-emerald-300', iconColor: 'text-emerald-900', type: 'html' },
   { id: 'mystery-dungeon', genre: 'adventure', title: '不思議の迷宮', icon: Dices, color: 'bg-lime-300', iconColor: 'text-lime-900', type: 'react', component: lazy(() => import('./games/mystery-dungeon/Game.jsx')) },
 
   { id: 'hikari-meikyu', genre: 'adventure', title: 'ひかりの迷宮', icon: Sparkles, color: 'bg-amber-100', iconColor: 'text-amber-700', type: 'html' },
@@ -144,6 +145,7 @@ export const games = [
   { id: 'tech-house-loop', genre: 'music', title: 'Tech House Loop', icon: Disc3, color: 'bg-zinc-300', iconColor: 'text-zinc-800', type: 'html' },
 
   // --- おためし ---
+  { id: 'pokapoka-island', genre: 'trial', title: 'ぽかぽか島ぐらし', icon: TreePalm, color: 'bg-emerald-300', iconColor: 'text-emerald-900', type: 'html' },
   { id: 'roastery', genre: 'trial', title: '焙煎所経営シミュレーター', icon: Coffee, color: 'bg-amber-200', iconColor: 'text-amber-900', type: 'html' },
 ]
 
