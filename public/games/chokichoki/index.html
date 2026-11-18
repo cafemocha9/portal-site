@@ -82,6 +82,20 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:poin
   .tools{gap:7px}.tool{width:60px;height:66px;border-radius:18px;font-size:11px}.tool svg{width:32px;height:32px}.tool.done{width:74px}.tool .n{margin:-48px 0 0 44px}.bubble{font-size:15px}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ポータル版の手直し：横向きのスマホでカードがはみ出しても、指でスクロールできるように
+   （body が touch-action:none のため、重ねた画面のスクロールもできなくなっていた） */
+.ov{touch-action:pan-y;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.ov .card{touch-action:pan-y}
+/* 背の低い画面では、絵と文字・ボタンを横にならべて、スクロールしなくても押せるように */
+@media (max-height:520px) and (orientation:landscape){
+  .card{padding:14px 18px;border-radius:22px}
+  .card h1{font-size:30px}.card p{margin:4px 0 8px;font-size:13px;line-height:1.5}.card h2{font-size:21px}
+  .big{height:50px;font-size:19px}
+  #intro .card,#result .card{width:min(100%,720px);display:grid;grid-template-columns:auto 1fr;column-gap:18px;align-items:center;text-align:left}
+  #intro .card>canvas,#result .card>canvas{grid-row:1/span 8;width:auto;max-width:44vw;max-height:calc(100vh - 70px);height:auto}
+  #intro .card>:not(canvas),#result .card>:not(canvas){grid-column:2}
+}
 </style>
 
 <div id="wrap">
