@@ -40,6 +40,7 @@ import {
   Piano,
   Pencil,
   Pickaxe,
+  Pin,
   Rat,
   Spade,
   Sparkles,
@@ -102,6 +103,7 @@ export const games = [
   { id: 'singularity', genre: 'action', title: '特異点', icon: Atom, color: 'bg-blue-300', iconColor: 'text-blue-900', type: 'html' },
   { id: 'houkago-dodge', genre: 'action', title: '放課後ドッジ', icon: Volleyball, color: 'bg-orange-300', iconColor: 'text-orange-900', type: 'html' },
   { id: 'soranobori', genre: 'action', title: 'そらのぼり', icon: CloudSun, color: 'bg-sky-200', iconColor: 'text-sky-800', type: 'html' },
+  { id: 'pinch-pin', genre: 'action', title: 'ピンチ！ピンくん', icon: Pin, color: 'bg-red-100', iconColor: 'text-red-800', type: 'html' },
   { id: 'korokoro', genre: 'action', title: 'コロコロ大玉', icon: CircleDashed, color: 'bg-lime-300', iconColor: 'text-lime-900', type: 'html' },
   { id: 'balloon', genre: 'action', title: 'ふうせん わり', icon: Balloon, color: 'bg-rose-200', iconColor: 'text-rose-700', type: 'react', component: lazy(() => import('./games/balloon/Balloon.jsx')) },
 
