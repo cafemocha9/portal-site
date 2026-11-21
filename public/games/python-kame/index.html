@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pythonカメ教室</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* VOICE: やさしい先生の方眼ノート。小学生が一人でも読める、短い言葉。
+   IDEA: 方眼ノートの左ページにブロック、右ページにPython、その横でカメが線を引く。
+   PICTURE: 動くカメのキャンバス（方眼紙）と、ブロック⇔コードの見比べ。
+   COLOUR and TYPE: 紙の白＋インク紺黒、アクセントはコーラル。ブロックは種類別の色。M PLUS Rounded 1c＋JetBrains Mono。
+   LAYOUT: 上にレッスン選び、中央にブロック｜コード｜キャンバス、下に説明とチャレンジ。 */
+:root{color-scheme:light dark;
+--bg:light-dark(#fbfaf6,#14171d);--paper:light-dark(#ffffff,#1b1f27);--ink:light-dark(#1b2230,#e9ecf2);
+--sub:light-dark(#5a6375,#a3abbb);--line:light-dark(#e3e1d8,#2c323d);--grid:light-dark(#eef0f4,#232833);
+--accent:#ff5d3a;--accent-ink:light-dark(#c63c1d,#ff8a6c);--code:#1f2330;--codeink:#e8ebf3;--ok:light-dark(#1f8a5b,#5fd39c)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 "M PLUS Rounded 1c",system-ui,sans-serif;font-weight:500;overflow-x:clip}
+.band{padding:clamp(18px,3vw,40px) max(4vw,14px)}
+.wrap{max-width:1240px;margin:0 auto}
+header.band{padding-bottom:8px}
+h1{font-size:clamp(26px,4vw,36px);line-height:1.1;margin:0;font-weight:800;text-wrap:balance}
+h1 span{color:var(--accent-ink)}
+.lead{color:var(--sub);margin:6px 0 0}
+.lessons{display:flex;gap:8px;overflow-x:auto;padding:14px 0 6px;scrollbar-width:thin}
+.lessons button{flex:none;min-height:44px;border:2px solid var(--line);background:var(--paper);color:var(--ink);border-radius:999px;padding:6px 14px;font:inherit;font-weight:700;cursor:pointer}
+.lessons button[aria-current=true]{border-color:var(--accent);background:var(--accent);color:#fff}
+.lessons button.done::after{content:" ✓";color:var(--ok)}
+.lessons button[aria-current=true].done::after{color:#fff}
+.head2{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;margin:10px 0 14px}
+.head2 h2{font-size:26px;line-height:1.15;margin:0;font-weight:800}
+.num{font-weight:800;color:var(--accent-ink)}
+.goal{color:var(--sub);margin:0;flex-basis:100%}
+.grid{display:grid;grid-template-columns:250px minmax(0,1.1fr) minmax(0,1fr);gap:16px;align-items:start}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:14px}
+.card h3{font-size:14px;margin:0 0 10px;color:var(--sub);font-weight:700}
+.blk{display:block;width:max-content;max-width:100%;color:#fff;font-weight:700;font-size:14px;padding:7px 12px;border-radius:6px;margin:0 0 3px;box-shadow:inset 0 -3px 0 rgba(0,0,0,.18)}
+.motion{background:#4c97ff}.ctrl{background:#ffab19}.pen{background:#0fbd8c}.var{background:#ff8c1a}.my{background:#ff6680}.look{background:#9966ff}.ev{background:#ffbf00;color:#3a2a00}
+.cap{width:70px;padding:4px 12px;border-radius:0 0 6px 6px;min-height:12px}
+.note{font-size:13px;color:var(--sub);margin:10px 0 0}
+.ed{display:grid;grid-template-columns:auto minmax(0,1fr);background:var(--code);border-radius:12px;overflow:hidden;font:15px/1.6 "JetBrains Mono",ui-monospace,monospace}
+.gut{margin:0;padding:12px 8px 12px 12px;color:#6c7488;text-align:right;user-select:none;white-space:pre;overflow:hidden}
+textarea{display:block;width:100%;min-height:290px;resize:vertical;border:0;outline:0;background:transparent;color:var(--codeink);font:inherit;padding:12px;white-space:pre;overflow:auto;tab-size:4}
+.ed:focus-within{box-shadow:0 0 0 3px var(--accent)}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.btn{min-height:44px;border-radius:12px;border:2px solid var(--line);background:var(--paper);color:var(--ink);font:inherit;font-weight:700;padding:6px 16px;cursor:pointer}
+.btn.go{background:var(--accent);border-color:var(--accent);color:#fff;font-size:17px;padding-inline:22px}
+.btn:focus-visible,.lessons button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.btn:disabled{opacity:.5;cursor:default}
+.stage{position:relative;aspect-ratio:1;border-radius:12px;border:1px solid var(--line);overflow:hidden;
+background:#fff linear-gradient(#e9edf3 1px,transparent 1px) 0 0/20px 20px,#fff linear-gradient(90deg,#e9edf3 1px,transparent 1px) 0 0/20px 20px}
+.stage canvas{max-width:100%;max-height:100%}
+.stage .wait{position:absolute;inset:0;display:grid;place-items:center;color:#7a8396;font-size:14px;text-align:center;padding:20px}
+.out{margin:10px 0 0;min-height:64px;max-height:180px;overflow:auto;background:var(--grid);border-radius:10px;padding:10px 12px;font:14px/1.5 "JetBrains Mono",ui-monospace,monospace;white-space:pre-wrap}
+.out .err{color:var(--accent-ink);font-family:"M PLUS Rounded 1c",sans-serif;font-weight:700}
+.out .okm{color:var(--ok);font-family:"M PLUS Rounded 1c",sans-serif;font-weight:700}
+.lower{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px;margin-top:16px}
+.exp{margin:0;padding-left:1.2em}.exp li{margin:0 0 8px}
+code{font-family:"JetBrains Mono",monospace;background:var(--grid);padding:1px 6px;border-radius:5px;overflow-wrap:anywhere;font-size:.92em}
+.chal{border:2px dashed var(--accent);background:var(--paper)}
+.chal p{margin:0 0 8px}
+details summary{cursor:pointer;font-weight:700;color:var(--accent-ink);min-height:32px}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--sub);font-size:13px}
+.ref h2{font-size:22px;margin:0 0 12px}
+footer{color:var(--sub);font-size:13px}
+@media(max-width:1000px){.grid{grid-template-columns:220px minmax(0,1fr)}.grid .stagecard{grid-column:1/-1}.stage{max-width:520px;margin:0 auto}}
+@media(max-width:700px){.grid,.lower{grid-template-columns:minmax(0,1fr)}textarea{min-height:220px}}
+@media(max-width:600px){table{font-size:13px}.stack thead{display:none}.stack tr{display:grid;padding-block:10px}.stack td{display:flow-root;border:0;padding:3px 0;padding-inline-start:8em;text-align:start}.stack td::before{content:attr(data-l);float:inline-start;width:7.5em;margin-inline-start:-8em;white-space:normal;color:var(--sub)}.stack td:empty{display:none}}
+@media(prefers-reduced-motion:no-preference){.btn.go:active{transform:scale(.97)}}
+</style>
+<script>new MutationObserver(()=>{for(const c of document.querySelectorAll('.stack td:not([data-l])')){let i=0,p=c;while(p=p.previousElementSibling)i+=p.colSpan;c.dataset.l=c.closest('table').rows[0].cells[i]?.textContent||''}}).observe(document,{childList:true,subtree:true})</script>
+</head>
+<body>
+<header class="band"><div class="wrap">
+<h1>Python<span>カメ</span>教室</h1>
+<p class="lead">Scratchのブロックと見くらべながら、Pythonでカメに絵をかかせよう。</p>
+<nav class="lessons" id="lessons" aria-label="レッスン"></nav>
+</div></header>
+
+<main class="band" style="padding-top:4px"><div class="wrap">
+<div class="head2"><span class="num" id="lnum"></span><h2 id="ltitle"></h2><p class="goal" id="lgoal"></p></div>
+<div class="grid">
+<section class="card"><h3>Scratchだと…</h3><div id="blocks"></div><p class="note" id="bnote"></p></section>
+<section class="card"><h3>Pythonだと…（書きかえてOK）</h3>
+<div class="ed"><pre class="gut" id="gut">1</pre><textarea id="code" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" aria-label="Pythonのコード"></textarea></div>
+<div class="row"><button class="btn go" id="run">▶ うごかす</button><button class="btn" id="stop" disabled>■ とめる</button><button class="btn" id="reset">さいしょのコードにもどす</button></div>
+</section>
+<section class="card stagecard"><h3>カメのキャンバス</h3>
+<div class="stage" id="stage"><div class="wait" id="wait">「▶ うごかす」をおすと、ここにカメがあらわれるよ</div></div>
+<div class="out" id="out" aria-live="polite"></div>
+</section>
+</div>
+<div class="lower">
+<section class="card"><h3>ポイント</h3><ul class="exp" id="exp"></ul></section>
+<section class="card chal"><h3>チャレンジ</h3><p id="chal"></p><details><summary>ヒントを見る</summary><p id="hint"></p></details>
+<div class="row"><button class="btn" id="prev">← まえへ</button><button class="btn" id="next">つぎへ →</button></div></section>
+</div>
+</div></main>
+
+<section class="band ref"><div class="wrap card">
+<h2>Scratch → Python ことばの表</h2>
+<table class="stack"><thead><tr><th>Scratchのブロック</th><th>Python</th><th>メモ</th></tr></thead><tbody>
+<tr><td>〇歩うごかす</td><td><code>t.forward(100)</code></td><td>うしろは <code>t.backward(100)</code></td></tr>
+<tr><td>左に〇度まわす</td><td><code>t.left(90)</code></td><td>右は <code>t.right(90)</code></td></tr>
+<tr><td>x:〇 y:〇 へ行く</td><td><code>t.goto(0, 0)</code></td><td>線をかかずに行くなら先に <code>t.penup()</code></td></tr>
+<tr><td>ペンを下ろす／上げる</td><td><code>t.pendown()</code> / <code>t.penup()</code></td><td>Pythonのカメは、さいしょからペンが下りている</td></tr>
+<tr><td>ペンの色を〇にする</td><td><code>t.color("red")</code></td><td>色は英語で："blue" "green" "orange" "purple"</td></tr>
+<tr><td>ペンの太さを〇にする</td><td><code>t.pensize(5)</code></td><td></td></tr>
+<tr><td>〇回くりかえす</td><td><code>for i in range(4):</code></td><td>中の行はスペース4つ右にずらす</td></tr>
+<tr><td>ずっと／〜までくりかえす</td><td><code>while 条件:</code></td><td>止まらないときは「■ とめる」</td></tr>
+<tr><td>もし〜なら／でなければ</td><td><code>if 条件:</code> / <code>else:</code></td><td>「同じ」は <code>==</code>（＝が2つ）</td></tr>
+<tr><td>変数を〇にする</td><td><code>size = 50</code></td><td>＝は「入れる」という意味</td></tr>
+<tr><td>変数を〇ずつかえる</td><td><code>size = size + 5</code></td><td></td></tr>
+<tr><td>〇と言う</td><td><code>print("こんにちは")</code></td><td>キャンバスの下に出るよ</td></tr>
+<tr><td>ブロック定義</td><td><code>def しかく():</code></td><td>名前は英語がおすすめ：<code>def square():</code></td></tr>
+</tbody></table>
+</div></section>
+<footer class="band"><div class="wrap">できたレッスンには ✓ がつきます（このブラウザだけに記録されます）。Pythonはブラウザの中で動く Skulpt を使っています。</div></footer>
+
+<script src="https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt-stdlib.js"></script>
+<script>
+{
+const L=[
+{t:"まっすぐ進んで、曲がる",g:"カメを動かす2つの命令をおぼえよう。",
+b:[["ev","▶ がおされたとき",0],["pen","ペンを下ろす",0],["motion","100歩うごかす",0],["motion","左に90度まわす",0],["motion","100歩うごかす",0]],
+n:"Pythonのカメは、さいしょからペンが下りているよ。",
+c:["import turtle","t = turtle.Turtle()","","t.forward(100)","t.left(90)","t.forward(100)"],
+e:["<code>import turtle</code> は「カメの道具を使います」というおまじない。","<code>t = turtle.Turtle()</code> でカメを1ぴき作って、<code>t</code> という名前をつけているよ。","<code>t.forward(100)</code> は「tよ、100歩すすめ」。点（.）は「〜の」という意味。"],
+ch:"もう1回曲がって進んで、「コ」の字をかこう。",h:"<code>t.left(90)</code> と <code>t.forward(100)</code> を下に書きたそう。"},
+{t:"くりかえしで正方形",g:"Scratchの「〇回くりかえす」は for で書くよ。",
+b:[["ctrl","4回くりかえす",0],["motion","100歩うごかす",1],["motion","左に90度まわす",1],["ctrl","",0,1]],
+n:"ブロックの「口」の中に入れるのが、Pythonでは字下げ（スペース4つ）になるよ。",
+c:["import turtle","t = turtle.Turtle()","","for i in range(4):","    t.forward(100)","    t.left(90)"],
+e:["<code>for i in range(4):</code> で4回くりかえす。さいごの <code>:</code>（コロン）をわすれずに。","くりかえしたい行は、スペース4つ分<b>右にずらす</b>。ずらした行だけがくりかえされるよ。","<code>i</code> には 0, 1, 2, 3 と、今が何回目かが入るよ。"],
+ch:"六角形をかいてみよう。",h:"かどは6つ。まわる角度は 360 ÷ 6 = 60度。<code>range(6)</code> と <code>t.left(60)</code> にしよう。"},
+{t:"変数で大きさを変える",g:"Scratchで作った変数と同じものを、Pythonでも作ってみよう。",
+b:[["var","sizeを50にする",0],["look","sizeと言う",0],["ctrl","4回くりかえす",0],["motion","size歩うごかす",1],["motion","左に90度まわす",1],["ctrl","",0,1]],
+n:"「〇と言う」は print。キャンバスの下に文字が出るよ。",
+c:["import turtle","t = turtle.Turtle()","","size = 50","print(size)","","for i in range(4):","    t.forward(size)","    t.left(90)"],
+e:["<code>size = 50</code> は「sizeという箱に50を入れる」。<code>=</code> は「同じ」ではなく「入れる」だよ。","変数の名前は、英語の小文字で書くのがふつう。","<code>print(size)</code> で、箱の中身を見られるよ。プログラムのようすを調べるときにべんり。"],
+ch:"size を変えて、大きい正方形にしよう。",h:"<code>size = 150</code> にすると、1行変えるだけで全部の辺が長くなるね。これが変数のいいところ。"},
+{t:"色と太さ",g:"ペンの色と太さを変えよう。",
+b:[["pen","ペンの色を赤にする",0],["pen","ペンの太さを5にする",0],["ctrl","3回くりかえす",0],["motion","120歩うごかす",1],["motion","左に120度まわす",1],["ctrl","",0,1]],
+n:"色の名前は英語で書くよ。",
+c:["import turtle","t = turtle.Turtle()","","t.color(\"red\")","t.pensize(5)","","for i in range(3):","    t.forward(120)","    t.left(120)"],
+e:["<code>t.color(\"red\")</code> の <code>\"red\"</code> のように、文字は <code>\"</code> でかこむよ。","使える色の例：<code>\"blue\"</code> <code>\"green\"</code> <code>\"orange\"</code> <code>\"purple\"</code> <code>\"pink\"</code>","<code>t.pensize(5)</code> で線が太くなる。"],
+ch:"青くて太さ10の三角形にしよう。",h:"<code>t.color(\"blue\")</code> と <code>t.pensize(10)</code> に変えよう。"},
+{t:"もし〜なら",g:"Scratchの「もし〜なら／でなければ」は if と else。",
+b:[["ctrl","6回くりかえす",0],["ctrl","もし（iを2でわったあまり）＝0 なら",1],["pen","ペンの色を赤にする",2],["ctrl","でなければ",1],["pen","ペンの色を青にする",2],["ctrl","",1,1],["motion","80歩うごかす",1],["motion","左に60度まわす",1],["ctrl","",0,1]],
+n:"「もし」の中はさらにスペース4つ、合計8つずらすよ。",
+c:["import turtle","t = turtle.Turtle()","t.pensize(4)","","for i in range(6):","    if i % 2 == 0:","        t.color(\"red\")","    else:","        t.color(\"blue\")","    t.forward(80)","    t.left(60)"],
+e:["<code>i % 2</code> は「iを2でわったあまり」。0なら偶数（ぐうすう）だね。","「同じかな？」とくらべるときは <code>==</code>（イコール2つ）。1つだと「入れる」になってしまうよ。","<code>if</code> にも <code>else</code> にも、さいごに <code>:</code> がいるよ。"],
+ch:"赤と青のかわりに、3色を順番に使ってみよう。",h:"<code>i % 3 == 0</code>、<code>elif i % 3 == 1:</code> を使うと3つに分けられるよ。<code>elif</code> は「でなければ、もし」。"},
+{t:"変数をふやして、うずまき",g:"くりかえすたびに変数を大きくすると…？",
+b:[["var","sizeを5にする",0],["ctrl","40回くりかえす",0],["motion","size歩うごかす",1],["motion","左に90度まわす",1],["var","sizeを5ずつかえる",1],["ctrl","",0,1]],
+n:"「5ずつかえる」は、今の値に5をたして、また箱に入れなおすこと。",
+c:["import turtle","t = turtle.Turtle()","t.speed(0)","","size = 5","for i in range(40):","    t.forward(size)","    t.left(90)","    size = size + 5"],
+e:["<code>size = size + 5</code> は「今のsizeに5をたしたものを、sizeに入れなおす」。","<code>t.speed(0)</code> でカメがいちばん速くなるよ。","くりかえしの中で変数が変わるから、毎回ちがう長さになるんだね。"],
+ch:"角度を 90 から 91 に変えてみよう。何が起きるかな？",h:"<code>t.left(91)</code> にすると、少しずつずれて、ねじれたうずまきになるよ。"},
+{t:"自分のブロックを作る",g:"Scratchの「ブロック定義」は、Pythonでは def（関数）。",
+b:[["my","定義 しかく (size)",0],["ctrl","4回くりかえす",1],["motion","size歩うごかす",2],["motion","左に90度まわす",2],["ctrl","",1,1],["my","しかく (50)",0],["my","しかく (100)",0]],
+n:"1回作れば、何回でも、ちがう大きさで使えるよ。",
+c:["import turtle","t = turtle.Turtle()","","def square(size):","    for i in range(4):","        t.forward(size)","        t.left(90)","","square(50)","square(100)","square(150)"],
+e:["<code>def square(size):</code> で「square」という自分の命令を作る。<code>size</code> は使うときにわたす数。","作っただけでは動かない。<code>square(50)</code> と書いてはじめて動くよ。","よく使う形は関数にしておくと、プログラムが短く読みやすくなる。"],
+ch:"三角形をかく関数 triangle を作って、大きさをかえて3つかこう。",h:"中身は <code>for i in range(3):</code>、<code>t.forward(size)</code>、<code>t.left(120)</code>。"},
+{t:"ぜんぶ使って、ほしの花",g:"くりかえし・変数・関数・色を組み合わせよう。",
+b:[["my","定義 ほし (size)",0],["ctrl","5回くりかえす",1],["motion","size歩うごかす",2],["motion","右に144度まわす",2],["ctrl","",1,1],["ctrl","8回くりかえす",0],["my","ほし (100)",1],["motion","右に45度まわす",1],["ctrl","",0,1]],
+n:"ここからは自由研究。数字や色をどんどん変えてみよう。",
+c:["import turtle","t = turtle.Turtle()","t.speed(0)","colors = [\"red\", \"orange\", \"green\", \"blue\"]","","def star(size):","    for i in range(5):","        t.forward(size)","        t.right(144)","","for i in range(8):","    t.color(colors[i % 4])","    star(100)","    t.right(45)"],
+e:["<code>colors = [...]</code> はリスト。Scratchのリストと同じで、いくつもの値をならべて入れられるよ。","<code>colors[0]</code> が1番目（\"red\"）。Pythonは0から数えるよ。","星の角度144度は、360 × 2 ÷ 5 で出てくる数。"],
+ch:"くりかえしの回数と角度を変えて、自分だけの花をデザインしよう。",h:"8回なら45度、12回なら30度（360 ÷ 回数）にすると、ぐるっと1周するよ。"}
+];
+const $=id=>document.getElementById(id);
+let st={done:[],code:{},cur:0};
+try{const s=JSON.parse(localStorage.getItem("pykame")||"null");if(s)st=Object.assign(st,s)}catch(e){}
+const save=()=>{try{localStorage.setItem("pykame",JSON.stringify(st))}catch(e){}};
+const code=$("code"),gut=$("gut"),out=$("out");
+const lines=()=>{const n=code.value.split("\n").length;gut.textContent=Array.from({length:n},(_,i)=>i+1).join("\n")};
+code.addEventListener("scroll",()=>{gut.scrollTop=code.scrollTop});
+code.addEventListener("input",()=>{lines();st.code[st.cur]=code.value;save()});
+code.addEventListener("keydown",ev=>{
+ const s=code.selectionStart,e=code.selectionEnd,v=code.value;
+ if(ev.key==="Tab"){ev.preventDefault();code.setRangeText("    ",s,e,"end");code.dispatchEvent(new Event("input"))}
+ else if(ev.key==="Enter"&&!ev.isComposing){
+  const ls=v.lastIndexOf("\n",s-1)+1,cur=v.slice(ls,s),ind=(cur.match(/^ */)||[""])[0];
+  const add=/:\s*$/.test(cur)?"    ":"";
+  ev.preventDefault();code.setRangeText("\n"+ind+add,s,e,"end");code.dispatchEvent(new Event("input"))}
+});
+const navs=()=>{$("lessons").innerHTML=L.map((l,i)=>`<button data-i="${i}" aria-current="${i===st.cur}" class="${st.done.includes(i)?"done":""}">${i+1}. ${l.t}</button>`).join("")};
+const show=i=>{
+ st.cur=i;save();const l=L[i];
+ $("lnum").textContent="レッスン "+(i+1);$("ltitle").textContent=l.t;$("lgoal").textContent=l.g;
+ $("blocks").innerHTML=l.b.map(([k,t,d,cap])=>`<span class="blk ${k}${cap?" cap":""}" style="margin-left:${d*18}px">${t}</span>`).join("");
+ $("bnote").textContent=l.n;$("exp").innerHTML=l.e.map(x=>`<li>${x}</li>`).join("");
+ $("chal").textContent=l.ch;$("hint").innerHTML=l.h;$("hint").parentElement.open=false;
+ code.value=st.code[i]??l.c.join("\n");lines();
+ $("prev").disabled=i===0;$("next").disabled=i===L.length-1;
+ out.innerHTML="";clearStage();navs();
+};
+const clearStage=()=>{try{if(window.Sk&&Sk.TurtleGraphics&&Sk.TurtleGraphics.reset)Sk.TurtleGraphics.reset()}catch(e){}
+ $("stage").innerHTML='<div class="wait">「▶ うごかす」をおすと、ここにカメがあらわれるよ</div>'};
+$("lessons").addEventListener("click",ev=>{const b=ev.target.closest("button");if(b)show(+b.dataset.i)});
+$("prev").onclick=()=>show(st.cur-1);$("next").onclick=()=>{show(st.cur+1);window.scrollTo({top:0})};
+$("reset").onclick=()=>{delete st.code[st.cur];save();code.value=L[st.cur].c.join("\n");lines()};
+const esc=s=>String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const explain=msg=>{
+ const m=String(msg),ln=(m.match(/on line (\d+)/)||[])[1],at=ln?`${ln}行目で`:"";
+ let tip;
+ if(/IndentationError|indent/i.test(m))tip="字下げ（スペース）がおかしいよ。くりかえしや「もし」の中の行は、スペース4つ右にずらそう。ずらしすぎもダメだよ。";
+ else if(/SyntaxError/.test(m))tip="書き方のまちがいがあるよ。<code>:</code> のつけわすれ、カッコや <code>\"</code> のとじわすれがないか見てみよう。";
+ else if(/NameError/.test(m)){const n=(m.match(/name '([^']+)'/)||[])[1];tip=`<code>${esc(n||"?")}</code> という名前は、まだ作られていないよ。スペルまちがいか、変数を先に作ったかたしかめよう。`}
+ else if(/AttributeError/.test(m))tip="<code>t.</code> のあとの命令の名前がまちがっているかも。表を見てたしかめよう。";
+ else if(/TypeError/.test(m))tip="ちがう種類のものをまぜているよ（数と文字など）。カッコの中の数もたしかめよう。";
+ else if(/stop/.test(m))tip="とめたよ。";
+ else tip="うまく動かなかったよ。";
+ return `<span class="err">${at}${tip}</span>\n<span style="opacity:.6">${esc(m)}</span>`;
+};
+let stopFlag=false,running=false;
+const setRun=r=>{running=r;$("run").disabled=r;$("stop").disabled=!r};
+$("stop").onclick=()=>{stopFlag=true};
+$("run").onclick=()=>{
+ if(!window.Sk){out.innerHTML='<span class="err">Pythonの準備ができていないよ。インターネットにつながっているか見て、ページを読みこみなおしてね。</span>';return}
+ const box=$("stage");clearStage();box.innerHTML="";out.textContent="";
+ const W=Math.max(260,Math.round(box.clientWidth));
+ const tg=Sk.TurtleGraphics||(Sk.TurtleGraphics={});tg.target="stage";tg.width=W;tg.height=W;
+ Sk.configure({output:s=>{out.insertAdjacentText("beforeend",s);out.scrollTop=out.scrollHeight},
+  read:x=>{if(!Sk.builtinFiles||!Sk.builtinFiles.files[x])throw "File not found: "+x;return Sk.builtinFiles.files[x]},
+  __future__:Sk.python3,killableWhile:true,killableFor:true,yieldLimit:100,execLimit:60000});
+ stopFlag=false;setRun(true);
+ Sk.misceval.asyncToPromise(()=>Sk.importMainWithBody("<stdin>",false,code.value,true),{"*":()=>{if(stopFlag)throw new Error("stop")}})
+ .then(()=>{out.insertAdjacentHTML("beforeend",'<span class="okm">できた！</span>');
+  if(!st.done.includes(st.cur)){st.done.push(st.cur);save();navs()}})
+ .catch(err=>{out.insertAdjacentHTML("beforeend",(out.textContent?"\n":"")+explain(err&&err.toString?err.toString():err))})
+ .finally(()=>setRun(false));
+};
+show(Math.min(st.cur||0,L.length-1));
+}
+</script>
+</body>
+</html>
