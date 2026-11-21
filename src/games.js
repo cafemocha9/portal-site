@@ -1,6 +1,7 @@
 import { lazy } from 'react'
 import {
   Atom,
+  Hand,
   Turtle,
   Pointer,
   Salad,
@@ -113,6 +114,7 @@ export const games = [
   { id: 'lucky-mamori', genre: 'tap', title: 'ラッキーまもりがみ', icon: Clover, color: 'bg-emerald-100', iconColor: 'text-emerald-800', type: 'html' },
   { id: 'korokoro', genre: 'action', title: 'コロコロ大玉', icon: CircleDashed, color: 'bg-lime-300', iconColor: 'text-lime-900', type: 'html' },
   { id: 'balloon', genre: 'tap', title: 'ふうせん わり', icon: Balloon, color: 'bg-rose-200', iconColor: 'text-rose-700', type: 'react', component: lazy(() => import('./games/balloon/Balloon.jsx')) },
+  { id: 'kami-sumo', genre: 'tap', title: 'トントン紙ずもう', icon: Hand, color: 'bg-amber-100', iconColor: 'text-amber-800', type: 'html' },
 
   // --- ぼうけん・つくる ---
   { id: 'craftbox', genre: 'adventure', title: 'CraftBox', icon: Pickaxe, color: 'bg-green-300', iconColor: 'text-green-900', type: 'html' },
