@@ -52,6 +52,8 @@ textarea{display:block;width:100%;min-height:290px;resize:vertical;border:0;outl
 .btn:disabled{opacity:.5;cursor:default}
 .stage{position:relative;aspect-ratio:1;border-radius:12px;border:1px solid var(--line);overflow:hidden;
 background:#fff linear-gradient(#e9edf3 1px,transparent 1px) 0 0/20px 20px,#fff linear-gradient(90deg,#e9edf3 1px,transparent 1px) 0 0/20px 20px}
+/* ポータル版の修正：上の指定は色が先頭レイヤーにあり無効になっていたため、方眼紙（白）をダークモードでも表示する */
+.stage{color-scheme:light;background:linear-gradient(#e9edf3 1px,transparent 1px) 0 0/20px 20px,linear-gradient(90deg,#e9edf3 1px,transparent 1px) 0 0/20px 20px,#fff}
 .stage canvas{max-width:100%;max-height:100%}
 .stage .wait{position:absolute;inset:0;display:grid;place-items:center;color:#7a8396;font-size:14px;text-align:center;padding:20px}
 .out{margin:10px 0 0;min-height:64px;max-height:180px;overflow:auto;background:var(--grid);border-radius:10px;padding:10px 12px;font:14px/1.5 "JetBrains Mono",ui-monospace,monospace;white-space:pre-wrap}
