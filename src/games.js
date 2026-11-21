@@ -130,6 +130,7 @@ export const games = [
 
   // --- けいえい ---
   { id: 'supermarket', genre: 'manage', title: 'スーパーマーケット経営記', icon: Store, color: 'bg-orange-100', iconColor: 'text-orange-800', type: 'html' },
+  { id: 'pet-shop', genre: 'manage', title: 'わくわくペットショップ', icon: PawPrint, color: 'bg-orange-100', iconColor: 'text-orange-800', type: 'html' },
 
   // --- パズル ---
   { id: 'white-room', genre: 'puzzle', title: '白い部屋からの脱出', icon: DoorClosed, color: 'bg-slate-100', iconColor: 'text-slate-700', type: 'html' },
