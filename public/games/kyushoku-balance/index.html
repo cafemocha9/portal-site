@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>給食バランス大作戦</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+/* VOICE: 明るい給食の時間。子どもにも分かるけど、遊びごたえはしっかり
+   IDEA: 給食トレーと献立表。教室の5つの班に1週間ぶんの給食を出す
+   PICTURE: 3Dの教室。手前のトレーに選んだ料理が盛られ、30人が食べて体調が変わる
+   COLOUR and TYPE: トマトレッドの帯、からしイエローのトレー、青＝ちょうど。Zen Maru Gothic
+   LAYOUT: 上に3Dステージ、下に献立パネル。900px以上はステージ左・パネル右 */
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#11151d);--panel:light-dark(#f2f4f7,#1a202c);--card:light-dark(#ffffff,#232a38);--ink:light-dark(#1d2433,#eef1f6);--mute:light-dark(#5a6375,#a3acbd);--line:light-dark(#dfe3ea,#353d4e);--red:#e8452c;--yel:#f6c343;--ok:light-dark(#2f6fde,#7aa7ff);--low:light-dark(#c77f00,#f0b43c)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Zen Maru Gothic","Hiragino Maru Gothic ProN",sans-serif;overflow-x:clip}
+header{background:var(--red);color:#fff;padding:12px max(4vw,16px);display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px}
+h1{font-size:clamp(22px,4vw,32px);line-height:1.05;margin:0;font-weight:900;text-wrap:balance}
+.hstat{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.pill{background:rgba(255,255,255,.2);border-radius:99px;padding:3px 12px;font-weight:700;font-size:14px;white-space:nowrap}
+main{display:grid;grid-template-columns:minmax(0,1fr)}
+.stagewrap{position:relative;background:#e9e3d6}
+#stage{height:clamp(280px,50vh,500px);touch-action:pan-y;cursor:grab}
+#stage canvas{display:block;width:100%;height:100%}
+.nogl{padding:40px 20px;color:#5a6375;text-align:center}
+.vbtn{position:absolute;top:10px;right:10px;min-height:44px;padding:0 16px;border-radius:99px;border:0;background:rgba(29,36,51,.8);color:#fff;font-family:inherit;font-weight:700;font-size:14px;cursor:pointer}
+.tip{position:absolute;top:14px;left:12px;font-size:13px;color:#4a4335;background:rgba(255,255,255,.7);border-radius:8px;padding:3px 8px;pointer-events:none}
+.toast{position:absolute;left:10px;right:10px;bottom:10px;background:rgba(29,36,51,.88);color:#fff;border-radius:12px;padding:8px 12px;font-size:14px;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.on{opacity:1}
+.panel{padding:16px max(4vw,16px) 0;background:var(--panel)}
+.hint{margin:0 0 12px;color:var(--mute);font-size:15px}
+.tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.tab{min-height:54px;border:2px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;font-family:inherit;font-weight:700;font-size:15px;cursor:pointer;padding:4px 6px;line-height:1.25}
+.tab .ck{display:block;font-size:12px;color:var(--mute);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tab.done .ck{color:var(--ok)}
+.tab.on{border-color:var(--red);color:var(--red)}
+#pick{margin:14px 0 4px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.card{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;min-height:64px;padding:10px 12px;border:2px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);font-family:inherit;font-size:16px;cursor:pointer}
+.card b{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;font-size:16px;line-height:1.3}
+.card small{color:var(--mute);font-size:13px;line-height:1.4}
+.card.on{border-color:var(--red);box-shadow:inset 0 0 0 2px var(--red)}
+.tag{font-style:normal;font-size:12px;font-weight:700;background:var(--yel);color:#3a2a00;border-radius:6px;padding:0 6px;white-space:nowrap}
+.tag.rep{background:var(--line);color:var(--ink)}
+.dot{width:12px;height:12px;border-radius:50%;flex:none;border:1px solid rgba(0,0,0,.25);display:inline-block}
+.slot{margin-top:16px}
+.sl{margin:0 0 6px;font-weight:700;font-size:15px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:6px 12px;border:2px solid var(--line);border-radius:99px;background:var(--card);color:var(--ink);font-family:inherit;font-size:15px;cursor:pointer}
+.chip.on{background:var(--red);border-color:var(--red);color:#fff}
+h2{font-size:20px;margin:22px 0 8px;line-height:1.2}
+h2 small{font-size:13px;color:var(--mute);font-weight:500;margin-left:6px}
+.bar{display:grid;grid-template-columns:6.3em minmax(0,1fr) 5.4em 4.3em;align-items:center;gap:8px;font-size:14px;padding:3px 0}
+.track{position:relative;height:14px;background:var(--line);border-radius:7px;overflow:hidden}
+.band{position:absolute;top:0;bottom:0;background:light-dark(rgba(47,111,222,.2),rgba(122,167,255,.25))}
+.fill{position:absolute;left:0;top:3px;bottom:3px;border-radius:4px;transition:width .35s}
+.bv{text-align:right;white-space:nowrap;font-weight:700}.bv small{font-weight:500;color:var(--mute);margin-left:2px;font-size:13px}
+.bs{font-size:13px;font-weight:700;white-space:nowrap}
+.ok{color:var(--ok)}.low{color:var(--low)}.high{color:var(--red)}
+.fill.ok{background:var(--ok)}.fill.low{background:var(--low)}.fill.high{background:var(--red)}
+.eatline{margin:10px 0 0;font-size:15px}
+details{margin-top:18px;background:var(--card);border-radius:14px;padding:2px 14px;border:1px solid var(--line)}
+summary{min-height:44px;display:flex;align-items:center;font-weight:700;cursor:pointer}
+details ul{padding-left:1.2em;margin:4px 0 10px;font-size:15px}
+.note{font-size:13px;color:var(--mute)}
+.serve{position:sticky;bottom:0;padding:14px 0 calc(14px + env(safe-area-inset-bottom));background:linear-gradient(transparent,var(--panel) 28%)}
+.go,#go{width:100%;min-height:56px;border:0;border-radius:16px;background:var(--red);color:#fff;font-family:inherit;font-weight:900;font-size:20px;cursor:pointer;box-shadow:0 4px 0 #a92a16}
+#go:disabled{background:var(--line);color:var(--mute);box-shadow:none;cursor:default}
+button:focus-visible{outline:3px solid var(--ok);outline-offset:2px}
+.sheet{position:fixed;left:0;right:0;bottom:0;max-height:54vh;overflow:auto;background:var(--card);color:var(--ink);border-radius:20px 20px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.25);padding:18px max(4vw,16px) calc(18px + env(safe-area-inset-bottom));z-index:10;animation:up .35s ease-out}
+.sheet[hidden]{display:none}
+@keyframes up{from{transform:translateY(40px);opacity:0}}
+.sheet h2{margin-top:0;font-size:26px}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:10px 0}
+.stat{background:var(--panel);border-radius:12px;padding:8px 4px;text-align:center}
+.stat b{display:block;font-size:24px;line-height:1.15}.stat span{font-size:13px;color:var(--mute)}
+.stat small{display:block;font-size:13px;color:var(--mute)}
+.issues{list-style:none;padding:0;margin:10px 0}.issues li{padding:8px 0;border-bottom:1px solid var(--line)}
+.big{font-size:clamp(48px,12vw,72px);font-weight:900;line-height:1;color:var(--red);margin:6px 0}
+.big small{font-size:22px;color:var(--mute)}
+table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0}
+th,td{text-align:left;padding:6px 4px;border-bottom:1px solid var(--line)}td.n{text-align:right;white-space:nowrap}
+@media(min-width:900px){main{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)}.stagewrap{position:sticky;top:0;height:100vh}#stage{height:100%}.sheet{left:auto;top:0;width:min(560px,42vw);max-height:none;border-radius:20px 0 0 20px}}
+@media(max-width:600px){table{font-size:13px}.stack thead{display:none}.stack tr{display:grid;padding-block:10px}.stack td{display:flow-root;border:0;padding:3px 0;padding-inline-start:8em;text-align:start}.stack td::before{content:attr(data-l);float:inline-start;width:7.5em;margin-inline-start:-8em;white-space:normal;color:var(--mute)}.stack td:empty{display:none}.bar{grid-template-columns:5.6em minmax(0,1fr) 5em 4em;gap:6px}}
+@media(prefers-reduced-motion:reduce){.sheet{animation:none}.fill{transition:none}}
+</style>
+<script>new MutationObserver(()=>{for(const c of document.querySelectorAll('.stack td:not([data-l])')){let i=0,p=c;while(p=p.previousElementSibling)i+=p.colSpan;c.dataset.l=c.closest('table').rows[0].cells[i]?.textContent||''}}).observe(document,{childList:true,subtree:true})</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+<header>
+  <h1>給食バランス大作戦</h1>
+  <div class="hstat"><span class="pill" id="hDay">1日目・月曜日</span><span class="pill" id="hOk">元気 30</span><span class="pill" id="hMid">不調 0</span><span class="pill" id="hSick">病気 0</span></div>
+</header>
+<main>
+  <div class="stagewrap">
+    <div id="stage"></div>
+    <span class="tip">ドラッグで回転・子どもをタップ</span>
+    <button class="vbtn" id="vbtn" type="button">教室を見る</button>
+    <div class="toast" id="toast" role="status"></div>
+  </div>
+  <section class="panel">
+    <p class="hint" id="hint"></p>
+    <div class="tabs" id="tabs" role="tablist"></div>
+    <div id="pick"></div>
+    <h2>栄養バランス<small>1人分・食べる量の予想</small></h2>
+    <div id="bars"></div>
+    <p class="eatline" id="eatline"></p>
+    <details>
+      <summary>ルールと目安</summary>
+      <ul>
+        <li>月〜金の5日間、毎日「主食・主菜・副菜（汁物）・飲み物」を選んで30人に出します。</li>
+        <li>主菜と副菜はレシピを選び、決められた枠（肉・魚・豆・卵／野菜／おかし）に具材を入れます。へんなレシピも混ざっています。</li>
+        <li>好きな味ならよく食べ、苦手な味だと残します。残すと栄養も届きません。2日続けて同じレシピだと飽きて残されやすくなります。</li>
+        <li>栄養がかたよると体力が減り、体力45未満で病気になります。バランスがよい日は回復します。</li>
+        <li>子どもごとに、弱い栄養素や食べる量がちがいます（タップで確認）。金曜日の時点で病気でない子が多いほど高得点です。</li>
+        <li>目安：エネルギー560〜780kcal、たんぱく質20〜40g、脂質10〜28g、カルシウム300mg以上、ビタミンC25mg以上、食物繊維5g以上、食塩2.5g以下（和食の献立も組みやすいよう、基準の2g未満より少し広げています）。</li>
+      </ul>
+      <p class="note">数値は学校給食摂取基準（小学校中学年）や食品成分表を参考に、ゲーム用に大まかにした目安です。</p>
+    </details>
+    <div class="serve"><button id="go" type="button" disabled>いただきます！</button></div>
+  </section>
+</main>
+<div class="sheet" id="sheet" role="dialog" aria-live="polite" hidden></div>
+<script>
+{
+const T3=!!window.THREE;
+const $=s=>document.querySelector(s);
+const hex=c=>'#'+c.toString(16).padStart(6,'0');
+const NL=['エネルギー','たんぱく質','脂質','カルシウム','ビタミンC','食物繊維','食塩'];
+const NU=['kcal','g','g','mg','mg','g','g'];
+const LO=[560,20,10,300,25,5,0],HI=[780,40,28,1e9,1e9,1e9,2.5],SC=[1200,50,50,700,120,12,5];
+const LOWM=['エネルギー不足でフラフラ','たんぱく質不足でつかれやすい','脂質不足で力が出ない','カルシウム不足で骨がよわよわ','ビタミンC不足でかぜぎみ','食物繊維不足でおなかがスッキリしない',''];
+const HIGHM=['食べすぎて午後はウトウト','たんぱく質とりすぎでおなかパンパン','あぶらっこくて胃もたれ','','','','塩分とりすぎでのどカラカラ'];
+const I=(n,v,t,c,k,w)=>({n,v,t,c,k,w});
+const STAPLE=[I('ごはん',[252,3.8,.5,5,0,.5,0],0,0xfbfbf6,'rice'),I('麦ごはん',[245,4.5,.7,8,0,1.5,0],-.5,0xeee0bf,'rice'),I('コッペパン',[220,7.5,3.5,25,0,1.8,1],.5,0xd9a05b,'bread'),I('ソフトめん',[260,8,1.5,15,0,1.5,.4],.5,0xf3e3a0,'noodle'),I('あげパン',[330,6.5,14,25,0,1.6,.8],2.5,0xe0a84a,'bread'),I('ケーキまるごと',[420,6,24,40,2,.8,.4],3,0xffc7d9,'cake',1)];
+const DRINK=[I('牛乳',[134,6.6,7.6,220,2,0,.2],0,0xffffff,'milk'),I('ヨーグルト',[80,4,3,130,1,0,.1],1,0xfdf6ec,'cup'),I('オレンジジュース',[84,1.4,.2,18,80,.4,0],1,0xffa53a,'cup'),I('麦茶',[2,0,0,2,0,0,0],0,0xa0662b,'cup'),I('コーラ',[90,0,0,2,0,0,0],2,0x3b1d10,'cup',1)];
+const PRO=[I('鶏もも肉',[95,9,7,3,2,0,.1],1,0xf0c9a0),I('豚肉',[110,10,7.5,2,1,0,.1],1,0xf2b8a8),I('牛肉',[140,8.5,11,2,1,0,.1],1,0xa8574a),I('鮭',[70,11,2,7,1,0,.1],0,0xff8a65),I('さば',[125,10,9,4,0,0,.2],-.5,0x8a9bb0),I('ししゃも',[60,8,3,130,0,0,.6],-.5,0xc9b48a),I('豆腐',[73,7,4.9,93,0,1.1,0],0,0xfaf7ef),I('卵',[76,6.2,5.2,26,0,0,.2],1,0xffd54a),I('ちくわ',[60,6,1,8,0,0,1],0,0xe0a060)];
+const VEG=[I('にんじん',[15,.3,0,11,2,1,0],0,0xff8c1a),I('たまねぎ',[15,.4,0,8,3,.6,0],0,0xf3e9c6),I('キャベツ',[9,.5,0,17,16,.7,0],0,0xb8e08a),I('ほうれん草',[8,.9,.2,20,14,1.1,0],-.5,0x2f8a3a),I('小松菜',[6,.6,0,68,16,.8,0],-.5,0x3d9a45),I('ブロッコリー',[13,1.7,.2,15,48,1.8,0],0,0x3a9a3a),I('ピーマン',[9,.4,.1,4,30,.9,0],-1.5,0x4caf50),I('じゃがいも',[38,.9,0,2,14,.7,0],1,0xe8d39a),I('かぼちゃ',[35,.8,.1,6,17,1.4,0],.5,0xf2a93b),I('ごぼう',[26,.7,0,18,1,2.3,0],-.5,0x8b6b4a),I('わかめ',[6,.5,0,40,1,1,.3],0,0x2e5d3a),I('もやし',[6,.7,0,4,3,.5,0],0,0xf5f0dc)];
+const SWEET=[I('グミ',[80,1.5,0,1,0,0,0],1.5,0xff4fa0),I('マシュマロ',[65,.4,0,1,0,0,0],1,0xf4f4f4),I('ポテトチップス',[110,1,7,4,3,.9,.2],1.5,0xf2c14e),I('チョコレート',[110,1.4,6.8,48,0,.8,0],2,0x5a3520)];
+const OPT={p:PRO,v:VEG,s:SWEET,a:PRO.concat(VEG)};
+const SL={p:'肉・魚・豆・卵',v:'野菜',s:'おかし',a:'なんでも'};
+const RC=(n,v,t,s,c,d,w,k)=>({n,v,t,s,c,d,w,k});
+const MAINS=[RC('カレー',[110,1.5,8,10,0,1,1.3],3,'pvv',0xc77a1e,'みんな大好き。ルーで具を煮込む'),RC('肉じゃが',[45,.8,1,6,0,0,1.2],1.5,'pvv',0xb58a4a,'甘じょっぱい和のおかず'),RC('塩焼き',[5,0,.5,2,0,0,.7],0,'pv',0,'焼くだけ。素材の味で勝負'),RC('唐揚げ',[90,1,8,4,0,.1,.9],3,'pv',0xc9832e,'揚げたては人気ナンバーワン級'),RC('ハンバーグ',[70,1.5,3,10,1,.3,1],3,'pv',0x6b3a22,'こねて焼いてソースをかける'),RC('八宝菜',[45,.8,3,8,1,.3,1.2],1,'pvvv',0xe8dcb0,'具だくさんのとろみ炒め'),RC('麻婆豆腐',[45,1,3,8,0,.2,1.3],1.5,'ppv',0xc0392b,'ピリ辛のひき肉あんかけ'),
+RC('チョコレートカレー',[230,2.5,14,30,0,1.5,.9],-1,'pvs',0x4a2c1a,'隠し味のはずがチョコが主役',1),RC('いちごジャム唐揚げ',[180,1,8,6,4,.4,.6],-2,'ps',0xd6264a,'揚げたてに甘いジャムをどっさり',1),RC('激辛ハバネロ炒め',[40,.5,4,4,10,.3,1.6],-4,'pvv',0xff3d00,'先生も涙目の辛さ',1),RC('しょっぱすぎ佃煮',[30,1,0,10,0,0,3.6],-1,'pv',0x3a2a1a,'ごはんが進む…けど塩辛い',1),RC('ダブル揚げフライ',[240,2,22,8,0,.3,1],3,'pp',0xd9a03a,'衣を二重にした禁断の揚げもの',1)];
+const SIDES=[RC('みそ汁',[25,1.6,.6,12,0,.5,1.2],.5,'va',0xc79a5a,'だしと味噌の定番',0,'soup'),RC('野菜サラダ',[45,.2,4.5,4,1,.2,.4],1,'vvv',0,'ドレッシングであえる',0,'plate'),RC('おひたし',[5,.3,0,2,0,0,.4],-.5,'vv',0,'ゆでて、だししょうゆ',0,'plate'),RC('コーンスープ',[95,2.5,3.5,60,1,.8,.8],2.5,'v',0xf5d76e,'牛乳入りのやさしい甘さ',0,'soup'),RC('きんぴら',[35,.3,2,4,0,0,.7],0,'vv',0,'甘辛く炒める',0,'plate'),RC('中華スープ',[15,.5,.5,4,0,0,1],1,'va',0xe8c27a,'さっぱり鶏がら味',0,'soup'),
+RC('ミルクティーみそ汁',[75,2.2,2.5,70,0,.4,1],-2,'vs',0xc8a27a,'紅茶と牛乳と味噌の出会い',1,'soup'),RC('わたあめサラダ',[60,0,0,0,0,0,.1],.5,'vs',0,'野菜の上にふわふわ綿あめ',1,'plate'),RC('コーラ煮スープ',[90,0,0,2,0,0,.9],-1,'vv',0x3b1d10,'しゅわっと甘い茶色のスープ',1,'soup'),RC('バターまるごとソテー',[150,.1,17,3,0,0,.6],2,'vv',0,'バター1箱ぶんで炒める',1,'plate'),RC('塩だけスープ',[0,0,0,0,0,0,2.4],-3,'v',0xeeeeea,'お湯に塩。以上',1,'soup')];
+const DAYS=['月','火','水','木','金'];
+const NAMES='はると ゆい そうた めい ゆうと こはる れん ひなた みなと さくら あおい ゆな いつき りこ かいと ほのか そら えま たくみ ゆあ こうき あかり しょう みお だいち すず りく ひまり けんた つむぎ'.split(' ');
+const kids=NAMES.map(name=>({name}));
+const roll=()=>kids.forEach(k=>Object.assign(k,{hp:100,w:Math.floor(Math.random()*7),res:.75+Math.random()*.5,app:.86+Math.random()*.26}));
+roll();
+let day=0,tab=0,offers,sel,lastMain=null,lastSide=null,phase='plan',eatT=0,curRate=1;
+const hist=[];
+let foodG=[],buildTray=()=>{},renderBoard=()=>{},updKids=()=>{},setView=()=>{},toggleView=()=>{};
+const lcg=s=>()=>(s=s*16807%2147483647)/2147483647;
+
+if(T3){
+  const st=$('#stage');
+  const R=new THREE.WebGLRenderer({antialias:true});R.setPixelRatio(Math.min(2,devicePixelRatio||1));R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;st.appendChild(R.domElement);
+  const S=new THREE.Scene();S.background=new THREE.Color(0xe9e3d6);S.fog=new THREE.Fog(0xe9e3d6,24,42);
+  const C=new THREE.PerspectiveCamera(42,1,.1,80);
+  S.add(new THREE.HemisphereLight(0xffffff,0xa08060,.72));
+  const sun=new THREE.DirectionalLight(0xfff4e0,.8);sun.position.set(-6,12,8);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);Object.assign(sun.shadow.camera,{left:-12,right:12,top:12,bottom:-12,near:1,far:40});S.add(sun);
+  const MC={};const M=c=>MC[c]||(MC[c]=new THREE.MeshLambertMaterial({color:c}));
+  const mesh=(g,m,x=0,y=0,z=0)=>{const o=new THREE.Mesh(g,m);o.position.set(x,y,z);o.castShadow=o.receiveShadow=true;return o};
+  const bx=(w,h,d,c,x,y,z)=>mesh(new THREE.BoxGeometry(w,h,d),M(c),x,y,z);
+  const cy=(a,b,h,c,x,y,z,seg=20)=>mesh(new THREE.CylinderGeometry(a,b,h,seg),M(c),x,y,z);
+  const sp=(r,c,x,y,z)=>mesh(new THREE.SphereGeometry(r,14,10),M(c),x,y,z);
+  const fl=mesh(new THREE.PlaneGeometry(26,24),M(0xc9a274));fl.rotation.x=-Math.PI/2;S.add(fl);
+  for(let i=-6;i<=6;i++)S.add(bx(.03,.005,24,0xb48c60,i*2,.003,0));
+  S.add(bx(26,7,.2,0xf3efe6,0,3.5,-9.1),bx(.2,7,24,0xeef0ea,-12,3.5,0),bx(7.4,2.9,.12,0x8a6a48,0,3.2,-8.95));
+  for(let i=0;i<3;i++)S.add(bx(.08,2.2,2.8,0xbfe3ff,-11.85,3.4,-6+i*4));
+  const ck=cy(.45,.45,.08,0xffffff,5.6,5.4,-8.95,24);ck.rotation.x=Math.PI/2;S.add(ck,bx(.05,.32,.02,0x222222,5.6,5.52,-8.89),bx(.24,.05,.02,0x222222,5.7,5.4,-8.89));
+  const bc=document.createElement('canvas');bc.width=1024;bc.height=384;const bctx=bc.getContext('2d');const btex=new THREE.CanvasTexture(bc);
+  const board=new THREE.Mesh(new THREE.PlaneGeometry(7,2.6),new THREE.MeshBasicMaterial({map:btex}));board.position.set(0,3.2,-8.88);S.add(board);
+  const SH=[0x5b8def,0xf4a259,0xe86a92,0xf6c343,0x4db6ac,0xef5350,0x9575cd,0xffffff],HR=[0x2b1d14,0x3b2a1e,0x1a1a1a,0x5a3a22];
+  const pickable=[];let ki=0;
+  [[-5.2,-5],[0,-5],[5.2,-5],[-2.6,-1],[2.6,-1]].forEach(([gx,gz])=>{for(let c=-1;c<=1;c++)for(const s of[-1,1]){
+    const dx=gx+c*.95,dz=gz+s*.33,k=kids[ki];
+    S.add(bx(.9,.06,.64,0xd8b88a,dx,.72,dz),bx(.8,.66,.05,0x9a9a9a,dx,.36,dz-s*.26));
+    const g=new THREE.Group();g.position.set(dx,0,gz+s*.95);g.rotation.y=s>0?Math.PI:0;
+    g.add(bx(.46,.05,.46,0x8a6a48,0,.44,0),bx(.46,.5,.05,0x8a6a48,0,.7,-.24));
+    const tor=new THREE.Group();tor.position.y=.47;g.add(tor);
+    const body=cy(.2,.27,.55,SH[ki%8],0,.28,0,12);
+    const head=mesh(new THREE.SphereGeometry(.25,16,12),new THREE.MeshLambertMaterial({color:0xf6d2b3}),0,.78,0);
+    const hair=mesh(new THREE.SphereGeometry(.265,16,10,0,Math.PI*2,0,Math.PI*.55),M(HR[ki%4]),0,.8,-.02);
+    const drop=sp(.06,0x6ec6ff,.25,1,.1);drop.visible=false;
+    tor.add(body,head,hair,sp(.035,0x222222,-.09,.8,.23),sp(.035,0x222222,.09,.8,.23),drop);
+    g.add(bx(.5,.03,.36,0xf6d77a,0,.765,.5),cy(.08,.06,.07,0xffffff,-.1,.8,.5,10),cy(.05,.05,.12,0xffffff,.13,.84,.56,8));
+    S.add(g);[body,head,hair].forEach(m=>{m.userData.k=ki;pickable.push(m)});
+    Object.assign(k,{tor,head,drop});ki++}});
+  S.add(bx(3.4,.84,2.3,0xb7c4cf,0,.42,6));
+  const tray=new THREE.Group();tray.position.set(0,.84,6);S.add(tray);
+  tray.add(bx(2.7,.06,1.9,0xf6d77a,0,.03,0));
+  const dish=new THREE.Group();dish.position.y=.06;tray.add(dish);
+  const bowl=(x,z,r)=>{const g=new THREE.Group();g.position.set(x,0,z);g.add(mesh(new THREE.CylinderGeometry(r,r*.65,.26,28,1,true),new THREE.MeshLambertMaterial({color:0xf2f2f2,side:THREE.DoubleSide}),0,.13,0),cy(r*.65,r*.65,.02,0xf2f2f2,0,.01,0,24));dish.add(g);return g};
+  const plate=(x,z,r)=>{const g=new THREE.Group();g.position.set(x,0,z);g.add(cy(r,r*.85,.05,0xfafafa,0,.025,0,32));dish.add(g);return g};
+  const content=p=>{const g=new THREE.Group();p.add(g);foodG.push(g);return g};
+  const pieces=(g,items,rad,y,seed)=>{const rnd=lcg(seed);items.forEach(it=>{const isP=PRO.includes(it),isS=SWEET.includes(it);for(let n=0;n<4;n++){const a=rnd()*6.283,d=Math.sqrt(rnd())*rad;const geo=isP?new THREE.DodecahedronGeometry(.11):isS?new THREE.SphereGeometry(.075,10,8):new THREE.BoxGeometry(.11,.07,.11);const m=mesh(geo,M(it.c),Math.cos(a)*d,y+rnd()*.05,Math.sin(a)*d);if(isP)m.scale.y=.6;m.rotation.y=rnd()*3;g.add(m)}})};
+  buildTray=()=>{
+    dish.traverse(o=>{if(o.geometry)o.geometry.dispose()});dish.clear();foodG=[];
+    const sa=sel.staple,k=sa?sa.k:'rice';
+    if(k==='rice'||k==='noodle'){const b=bowl(-.68,-.4,.42);if(sa){const g=content(b);if(k==='rice'){const r=sp(.36,sa.c,0,.2,0);r.scale.y=.45;g.add(r)}else for(let i=0;i<6;i++){const t=mesh(new THREE.TorusGeometry(.13,.035,6,18),M(sa.c),(i%3-1)*.1,.16+i*.013,i>2?.07:-.07);t.rotation.x=Math.PI/2;g.add(t)}}}
+    else{const g=content(plate(-.68,-.4,.46));if(k==='bread'){const b=sp(.3,sa.c,0,.14,0);b.scale.set(1.35,.55,.75);g.add(b)}else{g.add(cy(.3,.3,.3,sa.c,0,.2,0,24));for(let i=0;i<3;i++)g.add(sp(.06,0xe53935,Math.cos(i*2.1)*.17,.38,Math.sin(i*2.1)*.17))}}
+    const mp=plate(.6,-.38,.62);
+    if(sel.main){const g=content(mp);if(sel.main.c)g.add(cy(.5,.5,.03,sel.main.c,0,.06,0,28));pieces(g,sel.mi.filter(Boolean),.36,.12,7)}
+    const sd=sel.side;
+    if(!sd||sd.k==='soup'){const b=bowl(-.62,.45,.38);if(sd){const g=content(b);g.add(cy(.33,.33,.02,sd.c,0,.2,0,24));pieces(g,sel.si.filter(Boolean),.2,.21,13)}}
+    else pieces(content(plate(-.62,.45,.48)),sel.si.filter(Boolean),.3,.1,13);
+    const dr=sel.drink;
+    if(dr){const g=new THREE.Group();g.position.set(.72,0,.48);dish.add(g);const fg=content(g);
+      if(dr.k==='milk')fg.add(bx(.26,.42,.26,0xffffff,0,.21,0),bx(.27,.08,.27,0x3b7ddd,0,.36,0));
+      else{g.add(mesh(new THREE.CylinderGeometry(.16,.13,.38,20,1,true),new THREE.MeshLambertMaterial({color:0xdff3ff,transparent:true,opacity:.35,side:THREE.DoubleSide}),0,.19,0));fg.add(cy(.14,.12,.3,dr.c,0,.16,0))}}
+  };
+  renderBoard=()=>{const x=bctx,f='"Zen Maru Gothic",sans-serif';x.fillStyle='#2e4a3e';x.fillRect(0,0,1024,384);x.fillStyle='#f4f1e8';x.font='700 56px '+f;x.textAlign='left';x.fillText(DAYS[day]+'曜日のこんだて',48,88);
+    x.font='500 44px '+f;[sel.staple,sel.main,sel.side,sel.drink].forEach((o,i)=>x.fillText('・'+(o?o.n:'？？？'),56+(i%2)*480,196+(i>>1)*86));
+    x.fillStyle='#f6c343';x.font='700 40px '+f;x.textAlign='right';x.fillText((day+1)+'/5日目',980,88);btex.needsUpdate=true};
+  updKids=()=>kids.forEach(k=>{const s=k.hp<45?2:k.hp<70?1:0;k.head.material.color.setHex([0xf6d2b3,0xeedc9a,0xb5d6a0][s]);k.tor.rotation.x=s===2?.5:0;k.drop.visible=s===2});
+  const VW=[{t:new THREE.Vector3(0,.7,3),r:7.2,h:3.6},{t:new THREE.Vector3(0,1.2,-3.5),r:13,h:8}];
+  let vi=0,th=0;const cur={t:VW[0].t.clone(),r:7.2,h:3.6};
+  setView=v=>{vi=v;$('#vbtn').textContent=v?'トレーを見る':'教室を見る'};
+  toggleView=()=>setView(vi?0:1);
+  const ro=new ResizeObserver(()=>{const w=st.clientWidth,h=st.clientHeight;if(!w||!h)return;R.setSize(w,h,false);C.aspect=w/h;C.fov=w/h<.9?52:42;C.updateProjectionMatrix()});ro.observe(st);
+  const ray=new THREE.Raycaster(),v2=new THREE.Vector2();let dn=null,mv=0,lt=0;
+  st.addEventListener('pointerdown',e=>{dn=e.clientX;mv=0});
+  st.addEventListener('pointermove',e=>{if(dn===null)return;const d=e.clientX-dn;dn=e.clientX;mv+=Math.abs(d);th=Math.max(-.8,Math.min(.8,th-d*.006))});
+  st.addEventListener('pointercancel',()=>{dn=null});
+  st.addEventListener('pointerup',e=>{const tap=dn!==null&&mv<6;dn=null;if(!tap)return;const r=st.getBoundingClientRect();v2.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(v2,C);const h=ray.intersectObjects(pickable)[0];if(h)showKid(kids[h.object.userData.k])});
+  const loop=t=>{requestAnimationFrame(loop);const dt=Math.min(.05,(t-lt)/1000||0);lt=t;const V=VW[vi];
+    cur.t.lerp(V.t,.06);cur.r+=(V.r-cur.r)*.06;cur.h+=(V.h-cur.h)*.06;
+    C.position.set(cur.t.x+Math.sin(th)*cur.r,cur.t.y+cur.h,cur.t.z+Math.cos(th)*cur.r);C.lookAt(cur.t);
+    if(phase==='eat'){eatT+=dt;const p=Math.min(1,eatT/2.8),s=Math.max(.06,1-p*curRate);foodG.forEach(g=>g.scale.setScalar(s));kids.forEach((k,i)=>{k.tor.rotation.x=.2*Math.max(0,Math.sin(eatT*9+i*1.7))});if(p>=1){phase='report';updKids();showReport()}}
+    else kids.forEach((k,i)=>{if(k.drop.visible)k.drop.position.y=1+Math.sin(t/300+i)*.03});
+    R.render(S,C)};
+  requestAnimationFrame(loop);
+}else{$('#stage').innerHTML='<p class="nogl">3D表示を読み込めませんでした。ゲームはこのまま遊べます。</p>';$('#vbtn').hidden=true}
+
+const shuf=a=>a.map(x=>[Math.random(),x]).sort((p,q)=>p[0]-q[0]).map(x=>x[1]);
+const deal=L=>{const wn=Math.random()<.35?2:1;return shuf(shuf(L.filter(x=>!x.w)).slice(0,4-wn).concat(shuf(L.filter(x=>x.w)).slice(0,wn)))};
+const tl=t=>t>=2?'大人気':t>=.5?'人気':t>-1?'ふつう':t>-2.5?'にがて':'残されがち';
+const counts=()=>({g:kids.filter(k=>k.hp>=70).length,m:kids.filter(k=>k.hp>=45&&k.hp<70).length,s:kids.filter(k=>k.hp<45).length});
+const fmt=(x,i)=>i===0||i===3||i===4?Math.round(x):x.toFixed(1);
+function pen(i,x){let p=0;
+  if(i===0)p=x<560?(560-x)/12:x>780?(x-780)/15:0;
+  else if(i===1)p=x<20?(20-x)*1.2:x>40?(x-40)*.5:0;
+  else if(i===2)p=x<10?(10-x)*.8:x>28?(x-28)*.8:0;
+  else if(i===3)p=x<300?(300-x)/12:0;
+  else if(i===4)p=x<25?(25-x)*.5:0;
+  else if(i===5)p=x<5?(5-x)*3:0;
+  else p=x>2.5?(x-2.5)*5:0;
+  return Math.min(14,p)}
+function calc(){
+  const ps=[];if(sel.staple)ps.push(sel.staple);if(sel.main)ps.push(sel.main,...sel.mi.filter(Boolean));if(sel.side)ps.push(sel.side,...sel.si.filter(Boolean));if(sel.drink)ps.push(sel.drink);
+  const tot=NL.map(()=>0);ps.forEach(p=>p.v.forEach((x,i)=>{tot[i]+=x}));
+  const ing=sel.mi.concat(sel.si).filter(Boolean),mt=ing.length?ing.reduce((s,x)=>s+x.t,0)/ing.length:0;
+  let T=.5*(sel.main?sel.main.t:0)+.3*(sel.side?sel.side.t:0)+.2*(sel.staple?sel.staple.t:0)+.15*(sel.drink?sel.drink.t:0)+.3*mt;
+  const rep=[];if(sel.main&&sel.main===lastMain){T-=1.5;rep.push(sel.main.n)}if(sel.side&&sel.side===lastSide){T-=1;rep.push(sel.side.n)}
+  const rate=Math.max(.35,Math.min(1,.9+.06*T));
+  return{tot,rate,rep,complete:[0,1,2,3].every(done)}}
+function done(i){return i===0?!!sel.staple:i===1?!!sel.main&&sel.mi.every(Boolean):i===2?!!sel.side&&sel.si.every(Boolean):!!sel.drink}
+const TABN=['主食','主菜','副菜・汁物','飲み物'];
+function renderTabs(){const o=[sel.staple,sel.main,sel.side,sel.drink];
+  $('#tabs').innerHTML=TABN.map((n,i)=>`<button class="tab${i===tab?' on':''}${done(i)?' done':''}" data-t="${i}" role="tab" aria-selected="${i===tab}">${n}<span class="ck">${done(i)?'✓ '+o[i].n:o[i]?'具材をえらぶ':'未選択'}</span></button>`).join('')}
+const cardI=(o,i,a,on)=>`<button class="card${on?' on':''}" data-a="${a}" data-i="${i}"><b><span class="dot" style="background:${hex(o.c)}"></span>${o.n}${o.w?'<em class="tag">へんなメニュー</em>':''}</b><small>${o.v[0]}kcal ・ ${tl(o.t)}</small></button>`;
+const cardR=(o,i,a,on,last)=>`<button class="card${on?' on':''}" data-a="${a}" data-i="${i}"><b>${o.n}${o.w?'<em class="tag">へんなレシピ</em>':''}${o===last?'<em class="tag rep">きのうも出た</em>':''}</b><small>${o.d}</small><small>具材：${[...o.s].map(x=>SL[x]).join('＋')} ・ ${tl(o.t)}</small></button>`;
+const slots=(rec,arr,a)=>[...rec.s].map((ty,j)=>`<div class="slot"><p class="sl">具材${j+1}：${SL[ty]}${arr[j]?` → <span class="ok">${arr[j].n}</span>`:''}</p><div class="chips">${OPT[ty].map((x,k)=>`<button class="chip${arr[j]===x?' on':''}" data-a="${a}" data-s="${j}" data-i="${k}"><span class="dot" style="background:${hex(x.c)}"></span>${x.n}</button>`).join('')}</div></div>`).join('');
+function renderPick(){let h='';
+  if(tab===0)h=`<div class="grid">${STAPLE.map((o,i)=>cardI(o,i,'staple',sel.staple===o)).join('')}</div>`;
+  else if(tab===3)h=`<div class="grid">${DRINK.map((o,i)=>cardI(o,i,'drink',sel.drink===o)).join('')}</div>`;
+  else if(tab===1)h=`<div class="grid">${offers.main.map((o,i)=>cardR(o,i,'main',sel.main===o,lastMain)).join('')}</div>`+(sel.main?slots(sel.main,sel.mi,'mi'):'');
+  else h=`<div class="grid">${offers.side.map((o,i)=>cardR(o,i,'side',sel.side===o,lastSide)).join('')}</div>`+(sel.side?slots(sel.side,sel.si,'si'):'');
+  $('#pick').innerHTML=h}
+function renderBars(){const c=calc(),v=c.tot.map(x=>x*c.rate);
+  $('#bars').innerHTML=v.map((x,i)=>{const s=x<LO[i]?'low':x>HI[i]?'high':'ok',a=LO[i]/SC[i]*100,b=Math.min(SC[i],HI[i])/SC[i]*100;
+    return `<div class="bar"><span>${NL[i]}</span><div class="track"><i class="band" style="left:${a}%;width:${b-a}%"></i><b class="fill ${s}" style="width:${Math.min(100,x/SC[i]*100)}%"></b></div><span class="bv">${fmt(x,i)}<small>${NU[i]}</small></span><span class="bs ${s}">${s==='ok'?'ちょうど':s==='low'?'たりない':'多すぎ'}</span></div>`}).join('');
+  const any=sel.staple||sel.main||sel.side||sel.drink,r=c.rate;
+  $('#eatline').innerHTML=any?`みんなの食べっぷり予想 <b>${Math.round(r*100)}%</b>（${r>=.97?'ぺろりと完食':r>=.88?'よく食べる':r>=.78?'少し残る':'たくさん残る'}）${c.rep.length?`<br><span class="low">${c.rep.join('・')}はきのうと同じで飽きられそう</span>`:''}`:'';
+  const go=$('#go'),rem=[0,1,2,3].filter(i=>!done(i)).length;go.disabled=!c.complete||phase!=='plan';go.textContent=c.complete?'いただきます！':`あと${rem}品えらぼう`}
+function renderHead(){const n=counts();$('#hDay').textContent=`${day+1}日目・${DAYS[day]}曜日`;$('#hOk').textContent='元気 '+n.g;$('#hMid').textContent='不調 '+n.m;$('#hSick').textContent='病気 '+n.s}
+function renderAll(){renderHead();renderTabs();renderPick();renderBars();buildTray();renderBoard()}
+function newDay(){offers={main:deal(MAINS),side:deal(SIDES)};sel={staple:null,main:null,mi:[],side:null,si:[],drink:null};tab=0;phase='plan';setView(0);
+  $('#hint').textContent=day===0?'主食・主菜・副菜・飲み物を選んで、30人の給食を作ろう。主菜と副菜はレシピを決めてから具材を選びます。':`${DAYS[day]}曜日。きのうの結果を見て献立を調整しよう。体調の悪い子は顔色が変わっています。`;
+  renderAll()}
+function eat(){const c=calc();if(!c.complete||phase!=='plan')return;
+  const before=counts(),kp=NL.map(()=>0);
+  kids.forEach(k=>{const r=Math.max(.3,Math.min(1.05,c.rate*k.app+(Math.random()-.5)*.12));let p=0;c.tot.forEach((x,i)=>{const q=pen(i,x*r);if(q>3)kp[i]++;p+=q*(i===k.w?1.5:1)});k.hp=Math.max(0,Math.min(100,k.hp-p*k.res+6))});
+  hist.push({day,staple:sel.staple.n,main:sel.main.n,side:sel.side.n,drink:sel.drink.n,rate:c.rate,avg:c.tot.map(x=>x*c.rate),kp,before,after:counts()});
+  lastMain=sel.main;lastSide=sel.side;curRate=c.rate;eatT=0;phase='eat';setView(1);$('#go').disabled=true;
+  if(innerWidth<900)scrollTo({top:0,behavior:'smooth'});
+  if(!T3){phase='report';showReport()}}
+function showReport(){const r=hist[hist.length-1],b=r.before,a=r.after,d=(x,y)=>x===y?'':`<small>${y>x?'+':''}${y-x}</small>`;
+  const iss=r.kp.map((n,i)=>({n,i})).filter(x=>x.n>0).sort((p,q)=>q.n-p.n).map(({n,i})=>{const hi=r.avg[i]>HI[i]&&HIGHM[i];return `<li><b class="${hi?'high':'low'}">${NL[i]}${hi?'が多すぎ':'がたりない'}</b>：${hi?HIGHM[i]:LOWM[i]}（${n}人）</li>`});
+  const rm=r.rate<.75?'食缶に山盛りの残り…。おいしくないと栄養も届きません。':r.rate<.88?'少し残した子がいました。':'ほとんどの子が完食！';
+  renderHead();
+  $('#sheet').innerHTML=`<h2>${DAYS[r.day]}曜日の結果</h2><p>${r.staple}・${r.main}・${r.side}・${r.drink}</p>
+  <div class="stats"><div class="stat"><b>${Math.round(r.rate*100)}%</b><span>食べた量</span></div><div class="stat"><b class="ok">${a.g}</b><span>元気</span>${d(b.g,a.g)}</div><div class="stat"><b class="low">${a.m}</b><span>不調</span>${d(b.m,a.m)}</div><div class="stat"><b class="high">${a.s}</b><span>病気</span>${d(b.s,a.s)}</div></div>
+  <p>${rm}</p>${iss.length?`<ul class="issues">${iss.join('')}</ul>`:'<p class="ok"><b>栄養バランスばっちり！みんな体力が回復しました。</b></p>'}
+  <button class="go" id="next" type="button">${r.day<4?'次の日へ':'1週間の結果を見る'}</button>`;
+  $('#sheet').hidden=false}
+const RANKS=[[30,'伝説の栄養教諭','30人全員が5日間元気に過ごしました！'],[26,'給食マスター','ほとんどの子が元気。満点まであと一歩'],[20,'なかなかの献立','元気な子が多数派。かたよりを見直そう'],[12,'保健室が満員','栄養のかたよりが続いたようです'],[0,'学級閉鎖…','へんなレシピを出しすぎたかも？']];
+function showFinal(){const ok=kids.filter(k=>k.hp>=45).length,rk=RANKS.find(x=>ok>=x[0]);let best=ok;try{best=Math.max(ok,+localStorage.getItem('kyushoku-best')||0);localStorage.setItem('kyushoku-best',best)}catch(e){}
+  const tk=NL.map((_,i)=>hist.reduce((s,h)=>s+h.kp[i],0)),w=tk.indexOf(Math.max(...tk));
+  $('#sheet').innerHTML=`<h2>1週間の結果</h2><p class="big">${ok}<small> / 30人が病気知らず</small></p><p><b>${rk[1]}</b>：${rk[2]}</p>${tk[w]?`<p>いちばん多かった不調：${NL[w]}のかたより（のべ${tk[w]}人）</p>`:''}
+  <table class="stack"><thead><tr><th>曜日</th><th>主菜</th><th>副菜・汁物</th><th>食べた量</th><th>病気</th></tr></thead><tbody>${hist.map(h=>`<tr><td>${DAYS[h.day]}</td><td>${h.main}</td><td>${h.side}</td><td class="n">${Math.round(h.rate*100)}%</td><td class="n">${h.after.s}人</td></tr>`).join('')}</tbody></table>
+  <p class="note">ベスト記録：${best}人</p><button class="go" id="again" type="button">もう一度あそぶ</button>`;$('#sheet').hidden=false}
+let tt;function showKid(k){const el=$('#toast'),s=k.hp<45?'病気':k.hp<70?'ちょっと不調':'元気';el.textContent=`${k.name}さん（${s}）体力${Math.round(k.hp)} ・ ${NL[k.w]}のかたよりに弱い ・ ${k.app<.95?'少食':k.app>1.04?'よく食べる':'ふつうの量'}`;el.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>el.classList.remove('on'),3500)}
+
+$('#tabs').addEventListener('click',e=>{const b=e.target.closest('[data-t]');if(b){tab=+b.dataset.t;renderAll()}});
+$('#pick').addEventListener('click',e=>{const b=e.target.closest('button[data-a]');if(!b||phase!=='plan')return;const a=b.dataset.a,i=+b.dataset.i,s=+b.dataset.s;
+  if(a==='staple'){sel.staple=STAPLE[i];tab=1}
+  else if(a==='drink')sel.drink=DRINK[i];
+  else if(a==='main'){const o=offers.main[i];if(sel.main!==o){sel.main=o;sel.mi=[...o.s].map(()=>null)}}
+  else if(a==='side'){const o=offers.side[i];if(sel.side!==o){sel.side=o;sel.si=[...o.s].map(()=>null)}}
+  else{const arr=a==='mi'?sel.mi:sel.si,rec=a==='mi'?sel.main:sel.side,was=arr.every(Boolean);arr[s]=OPT[rec.s[s]][i];if(!was&&arr.every(Boolean)){tab=Math.min(3,tab+1);$('#tabs').scrollIntoView({block:'nearest',behavior:'smooth'})}}
+  renderAll()});
+$('#go').addEventListener('click',eat);
+$('#vbtn').addEventListener('click',()=>toggleView());
+$('#sheet').addEventListener('click',e=>{const id=e.target.id;
+  if(id==='next'){$('#sheet').hidden=true;if(day<4){day++;newDay()}else showFinal()}
+  if(id==='again'){$('#sheet').hidden=true;roll();hist.length=0;day=0;lastMain=lastSide=null;updKids();newDay();scrollTo({top:0,behavior:'smooth'})}});
+newDay();
+if(document.fonts)document.fonts.ready.then(()=>renderBoard());
+}
+</script>
+</body>
+</html>

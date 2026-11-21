@@ -1,6 +1,7 @@
 import { lazy } from 'react'
 import {
   Atom,
+  Salad,
   Clover,
   Balloon,
   Bird,
@@ -137,6 +138,7 @@ export const games = [
   { id: 'todofuken', genre: 'learn', title: '都道府県クイズ', icon: MapPinned, color: 'bg-teal-200', iconColor: 'text-teal-900', type: 'html' },
   { id: 'flag-quiz', genre: 'learn', title: '国旗クイズ', icon: Earth, color: 'bg-blue-200', iconColor: 'text-blue-900', type: 'html' },
   { id: 'chess-dojo', genre: 'learn', title: 'チェス作戦道場', icon: ChessKnight, color: 'bg-stone-300', iconColor: 'text-stone-800', type: 'html' },
+  { id: 'kyushoku-balance', genre: 'learn', title: '給食バランス大作戦', icon: Salad, color: 'bg-green-100', iconColor: 'text-green-800', type: 'html' },
   { id: 'chess', genre: 'board', title: 'チェス', icon: Crown, color: 'bg-yellow-200', iconColor: 'text-yellow-900', type: 'react', component: lazy(() => import('./games/chess/Game.jsx')) },
   { id: 'chess2', genre: 'board', title: 'チェス2', icon: Crown, color: 'bg-amber-200', iconColor: 'text-amber-900', type: 'react', component: lazy(() => import('./games/chess2/Game.jsx')) },
   { id: 'shinkei', genre: 'board', title: '神経衰弱', icon: Spade, color: 'bg-green-200', iconColor: 'text-green-900', type: 'html' },
