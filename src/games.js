@@ -1,6 +1,7 @@
 import { lazy } from 'react'
 import {
   Atom,
+  Pointer,
   Salad,
   Clover,
   Balloon,
@@ -66,7 +67,9 @@ import {
  */
 export const genres = [
   { id: 'race', label: 'レース', icon: Trophy },
-  { id: 'action', label: 'アクション', icon: Zap },
+  { id: 'action', label: 'とぶ・はしる', icon: Footprints },
+  { id: 'dodge', label: 'よける・たたかう', icon: Swords },
+  { id: 'tap', label: 'タップ', icon: Pointer },
   { id: 'adventure', label: 'ぼうけん・つくる', icon: Compass },
   { id: 'strategy', label: 'さくせん', icon: Shield },
   { id: 'manage', label: 'けいえい', icon: Store },
@@ -92,23 +95,23 @@ export const games = [
   { id: 'mame-kart', genre: 'race', title: 'まめカートGP', icon: CarFront, color: 'bg-orange-300', iconColor: 'text-orange-800', type: 'html' },
   { id: 'rush-kart', genre: 'race', title: 'ラッシュカート', icon: Flag, color: 'bg-red-300', iconColor: 'text-red-800', type: 'html' },
 
-  // --- アクション ---
+  // --- とぶ・はしる / よける・たたかう / タップ ---
   { id: 'teppen-pickel', genre: 'action', title: 'てっぺんピッケル', icon: MountainSnow, color: 'bg-cyan-100', iconColor: 'text-cyan-900', type: 'html' },
   { id: 'sumimaru', genre: 'action', title: 'すみまる絵巻', icon: Scroll, color: 'bg-stone-200', iconColor: 'text-stone-900', type: 'html' },
   { id: 'nigekiri-city', genre: 'action', title: 'にげきれシティ', icon: Siren, color: 'bg-violet-200', iconColor: 'text-violet-900', type: 'html' },
   { id: 'neon-hop', genre: 'action', title: 'NEON HOP', icon: Music, color: 'bg-pink-300', iconColor: 'text-pink-900', type: 'html' },
-  { id: 'neon-survivor', genre: 'action', title: 'NEON SURVIVOR', icon: Zap, color: 'bg-lime-200', iconColor: 'text-lime-900', type: 'html' },
-  { id: 'danmaku', genre: 'action', title: '幻想弾幕', icon: Crosshair, color: 'bg-purple-300', iconColor: 'text-purple-900', type: 'html' },
-  { id: 'reverse-breakout', genre: 'action', title: '逆ブロック崩し', icon: BrickWall, color: 'bg-fuchsia-300', iconColor: 'text-fuchsia-900', type: 'html' },
+  { id: 'neon-survivor', genre: 'dodge', title: 'NEON SURVIVOR', icon: Zap, color: 'bg-lime-200', iconColor: 'text-lime-900', type: 'html' },
+  { id: 'danmaku', genre: 'dodge', title: '幻想弾幕', icon: Crosshair, color: 'bg-purple-300', iconColor: 'text-purple-900', type: 'html' },
+  { id: 'reverse-breakout', genre: 'dodge', title: '逆ブロック崩し', icon: BrickWall, color: 'bg-fuchsia-300', iconColor: 'text-fuchsia-900', type: 'html' },
   { id: 'kido', genre: 'action', title: '軌道 -KIDO-', icon: Rocket, color: 'bg-cyan-300', iconColor: 'text-cyan-900', type: 'html' },
-  { id: 'zanzo', genre: 'action', title: '残像 -ZANZO-', icon: Ghost, color: 'bg-slate-300', iconColor: 'text-slate-800', type: 'html' },
-  { id: 'singularity', genre: 'action', title: '特異点', icon: Atom, color: 'bg-blue-300', iconColor: 'text-blue-900', type: 'html' },
-  { id: 'houkago-dodge', genre: 'action', title: '放課後ドッジ', icon: Volleyball, color: 'bg-orange-300', iconColor: 'text-orange-900', type: 'html' },
+  { id: 'zanzo', genre: 'dodge', title: '残像 -ZANZO-', icon: Ghost, color: 'bg-slate-300', iconColor: 'text-slate-800', type: 'html' },
+  { id: 'singularity', genre: 'dodge', title: '特異点', icon: Atom, color: 'bg-blue-300', iconColor: 'text-blue-900', type: 'html' },
+  { id: 'houkago-dodge', genre: 'dodge', title: '放課後ドッジ', icon: Volleyball, color: 'bg-orange-300', iconColor: 'text-orange-900', type: 'html' },
   { id: 'soranobori', genre: 'action', title: 'そらのぼり', icon: CloudSun, color: 'bg-sky-200', iconColor: 'text-sky-800', type: 'html' },
-  { id: 'pinch-pin', genre: 'action', title: 'ピンチ！ピンくん', icon: Pin, color: 'bg-red-100', iconColor: 'text-red-800', type: 'html' },
-  { id: 'lucky-mamori', genre: 'action', title: 'ラッキーまもりがみ', icon: Clover, color: 'bg-emerald-100', iconColor: 'text-emerald-800', type: 'html' },
+  { id: 'pinch-pin', genre: 'tap', title: 'ピンチ！ピンくん', icon: Pin, color: 'bg-red-100', iconColor: 'text-red-800', type: 'html' },
+  { id: 'lucky-mamori', genre: 'tap', title: 'ラッキーまもりがみ', icon: Clover, color: 'bg-emerald-100', iconColor: 'text-emerald-800', type: 'html' },
   { id: 'korokoro', genre: 'action', title: 'コロコロ大玉', icon: CircleDashed, color: 'bg-lime-300', iconColor: 'text-lime-900', type: 'html' },
-  { id: 'balloon', genre: 'action', title: 'ふうせん わり', icon: Balloon, color: 'bg-rose-200', iconColor: 'text-rose-700', type: 'react', component: lazy(() => import('./games/balloon/Balloon.jsx')) },
+  { id: 'balloon', genre: 'tap', title: 'ふうせん わり', icon: Balloon, color: 'bg-rose-200', iconColor: 'text-rose-700', type: 'react', component: lazy(() => import('./games/balloon/Balloon.jsx')) },
 
   // --- ぼうけん・つくる ---
   { id: 'craftbox', genre: 'adventure', title: 'CraftBox', icon: Pickaxe, color: 'bg-green-300', iconColor: 'text-green-900', type: 'html' },
